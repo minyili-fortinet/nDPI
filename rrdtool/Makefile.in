@@ -2,7 +2,7 @@ CC=@CC@
 INC=-I ../src/include -I/usr/local/include
 LIBDPI=../src/lib/libndpi.a
 LDFLAGS=@LDFLAGS@
-LIB=$(LIBDPI) -lrrd -lm @LIBS@ @ADDITIONAL_LIBS@
+LIB=$(LIBDPI) -lrrd -lm @LIBS@ @ADDITIONAL_LIBS@ @LIBRRD@
 
 TOOLS=rrd_anomaly rrd_similarity
 
@@ -21,6 +21,11 @@ distclean: clean
 	/bin/rm -f Makefile
 
 distdir:
+	find . -type f -name '*.c' \
+		-o -name '*.txt' | xargs -I'{}' cp '{}' '$(distdir)/{}'
 
 install:
 	@echo -n ""
+
+check:
+	true # nothing to do here

@@ -37,7 +37,7 @@ static void ndpi_int_irc_add_connection(struct ndpi_detection_module_struct *ndp
 static u_int8_t ndpi_check_for_NOTICE_or_PRIVMSG(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
 
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   //
   u_int16_t i;
   u_int8_t number_of_lines_to_be_searched_for = 0;
@@ -61,7 +61,7 @@ static u_int8_t ndpi_check_for_NOTICE_or_PRIVMSG(struct ndpi_detection_module_st
 
 static u_int8_t ndpi_check_for_Nickname(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int16_t i, packetl = packet->payload_packet_len;
 
   if (packetl < 4) {
@@ -83,7 +83,7 @@ static u_int8_t ndpi_check_for_Nickname(struct ndpi_detection_module_struct *ndp
 
 static u_int8_t ndpi_check_for_cmd(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int16_t i;
 
   if (packet->payload_packet_len < 4) {
@@ -123,7 +123,7 @@ static u_int8_t ndpi_check_for_IRC_traces(const u_int8_t * ptr, u_int16_t len)
 u_int8_t ndpi_search_irc_ssl_detect_ninety_percent_but_very_fast(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
 
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 	
 
   NDPI_LOG_DBG(ndpi_struct, "start fast detect\n");
@@ -340,7 +340,7 @@ u_int8_t ndpi_search_irc_ssl_detect_ninety_percent_but_very_fast(struct ndpi_det
 
 void ndpi_search_irc_tcp(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 	
   u_int16_t c = 0;
   u_int16_t i = 0;
@@ -517,7 +517,7 @@ void ndpi_search_irc_tcp(struct ndpi_detection_module_struct *ndpi_struct, struc
     for (i = 0; i < packet->parsed_lines; i++) {
       if (packet->line[i].len > 6 && memcmp(packet->line[i].ptr, "NOTICE ", 7) == 0) {
 	NDPI_LOG_DBG2(ndpi_struct, "NOTICE");
-	for (j = 7; j < packet->line[i].len - 8; j++) {
+	for (j = 7; j < packet->line[i].len - 9; j++) {
 	  if (packet->line[i].ptr[j] == ':') {
 	    if (memcmp(&packet->line[i].ptr[j + 1], "DCC SEND ", 9) == 0
 		|| memcmp(&packet->line[i].ptr[j + 1], "DCC CHAT ", 9) == 0) {

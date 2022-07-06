@@ -28,9 +28,8 @@ static int is_port(u_int16_t a, u_int16_t b, u_int16_t c) {
 }
 
 static int ndpi_check_skype_udp_again(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int32_t payload_len = packet->payload_packet_len;
-  int i;
   const uint8_t id_flags_iv_crc_len = 11;
   const uint8_t crc_len = sizeof(flow->l4.udp.skype_crc);
   const uint8_t crc_offset = id_flags_iv_crc_len - crc_len;
@@ -46,6 +45,7 @@ static int ndpi_check_skype_udp_again(struct ndpi_detection_module_struct *ndpi_
 
   if ((payload_len >= id_flags_iv_crc_len) && (packet->payload[2] == 0x02 /* Payload flag */ )) {
     u_int8_t detected = 1;
+    int i;
 
     /* Check if both packets have the same CRC */
     for (i = 0; i < crc_len && detected; i++) {
@@ -67,10 +67,11 @@ static int ndpi_check_skype_udp_again(struct ndpi_detection_module_struct *ndpi_
 }
 
 static void ndpi_check_skype(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   // const u_int8_t *packet_payload = packet->payload;
   u_int32_t payload_len = packet->payload_packet_len;
 
+  /* No need to do ntohl() with 0xFFFFFFFF */
   if(packet->iph
      && ((packet->iph->daddr == 0xFFFFFFFF /* 255.255.255.255 */)
 	 || ((ntohl(packet->iph->daddr) & 0xFFFFFF00) == 0xE0000000 /* multicast */)
@@ -111,7 +112,7 @@ static void ndpi_check_skype(struct ndpi_detection_module_struct *ndpi_struct, s
 	  if(is_port(sport, dport, 8801)) {
 	    ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_ZOOM, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI);
 	  } else if (payload_len >= 16 && packet->payload[0] != 0x01) /* Avoid invalid Cisco HSRP detection / RADIUS */ {
-	    ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_SKYPE_CALL, NDPI_PROTOCOL_SKYPE_TEAMS, NDPI_CONFIDENCE_DPI);
+	    ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_SKYPE_TEAMS_CALL, NDPI_PROTOCOL_SKYPE_TEAMS, NDPI_CONFIDENCE_DPI);
 	  }
 	}
 
@@ -188,7 +189,7 @@ void ndpi_search_skype(struct ndpi_detection_module_struct *ndpi_struct, struct 
 
 void init_skype_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id, NDPI_PROTOCOL_BITMASK *detection_bitmask)
 {
-  ndpi_set_bitmask_protocol_detection("Skype", ndpi_struct, detection_bitmask, *id,
+  ndpi_set_bitmask_protocol_detection("Skype_Teams", ndpi_struct, detection_bitmask, *id,
 				      NDPI_PROTOCOL_SKYPE_TEAMS,
 				      ndpi_search_skype,
 				      NDPI_SELECTION_BITMASK_PROTOCOL_V4_V6_TCP_OR_UDP_WITH_PAYLOAD,

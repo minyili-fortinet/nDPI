@@ -38,7 +38,7 @@ static void ndpi_int_mail_imap_add_connection(struct ndpi_detection_module_struc
 
 void ndpi_search_mail_imap_tcp(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int16_t i = 0;
   u_int16_t space_pos = 0;
   u_int16_t command_start = 0;
@@ -178,15 +178,15 @@ void ndpi_search_mail_imap_tcp(struct ndpi_detection_module_struct *ndpi_struct,
 	  if(user) {
 	    char *pwd;
 
-	    snprintf(flow->l4.tcp.ftp_imap_pop_smtp.username,
+	    ndpi_snprintf(flow->l4.tcp.ftp_imap_pop_smtp.username,
 		     sizeof(flow->l4.tcp.ftp_imap_pop_smtp.username),
 		     "%s", user);
 
-	    ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS);
+	    ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS, "Found IMAP Username");
 
 	    pwd = strtok_r(NULL, " \"\r\n", &saveptr);
 	    if(pwd) {
-	      snprintf(flow->l4.tcp.ftp_imap_pop_smtp.password,
+	      ndpi_snprintf(flow->l4.tcp.ftp_imap_pop_smtp.password,
 		       sizeof(flow->l4.tcp.ftp_imap_pop_smtp.password),
 	               "%s", pwd);
 	    }

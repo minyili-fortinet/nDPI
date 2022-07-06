@@ -85,11 +85,11 @@ static int64_t get_var_int(const unsigned char *buf, int buf_len, u_int8_t *num_
 void ndpi_search_mqtt (struct ndpi_detection_module_struct *ndpi_struct,
 		struct ndpi_flow_struct *flow)
 {
+	struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 	u_int8_t pt,flags, rl_len;
 	int64_t rl;
 
 	NDPI_LOG_DBG(ndpi_struct, "search Mqtt\n");
-	struct ndpi_packet_struct *packet = &ndpi_struct->packet;
 	if (flow->detected_protocol_stack[0] != NDPI_PROTOCOL_UNKNOWN) {
 		return;
 	}

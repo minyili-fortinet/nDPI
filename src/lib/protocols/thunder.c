@@ -47,7 +47,7 @@ __forceinline static
 void ndpi_int_search_thunder_udp(struct ndpi_detection_module_struct
 				 *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 	
   if (packet->payload_packet_len > 8 && packet->payload[0] >= 0x30
       && packet->payload[0] < 0x40 && packet->payload[1] == 0 && packet->payload[2] == 0 && packet->payload[3] == 0) {
@@ -78,7 +78,7 @@ __forceinline static
 void ndpi_int_search_thunder_tcp(struct ndpi_detection_module_struct
 				 *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 	
   if (packet->payload_packet_len > 8 && packet->payload[0] >= 0x30
       && packet->payload[0] < 0x40 && packet->payload[1] == 0 && packet->payload[2] == 0 && packet->payload[3] == 0) {
@@ -134,7 +134,7 @@ __forceinline static
 void ndpi_int_search_thunder_http(struct ndpi_detection_module_struct
 				  *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 
   if (packet->payload_packet_len > 5
       && memcmp(packet->payload, "GET /", 5) == 0) {
@@ -166,7 +166,7 @@ void ndpi_int_search_thunder_http(struct ndpi_detection_module_struct
 
 void ndpi_search_thunder(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   //
   //struct ndpi_id_struct *src = flow->src;
   //struct ndpi_id_struct *dst = flow->dst;

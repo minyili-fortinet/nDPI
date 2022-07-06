@@ -20,7 +20,6 @@
  * along with nDPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
 #include "ndpi_protocol_ids.h"
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_CASSANDRA
 #include "ndpi_api.h"
@@ -108,7 +107,9 @@ static bool ndpi_check_valid_cassandra_flags(uint8_t flags)
 void ndpi_search_cassandra(struct ndpi_detection_module_struct *ndpi_struct,
                            struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
+
+  NDPI_LOG_DBG(ndpi_struct, "search Cassandra\n");
 
   if (packet->tcp) {
     if (packet->payload_packet_len >= CASSANDRA_HEADER_LEN &&
@@ -116,7 +117,10 @@ void ndpi_search_cassandra(struct ndpi_detection_module_struct *ndpi_struct,
         ndpi_check_valid_cassandra_flags(get_u_int8_t(packet->payload, 1)) &&
         ndpi_check_valid_cassandra_opcode(get_u_int8_t(packet->payload, 4)) &&
         le32toh(get_u_int32_t(packet->payload, 5)) <= CASSANDRA_MAX_BODY_SIZE &&
-        le32toh(get_u_int32_t(packet->payload, 5)) >= (uint32_t) (packet->payload_packet_len - CASSANDRA_HEADER_LEN)) {
+        le32toh(get_u_int32_t(packet->payload, 5)) >= (uint32_t) (packet->payload_packet_len - CASSANDRA_HEADER_LEN) &&
+        flow->l4.tcp.h323_valid_packets == 0 /* To avoid clashing with H323 */ &&
+        flow->socks4_stage == 0 /* To avoid clashing with SOCKS */) {
+      NDPI_LOG_INFO(ndpi_struct, "found Cassandra\n");
       ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_CASSANDRA, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI);
       return;
     }

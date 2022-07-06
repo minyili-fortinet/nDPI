@@ -39,7 +39,7 @@ static void ndpi_int_tftp_add_connection(struct ndpi_detection_module_struct
 void ndpi_search_tftp(struct ndpi_detection_module_struct
 		      *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 
   NDPI_LOG_DBG(ndpi_struct, "search TFTP\n");
 
@@ -66,8 +66,8 @@ void ndpi_search_tftp(struct ndpi_detection_module_struct
 
         {
           char const * const possible_modes[] = { "netascii", "octet", "mail" };
-          uint8_t mode_found = 0;
-          for (uint8_t mode_idx = 0; mode_idx < sizeof(possible_modes) / sizeof(possible_modes[0]); ++mode_idx)
+          uint8_t mode_found = 0, mode_idx;
+          for(mode_idx = 0; mode_idx < sizeof(possible_modes) / sizeof(possible_modes[0]); ++mode_idx)
           {
             size_t const mode_len = strlen(possible_modes[mode_idx]);
 

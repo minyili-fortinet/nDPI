@@ -1,4 +1,4 @@
-AC_INIT([libndpi], [4.2.0])
+AC_INIT([libndpi],[4.3.0])
 
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
@@ -7,7 +7,7 @@ AM_INIT_AUTOMAKE([foreign subdir-objects])
 
 AC_PREFIX_DEFAULT(/usr)
 
-EXTRA_TARGETS="example tests tests/unit tests/dga"
+EXTRA_TARGETS="example tests tests/dga"
 AC_ARG_WITH(only-libndpi,  AS_HELP_STRING([--with-only-libndpi], [Build only libndpi (no examples, tests etc)]))
 AS_IF([test "${with_only_libndpi+set}" = set],[
   EXTRA_TARGETS=""
@@ -15,6 +15,11 @@ AS_IF([test "${with_only_libndpi+set}" = set],[
 
 AC_ARG_WITH(sanitizer,     AS_HELP_STRING([--with-sanitizer], [Build with support for address, undefined and leak sanitizer]))
 AC_ARG_ENABLE(fuzztargets, AS_HELP_STRING([--enable-fuzztargets], [Enable fuzz targets]),[enable_fuzztargets=$enableval],[enable_fuzztargets=no])
+AC_ARG_ENABLE(code-coverage, AS_HELP_STRING([--enable-code-coverage], [Generate Code Coverage report]))
+AC_ARG_WITH(local-libgcrypt,  AS_HELP_STRING([--with-local-libgcrypt], [Build with libgcrypt (if present) instead of the enclosed gcrypt light]))
+AC_ARG_ENABLE(tls-sigs, AS_HELP_STRING([--enable-tls-sigs], [Enable TLS Client signature algorithm dissection. Rarely used, but requires significantly more memory.]))
+AC_ARG_ENABLE(npcap, AS_HELP_STRING([--disable-npcap], [msys2 only: Disable linkage against the wpcap/npcap import library in windows/WpdPack/Lib.]))
+
 AS_IF([test "x$enable_fuzztargets" = "xyes"], [BUILD_FUZZTARGETS=1], [BUILD_FUZZTARGETS=0])
 AM_CONDITIONAL([BUILD_FUZZTARGETS], [test "x$enable_fuzztargets" = "xyes"])
 
@@ -23,20 +28,27 @@ AS_IF([test "${with_sanitizer+set}" = set],[
   LDFLAGS="${LDFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fsanitize=leak"
 ])
 
+AS_IF([test "x${enable_code_coverage}" = "xyes"],[
+  CFLAGS="${CFLAGS} -fprofile-arcs -ftest-coverage"
+  LDFLAGS="${LDFLAGS} --coverage"
+])
+
+AS_IF([test "${enable_npcap+set}" = set],[DISABLE_NPCAP=1],[DISABLE_NPCAP=0])
+
 LT_INIT
 LT_LIB_M
 PKG_PROG_PKG_CONFIG
+
+AC_PROG_CC
 
 SYSTEM=`uname -s`
 if test $SYSTEM = "Darwin"; then
 dnl>  AC_PROG_CC(clang gcc)
   AM_PROG_CC_C_O(clang gcc)
   AC_PROG_CXX(clang++ g++)
-  AC_PROG_CC_STDC(clang gcc)
 else
   AC_PROG_CC_C_O
   AC_PROG_CXX
-  AC_PROG_CC_STDC
 fi
 
 dnl> Can't iuse AM_PROG_AR because not all of our Makefiles are automake (yet?)
@@ -55,7 +67,7 @@ AC_DEFINE_UNQUOTED(NDPI_PATCH_LEVEL,   "${NDPI_PATCH}", [nDPI patch level])
 
 # .git as directory in a cloned repo
 # .git as file in submodule based integration
-if test -d ".git" || test -f ".git" ; then :
+if test -d ".git" || test -r ".git"; then
      GIT_TAG=`git log -1 --format=%h`
      GIT_DATE=`git log -1 --format=%cd`
      #
@@ -75,10 +87,8 @@ else
      if test -z "$SOURCE_DATE_EPOCH" ; then :
          SOURCE_DATE_EPOCH=`date +%s`
      fi
-     NDPI_API_VERSION=`echo $SOURCE_DATE_EPOCH | cut -c7-10`
+     NDPI_API_VERSION=$((SOURCE_DATE_EPOCH % 65536))
 fi
-
-NDPI_API_VERSION=`echo $NDPI_API_VERSION | sed 's/^0*//'`
 
 echo "Setting API version to $NDPI_API_VERSION"
 
@@ -87,12 +97,18 @@ AC_DEFINE_UNQUOTED(NDPI_GIT_DATE, "${GIT_DATE}", [Last GIT change])
 
 if ! test "${with_only_libndpi+set}" = set; then :
     dnl> used by json-c for unit tests
-    PKG_CHECK_MODULES([JSONC], [json-c], [JSONC_LIBS="${pkg_cv_JSONC_LIBS}" JSONC_CFLAGS="${pkg_cv_JSONC_CFLAGS}"])
-    AC_CHECK_LIB([json-c], [json_object_put], [], [
+    PKG_CHECK_MODULES([JSONC], [json-c], [
+        AC_DEFINE(HAVE_LIBJSON_C, 1, [libjson-c is present])
+        JSONC_LIBS="${pkg_cv_JSONC_LIBS}"
+        JSONC_CFLAGS="${pkg_cv_JSONC_CFLAGS}"
+    ], [AC_MSG_WARN([JSON-C not available. Disabled unit test.])])
+    AC_CHECK_LIB([json-c], [json_object_put], [
+        EXTRA_TARGETS="$EXTRA_TARGETS tests/unit"
+        build_unittests=yes
+    ],[
         AC_MSG_WARN([JSON-C not available. Disabled unit test.])
         JSONC_LIBS=""
         JSONC_CFLAGS=""
-        EXTRA_TARGETS="example tests tests/dga"
     ])
     AX_PTHREAD([],[
         AC_MSG_WARN([POSIX Threads not available. Building library only.])
@@ -101,9 +117,15 @@ if ! test "${with_only_libndpi+set}" = set; then :
         EXTRA_TARGETS=""
     ])
 fi
+AM_CONDITIONAL([BUILD_UNITTESTS], [test "x$build_unittests" = "xyes"])
+
+HANDLE_TLS_SIGS="//"
+AS_IF([test "x${enable_tls_sigs}" = "xyes"],[
+  HANDLE_TLS_SIGS=""
+])
 
 LIBS="$LIBS $JSONC_LIBS"
-CFLAGS="-W -Wall -Wno-unused-parameter -Wno-unused-function $CFLAGS $JSONC_CFLAGS"
+CFLAGS="-W -Wall -Wno-unused-parameter -Wno-unused-function -Wno-address-of-packed-member $CFLAGS $JSONC_CFLAGS"
 
 AC_CHECK_HEADERS([netinet/in.h stdint.h stdlib.h string.h unistd.h math.h float.h])
 AC_CHECK_LIB([m], [sqrt], [], [LIBM="-lm"])
@@ -114,7 +136,7 @@ if test "x$ac_cv_lib_rrd_rrd_fetch_r" = xyes; then :
    EXTRA_TARGETS="$EXTRA_TARGETS rrdtool"
 fi
 
-ADDITIONAL_LIBS="$LIBRRD $LIBM"
+ADDITIONAL_LIBS="$LIBM"
 PCAP_HOME=$HOME/PF_RING/userland
 
 DPDK_TARGET=
@@ -156,16 +178,22 @@ case "$host" in
       case "$host" in
         x86_64-*)
           BUILD_MINGW_X64=1
+          LDFLAGS="${LDFLAGS} -L/mingw64/lib"
         ;;
         i686-*)
+          LDFLAGS="${LDFLAGS} -L/mingw32/lib"
         ;;
         *)
           AC_MSG_ERROR([Unsupported MingW cross compiler.])
         ;;
       esac
-      CFLAGS="${CFLAGS}"
+      CFLAGS="-D__USE_MINGW_ANSI_STDIO -D__STDC_FORMAT_MACROS ${CFLAGS}"
       LIBS="${LIBS} -lws2_32"
       BUILD_MINGW=1
+      EXE_SUFFIX=".exe"
+      AS_IF([test "${enable_npcap+set}" != set && test "${with_only_libndpi+set}" != set],,
+            [PKG_CHECK_MODULES([PCAP], [libpcap], [PCAP_LIB="" PCAP_INC="${pkg_cv_PCAP_CFLAGS}"])
+             AC_CHECK_LIB([pcap], [pcap_open_live],, [AC_MSG_ERROR([Missing msys2/mingw libpcap library. Install it with `pacman -S mingw-w64-x86_64-libpcap' (msys2).])])])
       ;;
    *)
       if test -f $PCAP_HOME/libpcap/libpcap.a; then :
@@ -190,6 +218,8 @@ case "$host" in
             AC_MSG_ERROR([Missing libpcap(-dev) library required to compile the example application.])
          fi
       fi
+      EXE_SUFFIX=""
+      AS_IF([test "${enable_npcap+set}" = set],AC_MSG_ERROR([--disable-npcap does only work with msys2/mingw CCs]))
       ;;
 esac
 
@@ -230,25 +260,14 @@ AM_CONDITIONAL([HAS_FUZZLDFLAGS], [test "x$has_sanitizefuzzer" = "xyes"])
 
 AC_CHECK_LIB(pthread, pthread_setaffinity_np, AC_DEFINE_UNQUOTED(HAVE_PTHREAD_SETAFFINITY_NP, 1, [libc has pthread_setaffinity_np]))
 
-dnl> GCRYPT
-GCRYPT_ENABLED=1
-AC_ARG_ENABLE([gcrypt],
-  [AS_HELP_STRING([--disable-gcrypt], [Avoid compiling with libgcrypt/libgpg-error, even if they are present. QUIC sub-classification may be missing])],
-  [GCRYPT_ENABLED=0],
-  [AC_CHECK_LIB(gcrypt, gcry_cipher_checktag)])
-AS_IF([test ${GCRYPT_ENABLED} -eq 1], [
-  if test "x$ac_cv_lib_gcrypt_gcry_cipher_checktag" = xyes; then :
-    ADDITIONAL_LIBS="${ADDITIONAL_LIBS} -lgcrypt"
-  else
-    $as_unset ac_cv_lib_gcrypt_gcry_cipher_checktag
-    AC_CHECK_LIB(gpg-error, gpg_strerror_r)
-    AC_CHECK_LIB(gcrypt, gcry_cipher_checktag)
-    if test "x$ac_cv_lib_gcrypt_gcry_cipher_checktag" = xyes -a "x$ac_cv_lib_gpg_error_gpg_strerror_r" = xyes; then :
-      ADDITIONAL_LIBS="${ADDITIONAL_LIBS} -lgcrypt -lgpg-error"
-    else
-      GCRYPT_ENABLED=0
-    fi
-  fi
+dnl> libgcrypt (external)
+USE_HOST_LIBGCRYPT=0
+AS_IF([test "${with_local_libgcrypt+set}" = set],[
+  USE_HOST_LIBGCRYPT=1
+  AC_CHECK_LIB(gpg-error, gpg_strerror_r, [], AC_MSG_ERROR([libgpg-error required (because of --with-local-libgcrypt) but not found or too old.]))
+  AC_CHECK_LIB(gcrypt, gcry_cipher_checktag, [], AC_MSG_ERROR([libgcrypt required (because of --with-local-libgcrypt) but not found or too old.]))
+  ADDITIONAL_LIBS="${ADDITIONAL_LIBS} -lgcrypt -lgpg-error"
+  AC_DEFINE_UNQUOTED(USE_HOST_LIBGCRYPT, 1, [Use locally installed libgcrypt instead of builtin gcrypt-light])
 ])
 
 dnl> PCRE
@@ -266,7 +285,7 @@ dnl> GeoIP
 AC_ARG_WITH(maxminddb,          [  --with-maxminddb        Enable nDPI build with libmaxminddb])
 if test "${with_maxminddb+set}" = set; then :
   AC_CHECK_LIB([maxminddb], [MMDB_lookup_sockaddr])
-  AC_HAVE_HEADERS(maxminddb.h)
+  AC_CHECK_HEADERS([maxminddb.h])
   if test ".${ac_cv_lib_maxminddb_MMDB_lookup_sockaddr}" = ".yes" && test ".${ac_cv_header_maxminddb_h}" = ".yes"; then
     ADDITIONAL_LIBS="${ADDITIONAL_LIBS} -lmaxminddb"
     AC_DEFINE_UNQUOTED(HAVE_MAXMINDDB, 1, [MaxMind DB support])
@@ -282,7 +301,7 @@ dnl>   ADDITIONAL_LIBS="${ADDITIONAL_LIBS} -lcurl"
 dnl>   AC_DEFINE_UNQUOTED(HAVE_CURL, 1, [curl is present])
 dnl> fi
 
-AC_CONFIG_FILES([Makefile example/Makefile example/Makefile.dpdk tests/Makefile tests/unit/Makefile tests/performance/Makefile tests/dga/Makefile rrdtool/Makefile libndpi.pc src/include/ndpi_define.h src/lib/Makefile python/Makefile fuzz/Makefile src/include/ndpi_api.h])
+AC_CONFIG_FILES([Makefile example/Makefile example/Makefile.dpdk tests/Makefile tests/unit/Makefile tests/performance/Makefile tests/dga/Makefile rrdtool/Makefile influxdb/Makefile libndpi.pc src/include/ndpi_define.h src/lib/Makefile fuzz/Makefile src/include/ndpi_api.h doc/Doxyfile.cfg])
 AC_CONFIG_FILES([tests/do.sh], [chmod +x tests/do.sh])
 AC_CONFIG_HEADERS(src/include/ndpi_config.h)
 AC_SUBST(GIT_RELEASE)
@@ -292,6 +311,7 @@ AC_SUBST(NDPI_PATCH)
 AC_SUBST(NDPI_VERSION_SHORT)
 AC_SUBST(PCAP_INC)
 AC_SUBST(PCAP_LIB)
+AC_SUBST(LIBRRD)
 AC_SUBST(ADDITIONAL_LIBS)
 AC_SUBST(DL_LIB)
 AC_SUBST(DPDK_TARGET)
@@ -304,6 +324,9 @@ AC_SUBST(BUILD_MINGW_X64)
 AC_SUBST(BUILD_FUZZTARGETS)
 AC_SUBST(JSONC_CFLAGS)
 AC_SUBST(JSONC_LIBS)
-AC_SUBST(GCRYPT_ENABLED)
+AC_SUBST(USE_HOST_LIBGCRYPT)
 AC_SUBST(PCRE_ENABLED)
+AC_SUBST(HANDLE_TLS_SIGS)
+AC_SUBST(DISABLE_NPCAP)
+AC_SUBST(EXE_SUFFIX)
 AC_OUTPUT

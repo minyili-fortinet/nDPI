@@ -35,7 +35,7 @@
 
 static int search_telnet_again(struct ndpi_detection_module_struct *ndpi_struct,
 			       struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   int i;
 
 #ifdef TELNET_DEBUG
@@ -63,7 +63,7 @@ static int search_telnet_again(struct ndpi_detection_module_struct *ndpi_struct,
 	return(1);
 	
       flow->protos.telnet.password_detected = 1;
-      ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS);
+      ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS, "Found password");
       flow->protos.telnet.password[flow->protos.telnet.character_id] = '\0';
       return(0);
     }
@@ -90,7 +90,7 @@ static int search_telnet_again(struct ndpi_detection_module_struct *ndpi_struct,
 
   if(packet->payload[0] == '\r') {
     flow->protos.telnet.username_detected = 1;
-    ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS);
+    ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS, "Found username");
     flow->protos.telnet.username[flow->protos.telnet.character_id] = '\0';
     flow->protos.telnet.character_id = 0;
     return(1);
@@ -99,7 +99,19 @@ static int search_telnet_again(struct ndpi_detection_module_struct *ndpi_struct,
   for(i=0; i<packet->payload_packet_len; i++) {
     if(packet->packet_direction == 0) /* client -> server */ {
       if(flow->protos.telnet.character_id < (sizeof(flow->protos.telnet.username)-1))
-	flow->protos.telnet.username[flow->protos.telnet.character_id++] = packet->payload[i];
+      {
+        if (i>=packet->payload_packet_len-2 &&
+            (packet->payload[i] == '\r' || packet->payload[i] == '\n'))
+        {
+          continue;
+        }
+        else if (ndpi_isprint(packet->payload[i]) == 0)
+        {
+          flow->protos.telnet.username[flow->protos.telnet.character_id++] = '?';
+        } else {
+          flow->protos.telnet.username[flow->protos.telnet.character_id++] = packet->payload[i];
+        }
+      }
     }
   }
 
@@ -132,7 +144,7 @@ __forceinline static
 #endif
 u_int8_t search_iac(struct ndpi_detection_module_struct *ndpi_struct,
 		    struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 
   u_int16_t a;
 

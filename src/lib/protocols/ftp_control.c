@@ -53,7 +53,7 @@ static int ndpi_ftp_control_check_request(struct ndpi_detection_module_struct *n
     ndpi_user_pwd_payload_copy((u_int8_t*)flow->l4.tcp.ftp_imap_pop_smtp.username,
 			       sizeof(flow->l4.tcp.ftp_imap_pop_smtp.username), 5,
 			       payload, payload_len);
-    ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS);
+    ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS, "Found FTP username");
     return 1;
   }
 
@@ -570,6 +570,7 @@ static int ndpi_ftp_control_check_response(struct ndpi_flow_struct *flow,
   case '4':
   case '5':
     flow->l4.tcp.ftp_imap_pop_smtp.auth_failed = 1;
+    flow->l4.tcp.ftp_imap_pop_smtp.auth_done = 1;
     return(1);
     break;
   }
@@ -581,7 +582,7 @@ static int ndpi_ftp_control_check_response(struct ndpi_flow_struct *flow,
 
 static void ndpi_check_ftp_control(struct ndpi_detection_module_struct *ndpi_struct,
 				   struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int32_t payload_len = packet->payload_packet_len;
 
   /* Check connection over TCP */
@@ -636,6 +637,7 @@ static void ndpi_check_ftp_control(struct ndpi_detection_module_struct *ndpi_str
 #endif
 
 	if(flow->l4.tcp.ftp_imap_pop_smtp.password[0] == '\0' &&
+	   flow->l4.tcp.ftp_imap_pop_smtp.auth_done == 0 &&
 	   flow->l4.tcp.ftp_imap_pop_smtp.auth_tls == 0) /* TODO: any values on dissecting TLS handshake? */
 	  flow->ftp_control_stage = 0;
 	else

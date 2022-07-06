@@ -40,7 +40,7 @@ static void ndpi_int_rtsp_add_connection(struct ndpi_detection_module_struct *nd
 void ndpi_search_rtsp_tcp_udp(struct ndpi_detection_module_struct
 			      *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 
   NDPI_LOG_DBG(ndpi_struct, "search RTSP\n");
 
@@ -50,7 +50,9 @@ void ndpi_search_rtsp_tcp_udp(struct ndpi_detection_module_struct
   }
 
   if (packet->parsed_lines > 0 &&
-      LINE_ENDS(packet->line[0], "RTSP/1.0") != 0)
+      (LINE_ENDS(packet->line[0], "RTSP/1.0") != 0 ||
+       LINE_ENDS(packet->accept_line, "application/x-rtsp-tunnelled") != 0 ||
+       LINE_ENDS(packet->content_line, "application/x-rtsp-tunnelled") != 0))
   {
     ndpi_int_rtsp_add_connection(ndpi_struct, flow);
     return;

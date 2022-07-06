@@ -27,6 +27,21 @@
   gcc -E -dM - < /dev/null |grep ENDIAN
 */
 
+#ifdef __KERNEL__
+
+#define        LITTLE_ENDIAN   1234    /* least-significant byte first (vax, pc) */
+#define        BIG_ENDIAN      4321    /* most-significant byte first (IBM, net) */
+
+#ifdef __LITTLE_ENDIAN
+#define BYTE_ORDER __LITTLE_ENDIAN
+#endif
+#ifdef __BIG_ENDIAN
+#define BYTE_ORDER __BIG_ENDIAN
+#endif
+#define __BYTE_ORDER BYTE_ORDER
+
+#else
+
 #if defined(__FreeBSD__) || defined(__NetBSD__)
 #include <sys/endian.h>
 #endif
@@ -42,6 +57,7 @@
 #define __BIG_ENDIAN__
 #endif/* BYTE_ORDER */
 #endif/* __OPENBSD__ */
+#endif/* __KERNEL__ */
 
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -156,8 +172,7 @@
 
 /* misc definitions */
 #define NDPI_DEFAULT_MAX_TCP_RETRANSMISSION_WINDOW_SIZE 0x10000
-#define NDPI_MAX_NUM_PKTS_PER_FLOW_TO_DISSECT           32
-
+#define NDPI_DEFAULT_MAX_NUM_PKTS_PER_FLOW_TO_DISSECT   32
 
 /* TODO: rebuild all memory areas to have a more aligned memory block here */
 
@@ -166,17 +181,6 @@
 
 #define MAX_PACKET_COUNTER                                   65000
 #define MAX_DEFAULT_PORTS                                        5
-
-#define NDPI_DIRECTCONNECT_CONNECTION_IP_TICK_TIMEOUT          600
-#define NDPI_IRC_CONNECTION_TIMEOUT                            120
-#define NDPI_GNUTELLA_CONNECTION_TIMEOUT                        60
-#define NDPI_BATTLEFIELD_CONNECTION_TIMEOUT                     60
-#define NDPI_THUNDER_CONNECTION_TIMEOUT                         30
-#define NDPI_TVANTS_CONNECTION_TIMEOUT                           5
-#define NDPI_ZATTOO_CONNECTION_TIMEOUT                         120
-#define NDPI_ZATTOO_FLASH_TIMEOUT                                5
-#define NDPI_JABBER_STUN_TIMEOUT                                30
-#define NDPI_JABBER_FT_TIMEOUT				         5
 
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
  #define NDPI_LOG(proto, m, log_level, args...)		                                 \
@@ -342,10 +346,6 @@ static inline u_int64_t get_u_int64_t(const u_int8_t* X, int O)
 /* define memory callback function */
 #define match_first_bytes(payload,st) (memcmp((payload),(st),(sizeof(st)-1))==0)
 
-#if defined(WIN32) && !defined(snprintf)
-#define snprintf _snprintf
-#endif
-
 #if defined(WIN32)
 #undef strtok_r
 #define strtok_r strtok_s
@@ -374,6 +374,8 @@ static inline u_int64_t get_u_int64_t(const u_int8_t* X, int O)
 #define NDPI_OPTIMAL_HLL_NUM_BUCKETS           16
 
 #define NDPI_MAX_NUM_TLS_APPL_BLOCKS            8
+
+@HANDLE_TLS_SIGS@#define TLS_HANDLE_SIGNATURE_ALGORITMS 1
 
 #ifdef __APPLE__
 

@@ -26,7 +26,7 @@
 
 void ndpi_search_sflow(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   // const u_int8_t *packet_payload = packet->payload;
   u_int32_t payload_len = packet->payload_packet_len;
 
@@ -35,10 +35,19 @@ void ndpi_search_sflow(struct ndpi_detection_module_struct *ndpi_struct, struct 
   if((packet->udp != NULL)
      && (payload_len >= 24)
      /* Version */
-     && (packet->payload[0] == 0) && (packet->payload[1] == 0) && (packet->payload[2] == 0)
-     && ((packet->payload[3] == 2) || (packet->payload[3] == 5))) {
-    NDPI_LOG_INFO(ndpi_struct, "found sflow\n");
-    ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_SFLOW, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI);
+     && ntohl(get_u_int32_t(packet->payload, 0)) == 0x00000005
+     /* Agent Address type: IPv4 / IPv6 */
+     && (ntohl(get_u_int32_t(packet->payload, 4)) == 0x00000001 ||
+         ntohl(get_u_int32_t(packet->payload, 4)) == 0x00000002)) {
+    NDPI_LOG_INFO(ndpi_struct, "found (probably) sflow\n");
+    if (flow->packet_counter >= 2)
+    {
+      NDPI_LOG_INFO(ndpi_struct, "found sflow\n");
+      ndpi_set_detected_protocol(ndpi_struct, flow,
+                                 NDPI_PROTOCOL_SFLOW,
+                                 NDPI_PROTOCOL_UNKNOWN,
+                                 NDPI_CONFIDENCE_DPI);
+    }
     return;
   }
 

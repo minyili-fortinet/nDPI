@@ -21,10 +21,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include "ndpi_config.h"
-#endif
-
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -157,6 +153,16 @@ float ndpi_data_variance(struct ndpi_analyze_struct *s) {
 /* Compute the standard deviation on all values */
 float ndpi_data_stddev(struct ndpi_analyze_struct *s) {
   return(sqrt(ndpi_data_variance(s)));
+}
+
+/* ********************************************************************************* */
+
+/* 
+   Compute the mean on all values 
+   NOTE: In statistics, there is no difference between the mean and average
+*/
+float ndpi_data_mean(struct ndpi_analyze_struct *s) {
+  return(ndpi_data_average(s));
 }
 
 /* ********************************************************************************* */
@@ -506,7 +512,7 @@ char* ndpi_print_bin(struct ndpi_bin *b, u_int8_t normalize_first, char *out_buf
   switch(b->family) {
   case ndpi_bin_family8:
     for(i=0; i<b->num_bins; i++) {
-      int rc = snprintf(&out_buf[len], out_buf_len-len, "%s%u", (i > 0) ? "," : "", b->u.bins8[i]);
+      int rc = ndpi_snprintf(&out_buf[len], out_buf_len-len, "%s%u", (i > 0) ? "," : "", b->u.bins8[i]);
 
       if(rc < 0) break;
       len += rc;
@@ -515,7 +521,7 @@ char* ndpi_print_bin(struct ndpi_bin *b, u_int8_t normalize_first, char *out_buf
 
   case ndpi_bin_family16:
     for(i=0; i<b->num_bins; i++) {
-      int rc = snprintf(&out_buf[len], out_buf_len-len, "%s%u", (i > 0) ? "," : "", b->u.bins16[i]);
+      int rc = ndpi_snprintf(&out_buf[len], out_buf_len-len, "%s%u", (i > 0) ? "," : "", b->u.bins16[i]);
 
       if(rc < 0) break;
       len += rc;
@@ -524,7 +530,7 @@ char* ndpi_print_bin(struct ndpi_bin *b, u_int8_t normalize_first, char *out_buf
 
   case ndpi_bin_family32:
     for(i=0; i<b->num_bins; i++) {
-      int rc = snprintf(&out_buf[len], out_buf_len-len, "%s%u", (i > 0) ? "," : "", b->u.bins32[i]);
+      int rc = ndpi_snprintf(&out_buf[len], out_buf_len-len, "%s%u", (i > 0) ? "," : "", b->u.bins32[i]);
 
       if(rc < 0) break;
       len += rc;
@@ -1425,3 +1431,35 @@ void ndpi_des_fitting(double *values, u_int32_t num_values, float *ret_alpha, fl
 
   *ret_alpha = best_alpha, *ret_beta = best_beta;
 }
+
+/* *********************************************************** */
+
+/* Z-Score = (Value - Mean) / StdDev */
+u_int ndpi_find_outliers(u_int32_t *values, bool *outliers, u_int32_t num_values) {
+  u_int i, ret = 0;
+  float mean, stddev, low_threshold = -2.5, high_threshold = 2.5;
+  struct ndpi_analyze_struct a;
+  
+  ndpi_init_data_analysis(&a, 3 /* this is the window so we do not need to store values and 3 is enough */);
+
+  /* Add values */
+  for(i=0; i<num_values; i++) 
+    ndpi_data_add_value(&a, values[i]);
+
+  mean    = ndpi_data_mean(&a);
+  stddev  = ndpi_data_stddev(&a);
+  
+  /* Process values */
+  for(i=0; i<num_values; i++) {
+    float z_score = (((float)values[i]) - mean) / stddev;
+    bool is_outlier = ((z_score < low_threshold) || (z_score > high_threshold)) ? true : false;
+
+    if(is_outlier) ret++;
+    outliers[i] = is_outlier;
+  }
+  
+  ndpi_free_data_analysis(&a, 0);
+
+  return(ret);
+}
+

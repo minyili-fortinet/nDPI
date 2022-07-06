@@ -58,7 +58,7 @@ static void popInitExtraPacketProcessing(struct ndpi_flow_struct *flow);
 
 static int ndpi_int_mail_pop_check_for_client_commands(struct ndpi_detection_module_struct
 						       *ndpi_struct, struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 	
   if(packet->payload_packet_len > 4) {
     if((packet->payload[0] == 'A' || packet->payload[0] == 'a')
@@ -81,7 +81,7 @@ static int ndpi_int_mail_pop_check_for_client_commands(struct ndpi_detection_mod
 				 sizeof(flow->l4.tcp.ftp_imap_pop_smtp.username), 5,
 				 packet->payload, packet->payload_packet_len);
 
-      ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS);
+      ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS, "Found username");
       flow->l4.tcp.pop_command_bitmask |= POP_BIT_USER;
       return 1;
     } else if((packet->payload[0] == 'P' || packet->payload[0] == 'p')
@@ -92,7 +92,7 @@ static int ndpi_int_mail_pop_check_for_client_commands(struct ndpi_detection_mod
 				 sizeof(flow->l4.tcp.ftp_imap_pop_smtp.password), 5,
 				 packet->payload, packet->payload_packet_len);
 
-      ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS);
+      ndpi_set_risk(ndpi_struct, flow, NDPI_CLEAR_TEXT_CREDENTIALS, "Found password");
       flow->l4.tcp.pop_command_bitmask |= POP_BIT_PASS;
       return 1;
     } else if((packet->payload[0] == 'C' || packet->payload[0] == 'c')
@@ -147,7 +147,7 @@ static int ndpi_int_mail_pop_check_for_client_commands(struct ndpi_detection_mod
 void ndpi_search_mail_pop_tcp(struct ndpi_detection_module_struct
 			      *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int8_t a = 0;
   u_int8_t bit_count = 0;
 

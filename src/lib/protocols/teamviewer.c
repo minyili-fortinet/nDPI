@@ -39,7 +39,7 @@ static void ndpi_int_teamview_add_connection(struct ndpi_detection_module_struct
 
 void ndpi_search_teamview(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 
   NDPI_LOG_DBG(ndpi_struct, "search teamwiewer\n");
   /*
@@ -72,7 +72,7 @@ void ndpi_search_teamview(struct ndpi_detection_module_struct *ndpi_struct, stru
 	if (flow->l4.udp.teamviewer_stage == 4 ||
 	    packet->udp->dest == ntohs(5938) || packet->udp->source == ntohs(5938)) {
 	  ndpi_int_teamview_add_connection(ndpi_struct, flow);
-	  ndpi_set_risk(ndpi_struct, flow, NDPI_DESKTOP_OR_FILE_SHARING_SESSION); /* Remote assistance (UDP only) */
+	  ndpi_set_risk(ndpi_struct, flow, NDPI_DESKTOP_OR_FILE_SHARING_SESSION, "Found TeamViewer"); /* Remote assistance (UDP only) */
 	}
 	return;
       }
@@ -93,7 +93,7 @@ void ndpi_search_teamview(struct ndpi_detection_module_struct *ndpi_struct, stru
 	  flow->l4.udp.teamviewer_stage++;
 	  if (flow->l4.udp.teamviewer_stage == 4) {
 	    ndpi_int_teamview_add_connection(ndpi_struct, flow);
-	    ndpi_set_risk(ndpi_struct, flow, NDPI_DESKTOP_OR_FILE_SHARING_SESSION); /* Remote assistance (UDP only) */
+	    ndpi_set_risk(ndpi_struct, flow, NDPI_DESKTOP_OR_FILE_SHARING_SESSION, "Found TeamViewer"); /* Remote assistance (UDP only) */
 	  }
 	}
 	return;

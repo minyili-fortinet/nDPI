@@ -28,7 +28,7 @@
 
 void ndpi_search_vnc_tcp(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 
   NDPI_LOG_DBG(ndpi_struct, "search vnc\n");
   /* search over TCP */
@@ -51,7 +51,7 @@ void ndpi_search_vnc_tcp(struct ndpi_detection_module_struct *ndpi_struct, struc
 	  ((memcmp(packet->payload, "RFB 004.", 7) == 0) && (packet->payload[11] == 0x0a)))) {	   
 	NDPI_LOG_INFO(ndpi_struct, "found vnc\n");
 	ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_VNC, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI);
-	ndpi_set_risk(ndpi_struct, flow, NDPI_DESKTOP_OR_FILE_SHARING_SESSION); /* Remote assistance */
+	ndpi_set_risk(ndpi_struct, flow, NDPI_DESKTOP_OR_FILE_SHARING_SESSION, "Found VNC"); /* Remote assistance */
 	return;
       }
     }

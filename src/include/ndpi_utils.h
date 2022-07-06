@@ -12,12 +12,13 @@
 // #define NDPI_ENABLE_DEBUG_INFO_MESSAGES
 // #define NDPI_ENABLE_DEBUG_TRACE_MESSAGES
 
+#ifndef NDPI_CFFI_PREPROCESSING
 extern void printRawData(const uint8_t *ptr, size_t len);
 //extern uint8_t add_segment_to_buffer( struct ndpi_flow_struct *flow, struct ndpi_tcphdr const * tcph, uint32_t waited);
 //extern uint8_t check_for_sequence( struct ndpi_flow_struct *flow, struct ndpi_tcphdr const * tcph);
 
 extern u_int8_t ndpi_ends_with(char *str, char *ends);
-  
+#endif // NDPI_CFFI_PREPROCESSING
 /* **************************************** */
 
 /* Can't call libc functions from kernel space, define some stub instead */
@@ -30,5 +31,10 @@ extern u_int8_t ndpi_ends_with(char *str, char *ends);
               ((ch) >= ':' && (ch) <= '@') ||   \
               ((ch) >= '[' && (ch) <= '`') ||   \
               ((ch) >= '{' && (ch) <= '~'))
+
+#ifndef NDPI_CFFI_PREPROCESSING
+int ndpi_vsnprintf(char * str, size_t size, char const * format, va_list va_args);
+int ndpi_snprintf(char * str, size_t size, char const * format, ...);
+#endif
 
 #endif

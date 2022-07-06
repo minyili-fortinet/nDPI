@@ -40,6 +40,15 @@ struct stun_packet_header {
 
 /* ************************************************************ */
 
+int ndpi_stun_cache_enable=
+#ifndef __KERNEL__
+	1;
+#else
+	0;
+#endif
+
+/* ************************************************************ */
+
 u_int32_t get_stun_lru_key(struct ndpi_packet_struct *packet, u_int8_t rev) {
   if(rev)
     return(ntohl(packet->iph->daddr) + ntohs(packet->udp->dest));
@@ -52,10 +61,11 @@ u_int32_t get_stun_lru_key(struct ndpi_packet_struct *packet, u_int8_t rev) {
 void ndpi_int_stun_add_connection(struct ndpi_detection_module_struct *ndpi_struct,
 				  struct ndpi_flow_struct *flow,
 				  u_int proto, u_int app_proto) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
   ndpi_confidence_t confidence = NDPI_CONFIDENCE_DPI;
 
-  if(ndpi_struct->stun_cache == NULL)
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
+
+  if(ndpi_stun_cache_enable && ndpi_struct->stun_cache == NULL)
     ndpi_struct->stun_cache = ndpi_lru_cache_init(1024);
 
   if(ndpi_struct->stun_cache
@@ -155,7 +165,7 @@ static ndpi_int_stun_t ndpi_int_check_stun(struct ndpi_detection_module_struct *
 					   struct ndpi_flow_struct *flow,
 					   const u_int8_t * payload,
 					   const u_int16_t payload_length) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int16_t msg_type, msg_len;
   int rc;
   
@@ -203,7 +213,6 @@ static ndpi_int_stun_t ndpi_int_check_stun(struct ndpi_detection_module_struct *
     */
     if(payload[0] == 0x16) {
       /* Let's check if this is DTLS used by some socials */
-      struct ndpi_packet_struct *packet = &ndpi_struct->packet;
       u_int16_t total_len, version = htons(*((u_int16_t*) &packet->payload[1]));
 
       switch (version) {
@@ -231,7 +240,7 @@ static ndpi_int_stun_t ndpi_int_check_stun(struct ndpi_detection_module_struct *
   if(ndpi_struct->stun_cache && packet->iph) { /* TODO: ipv6 */
     u_int16_t proto;
     u_int32_t key = get_stun_lru_key(packet, 0);
-    int rc = ndpi_lru_find_cache(ndpi_struct->stun_cache, key, &proto,
+    rc = ndpi_lru_find_cache(ndpi_struct->stun_cache, key, &proto,
                                  0 /* Don't remove it as it can be used for other connections */);
 
 #ifdef DEBUG_LRU
@@ -413,7 +422,7 @@ static ndpi_int_stun_t ndpi_int_check_stun(struct ndpi_detection_module_struct *
 #ifdef DEBUG_STUN
             printf("==> Skype found\n");
 #endif
-            flow->guessed_host_protocol_id = NDPI_PROTOCOL_SKYPE_CALL;
+            flow->guessed_host_protocol_id = NDPI_PROTOCOL_SKYPE_TEAMS_CALL;
             return(NDPI_IS_STUN);
           }
 
@@ -434,7 +443,7 @@ static ndpi_int_stun_t ndpi_int_check_stun(struct ndpi_detection_module_struct *
           printf("==> Skype (2) found\n");
 #endif
 
-          flow->guessed_host_protocol_id = NDPI_PROTOCOL_SKYPE_CALL;
+          flow->guessed_host_protocol_id = NDPI_PROTOCOL_SKYPE_TEAMS_CALL;
           return(NDPI_IS_STUN);
           break;
 
@@ -446,7 +455,7 @@ static ndpi_int_stun_t ndpi_int_check_stun(struct ndpi_detection_module_struct *
             printf("==> Skype (3) found\n");
 #endif
 
-            flow->guessed_host_protocol_id = NDPI_PROTOCOL_SKYPE_CALL;
+            flow->guessed_host_protocol_id = NDPI_PROTOCOL_SKYPE_TEAMS_CALL;
             return(NDPI_IS_STUN);
           }
           break;
@@ -500,7 +509,7 @@ static ndpi_int_stun_t ndpi_int_check_stun(struct ndpi_detection_module_struct *
 
 void ndpi_search_stun(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 
   // printf("==> %s()\n", __FUNCTION__)
   
