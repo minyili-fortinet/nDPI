@@ -246,7 +246,6 @@ void test_lib(); /* Forward */
 
 extern void ndpi_report_payload_stats();
 
-static int rep_mini = 0; 
 /* ********************************** */
 
 // #define DEBUG_TRACE
@@ -535,33 +534,6 @@ static void help(u_int long_help) {
     ndpi_set_protocol_detection_bitmask2(ndpi_info_mod, &all);
 
     ndpi_dump_protocols(ndpi_info_mod);
-    if(getenv("DUMP_HOST")) {
-	ndpi_finalize_initialization(ndpi_info_mod);
-  	ac_automata_dump( ndpi_automa_host(ndpi_info_mod), NULL);
-	exit(0);
-    }
-    if(getenv("DUMP_AUTOMA")) {
-	char *ac_name[] = {
-		"host",
-		"content",
-		"tls_cert_subject",
-		"malicious_ja3",
-		"malicious_sha1",
-		"risky_domain",
-		"end"
-	};
-
-	void **ac_list;
-	int i;
-	ndpi_finalize_initialization(ndpi_info_mod);
-	ac_list = ndpi_get_automata(ndpi_info_mod);
-	for(i=0; ac_list[i] != (void *)1; i++) {
-	    if(ac_list[i]) {
-		printf("====== %s\n",ac_name[i]);
-	  	ac_automata_dump( ac_list[i], NULL);
-	    }
-	}
-    }
 
     printf("\n\nnDPI supported risks:\n");
     ndpi_dump_risks_score();
@@ -655,8 +627,7 @@ int cmpFlows(const void *_a, const void *_b) {
   struct ndpi_flow_info *fb = ((struct flow_info*)_b)->flow;
   uint64_t a_size = fa->src2dst_bytes + fa->dst2src_bytes;
   uint64_t b_size = fb->src2dst_bytes + fb->dst2src_bytes;
-  if(!rep_mini)
-    if(a_size != b_size)
+  if(a_size != b_size)
       return a_size < b_size ? 1 : -1;
 
   // copy from ndpi_workflow_node_cmp();
@@ -667,10 +638,6 @@ int cmpFlows(const void *_a, const void *_b) {
   if(htons(fa->src_port) < htons(fb->src_port)) return(-1); else { if(htons(fa->src_port) > htons(fb->src_port)) return(1); }
   if(htonl(fa->dst_ip)   < htonl(fb->dst_ip)  ) return(-1); else { if(htonl(fa->dst_ip)   > htonl(fb->dst_ip)  ) return(1); }
   if(htons(fa->dst_port) < htons(fb->dst_port)) return(-1); else { if(htons(fa->dst_port) > htons(fb->dst_port)) return(1); }
-  if(rep_mini) {
-    if(fa->src2dst_packets < fb->src2dst_packets) return -1; else if(fa->src2dst_packets > fb->src2dst_packets) return 1;
-    if(fa->dst2src_packets < fb->dst2src_packets) return -1; else if(fa->dst2src_packets > fb->dst2src_packets) return 1;
-  }
   return(0);
 }
 
@@ -1390,10 +1357,7 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
 
   if(csv_fp || (verbose > 1)) {
 #if 1
-  if(!rep_mini)
 	fprintf(out, "\t%u", id);
-     else
-	fprintf(out, "\t");
 #else
     fprintf(out, "\t%u(%u)", id, flow->flow_id);
 #endif
@@ -1435,25 +1399,24 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
 				    flow->detected_protocol) ? "Encrypted" : "ClearText");
 
     fprintf(out, "[Confidence: %s]", ndpi_confidence_get_name(flow->confidence));
+    /* If someone wants to have the num_dissector_calls variable per flow, he can print it here.
+       Disabled by default to avoid too many diffs in the unit tests...
+    */
+#if 0
+    fprintf(out, "[Num calls: %d]", flow->num_dissector_calls);
+#endif
 
-    if(!rep_mini && flow->detected_protocol.category != 0)
+    if(flow->detected_protocol.category != 0)
       fprintf(out, "[cat: %s/%u]",
 	      ndpi_category_get_name(ndpi_thread_info[thread_id].workflow->ndpi_struct,
 				     flow->detected_protocol.category),
 	      (unsigned int)flow->detected_protocol.category);
 
-if(!rep_mini) {
     fprintf(out, "[%u pkts/%llu bytes ", flow->src2dst_packets, (long long unsigned int) flow->src2dst_bytes);
     fprintf(out, "%s %u pkts/%llu bytes]",
 	    (flow->dst2src_packets > 0) ? "<->" : "->",
 	    flow->dst2src_packets, (long long unsigned int) flow->dst2src_bytes);
-} else {
-    fprintf(out, "[%u pkts/%llu bytes ", flow->src2dst_packets, (long long unsigned int) flow->src2dst_goodput_bytes);
-    fprintf(out, "%s %u pkts/%llu bytes]",
-	    (flow->dst2src_packets > 0) ? "<->" : "->",
-	    flow->dst2src_packets, (long long unsigned int) flow->dst2src_goodput_bytes);
-}
-if(!rep_mini) {
+
     fprintf(out, "[Goodput ratio: %.0f/%.0f]",
 	    100.0*((float)flow->src2dst_goodput_bytes / (float)(flow->src2dst_bytes+1)),
 	    100.0*((float)flow->dst2src_goodput_bytes / (float)(flow->dst2src_bytes+1)));
@@ -1519,7 +1482,7 @@ if(!rep_mini) {
 
     if(flow->flow_extra_info[0] != '\0') fprintf(out, "[%s]", flow->flow_extra_info);
 
-    if(!rep_mini && (flow->src2dst_packets+flow->dst2src_packets) > 5) {
+    if((flow->src2dst_packets+flow->dst2src_packets) > 5) {
       if(flow->iat_c_to_s && flow->iat_s_to_c) {
 	float data_ratio = ndpi_data_ratio(flow->src2dst_bytes, flow->dst2src_bytes);
 
@@ -1541,7 +1504,7 @@ if(!rep_mini) {
       }
     }
 
-    if(!rep_mini && flow->http.url[0] != '\0') {
+    if(flow->http.url[0] != '\0') {
       ndpi_risk_enum risk = ndpi_validate_url(flow->http.url);
 
       if(risk != NDPI_NO_RISK)
@@ -1639,7 +1602,6 @@ if(!rep_mini) {
     if(flow->has_human_readeable_strings) fprintf(out, "[PLAIN TEXT (%s)]",
                                                  flow->human_readeable_string_buffer);
     if(flow->nf_mark) fprintf(out, "[NFMARK 0x%X]", flow->nf_mark);
-} // rep_mini
 
 #ifdef DIRECTION_BINS
     print_bin(out, "Plen c2s", &flow->payload_len_bin_src2dst);
@@ -2023,6 +1985,7 @@ static void node_proto_guess_walker(const void *node, ndpi_VISIT which, int dept
     ndpi_thread_info[thread_id].workflow->stats.protocol_counter_bytes[proto] += flow->src2dst_bytes + flow->dst2src_bytes;
     ndpi_thread_info[thread_id].workflow->stats.protocol_flows[proto]++;
     ndpi_thread_info[thread_id].workflow->stats.flow_confidence[flow->confidence]++;
+    ndpi_thread_info[thread_id].workflow->stats.num_dissector_calls += flow->num_dissector_calls;
   }
 }
 
@@ -3532,6 +3495,8 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 
     for(i = 0; i < sizeof(cumulative_stats.flow_confidence)/sizeof(cumulative_stats.flow_confidence[0]); i++)
       cumulative_stats.flow_confidence[i] += ndpi_thread_info[thread_id].workflow->stats.flow_confidence[i];
+
+    cumulative_stats.num_dissector_calls += ndpi_thread_info[thread_id].workflow->stats.num_dissector_calls;
   }
 
   if(cumulative_stats.total_wire_bytes == 0)
@@ -3639,6 +3604,11 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 	  printf("\tConfidence: %-10s %-13llu (flows)\n", ndpi_confidence_get_name(i),
 		 (long long unsigned int)cumulative_stats.flow_confidence[i]);
       }
+
+      if(0 && cumulative_stats.ndpi_flow_count)
+	printf("\tNum dissector calls:   %-13llu (%.2f diss/flow)\n",
+		(long long unsigned int)cumulative_stats.num_dissector_calls,
+		cumulative_stats.num_dissector_calls / (float)cumulative_stats.ndpi_flow_count);
     }
 
     if(results_file) {
@@ -3664,6 +3634,13 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 		  ndpi_confidence_get_name(i),
 		  (long long unsigned int)cumulative_stats.flow_confidence[i]);
       }
+
+      if(0 && cumulative_stats.ndpi_flow_count)
+	fprintf(results_file, "Num dissector calls: %llu (%.2f diss/flow)\n",
+		(long long unsigned int)cumulative_stats.num_dissector_calls,
+		cumulative_stats.num_dissector_calls / (float)cumulative_stats.ndpi_flow_count);
+
+
 
       fprintf(results_file, "\n");
   }
@@ -5102,8 +5079,6 @@ int original_main(int argc, char **argv) {
 
     gettimeofday(&startup_time, NULL);
     memset(ndpi_thread_info, 0, sizeof(ndpi_thread_info));
-    if(getenv("REP_MINI"))
-	    rep_mini = 1;
 
     if(getenv("AHO_DEBUG"))
       ac_automata_enable_debug(1);
