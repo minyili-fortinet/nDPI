@@ -564,7 +564,7 @@ typedef union
 typedef struct message {
   u_int8_t *buffer;
   u_int buffer_len, buffer_used;
-  u_int32_t next_seq[2]; /* Directions */
+  u_int32_t next_seq;
 } message_t;
 
 /* NDPI_PROTOCOL_BITTORRENT */
@@ -715,7 +715,7 @@ struct ndpi_flow_tcp_struct {
   u_int32_t telnet_stage:2;			// 0 - 2
 
   struct {
-    message_t message;
+    message_t message[2]; /* Directions */
 
     /* NDPI_PROTOCOL_TLS */
     u_int8_t certificate_processed:1, fingerprint_set:1, _pad:6;
@@ -758,9 +758,6 @@ struct ndpi_flow_tcp_struct {
   /* NDPI_PROTOCOL_SOAP */
   u_int32_t soap_stage:1;
 
-  /* NDPI_PROTOCOL_SKYPE */
-  u_int8_t skype_packet_id;
-
   /* NDPI_PROTOCOL_LOTUS_NOTES */
   u_int8_t lotus_notes_packet_id;
 
@@ -800,7 +797,6 @@ struct ndpi_flow_udp_struct {
   u_int32_t xbox_stage:1;
 
   /* NDPI_PROTOCOL_SKYPE */
-  u_int8_t skype_packet_id;
   u_int8_t skype_crc[4];
 
   /* NDPI_PROTOCOL_TEAMVIEWER */
@@ -1103,7 +1099,7 @@ typedef struct _ndpi_automa {
 typedef struct ndpi_str_hash {
   unsigned int hash;
   void *value;
-  u_int8_t private_data[0];
+  // u_int8_t private_data[1]; /* Avoid error C2466 and do not initiate private data with 0  */
 } ndpi_str_hash;
 
 typedef struct ndpi_proto {

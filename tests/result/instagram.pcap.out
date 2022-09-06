@@ -1,13 +1,13 @@
 Guessed flow protos:	15
 
-DPI Packets (TCP):	360	(12.00 pkts/flow)
+DPI Packets (TCP):	295	(9.83 pkts/flow)
 DPI Packets (UDP):	10	(1.43 pkts/flow)
 DPI Packets (other):	1	(1.00 pkts/flow)
 Confidence Unknown          : 1 (flows)
 Confidence Match by port    : 6 (flows)
 Confidence Match by IP      : 1 (flows)
 Confidence DPI              : 30 (flows)
-Num dissector calls: 2126 (55.95 diss/flow)
+Num dissector calls: 2069 (54.45 diss/flow)
 
 Unknown	1	66	1
 HTTP	116	91784	6

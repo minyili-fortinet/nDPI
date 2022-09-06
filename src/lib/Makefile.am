@@ -31,6 +31,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     ndpi_community_id.c \
 		     ndpi_geoip.c \
 		     protocols/afp.c \
+		     protocols/alicloud.c \
 		     protocols/ajp.c \
 		     protocols/aimini.c \
 		     protocols/among_us.c \
