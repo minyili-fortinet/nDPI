@@ -2198,16 +2198,18 @@ static u_int64_t ndpi_host_ip_risk_ptree_match(struct ndpi_detection_module_stru
 /* Check isuerDN exception */
 u_int8_t ndpi_check_issuerdn_risk_exception(struct ndpi_detection_module_struct *ndpi_str,
 					    char *issuerDN) {
-  ndpi_list *head = ndpi_str->trusted_issuer_dn;
-
+  if(issuerDN != NULL) {
+    ndpi_list *head = ndpi_str->trusted_issuer_dn;
+    
     while(head != NULL) {
       if(strcmp(issuerDN, head->value) == 0)
 	return(1); /* This is a trusted DN */
       else
 	head = head->next;
+    }
   }
   
-    return(0 /* no exception */);
+  return(0 /* no exception */);
 }
 
 /* ********************************************************************************* */
@@ -2216,23 +2218,27 @@ u_int8_t ndpi_check_issuerdn_risk_exception(struct ndpi_detection_module_struct 
 static u_int8_t ndpi_check_hostname_risk_exception(struct ndpi_detection_module_struct *ndpi_str,
 						   struct ndpi_flow_struct *flow,
 						   char *hostname) {
-  ndpi_automa *automa = &ndpi_str->host_risk_mask_automa;
-  u_int8_t ret = 0;
-  
-  if(automa->ac_automa) {
-    AC_TEXT_t ac_input_text;
-    AC_REP_t match;
+  if(hostname == NULL)
+    return(0);
+  else {
+    ndpi_automa *automa = &ndpi_str->host_risk_mask_automa;
+    u_int8_t ret = 0;
     
-    ac_input_text.astring = hostname, ac_input_text.length = strlen(hostname);
-    ac_input_text.option = 0;
-    
-    if(ac_automata_search(automa->ac_automa, &ac_input_text, &match) > 0) {
-      if(flow) flow->risk_mask &= match.number64;
-      ret = 1;
+    if(automa->ac_automa) {
+      AC_TEXT_t ac_input_text;
+      AC_REP_t match;
+      
+      ac_input_text.astring = hostname, ac_input_text.length = strlen(hostname);
+      ac_input_text.option = 0;
+      
+      if(ac_automata_search(automa->ac_automa, &ac_input_text, &match) > 0) {
+	if(flow) flow->risk_mask &= match.number64;
+	ret = 1;
+      }
     }
+    
+    return(ret);
   }
-  
-  return(ret);
 }
 
 /* ********************************************************************************* */
@@ -2252,7 +2258,7 @@ static u_int8_t ndpi_check_ipv4_exception(struct ndpi_detection_module_struct *n
   return((r != (u_int64_t)-1) ? 1 : 0);
 }
 
-  /* ********************************************************************************* */
+/* ********************************************************************************* */
 
 static void ndpi_handle_risk_exceptions(struct ndpi_detection_module_struct *ndpi_str,
 					struct ndpi_flow_struct *flow) {
@@ -2723,4 +2729,41 @@ u_int8_t ndpi_check_flow_risk_exceptions(struct ndpi_detection_module_struct *nd
   
   return(0);
 }
+
+/* ******************************************* */
+
+int64_t ndpi_asn1_ber_decode_length(const unsigned char *payload, int payload_len, u_int16_t *value_len)
+{
+  unsigned int value, i;
+
+  if(payload_len <= 0)
+    return -1;
+
+  /* Malformed */
+  if(payload[0] == 0xFF)
+    return -1;
+
+  /* Definite, short */
+  if(payload[0] <= 0x80) {
+    *value_len = 1;
+    return payload[0];
+  }
+  /* Indefinite, unsupported */
+  if((payload[0] & 0x7F) == 0)
+    return -1;
+
+  *value_len = payload[0] & 0x7F;
+  /* We support only 4 additional length octets */
+  if(*value_len > 4 ||
+     payload_len <= *value_len + 1)
+    return -1;
+
+  value = 0;
+  for (i = 1; i <= *value_len; i++) {
+    value |= (unsigned int)payload[i] << ((*value_len) - i) * 8;
+  }
+  (*value_len) += 1;
+  return value;
+}
+
 #endif

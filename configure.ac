@@ -29,24 +29,29 @@ AS_IF([test "${with_sanitizer+set}" = set -a "${with_thread_sanitizer+set}" = se
   AC_MSG_ERROR([Configure options `--with-sanitizer' and `--with_thread_sanitizer' can not used at the same time.])
 ])
 AS_IF([test "${with_sanitizer+set}" = set -o "${with_thread_sanitizer+set}" = set],[
-  CFLAGS="${CFLAGS} -O0 -g3"
+  NDPI_CFLAGS="${NDPI_CFLAGS} -O0 -g3"
 ],[
-  CFLAGS="${CFLAGS} -g"
+  NDPI_CFLAGS="${NDPI_CFLAGS} -O2"
+])
+AS_IF([test "${with_sanitizer+set}" = set -o "${with_thread_sanitizer+set}" = set],[
+  AS_IF([test "x$enable_gprof" = "xyes"], [
+    AC_MSG_ERROR([Configure options `--with-sanitizer' / `--with_thread_sanitizer' can not used together with `--enable-gprof'.])
+  ])
 ])
 
 AS_IF([test "${with_sanitizer+set}" = set],[
-  CFLAGS="${CFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fsanitize=leak -fno-omit-frame-pointer"
-  LDFLAGS="${LDFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fsanitize=leak"
+  NDPI_CFLAGS="${NDPI_CFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fsanitize=leak -fno-omit-frame-pointer"
+  NDPI_LDFLAGS="${NDPI_LDFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fsanitize=leak"
 ])
 
 AS_IF([test "${with_thread_sanitizer+set}" = set],[
-  CFLAGS="${CFLAGS} -fsanitize=thread -fno-omit-frame-pointer"
-  LDFLAGS="${LDFLAGS} -fsanitize=thread"
+  NDPI_CFLAGS="${NDPI_CFLAGS} -fsanitize=thread -fno-omit-frame-pointer"
+  NDPI_LDFLAGS="${NDPI_LDFLAGS} -fsanitize=thread"
 ])
 
 AS_IF([test "x${enable_code_coverage}" = "xyes"],[
-  CFLAGS="${CFLAGS} -fprofile-arcs -ftest-coverage"
-  LDFLAGS="${LDFLAGS} --coverage"
+  NDPI_CFLAGS="${NDPI_CFLAGS} -fprofile-arcs -ftest-coverage"
+  NDPI_LDFLAGS="${NDPI_LDFLAGS} --coverage"
 ])
 
 AS_IF([test "${enable_npcap+set}" = set],[DISABLE_NPCAP=1],[DISABLE_NPCAP=0])
@@ -144,7 +149,7 @@ AS_IF([test "x${enable_tls_sigs}" = "xyes"],[
   HANDLE_TLS_SIGS=""
 ])
 
-CFLAGS="-W -Wall -Wno-unused-parameter -Wno-unused-function -Wno-address-of-packed-member ${CFLAGS}"
+NDPI_CFLAGS="-W -Wall -Wno-unused-parameter -Wno-unused-function -Wno-address-of-packed-member ${NDPI_CFLAGS}"
 
 AC_CHECK_HEADERS([netinet/in.h stdint.h stdlib.h string.h unistd.h math.h float.h])
 AC_CHECK_LIB([m], [sqrt], [], [LIBM="-lm"])
@@ -197,16 +202,16 @@ case "$host" in
       case "$host" in
         x86_64-*)
           BUILD_MINGW_X64=1
-          LDFLAGS="${LDFLAGS} -L/mingw64/lib"
+          NDPI_LDFLAGS="${NDPI_LDFLAGS} -L/mingw64/lib"
         ;;
         i686-*)
-          LDFLAGS="${LDFLAGS} -L/mingw32/lib"
+          NDPI_LDFLAGS="${NDPI_LDFLAGS} -L/mingw32/lib"
         ;;
         *)
           AC_MSG_ERROR([Unsupported MingW cross compiler.])
         ;;
       esac
-      CFLAGS="-D__USE_MINGW_ANSI_STDIO -D__STDC_FORMAT_MACROS ${CFLAGS}"
+      NDPI_CFLAGS="-D__USE_MINGW_ANSI_STDIO -D__STDC_FORMAT_MACROS ${NDPI_CFLAGS}"
       LIBS="${LIBS} -lws2_32"
       BUILD_MINGW=1
       EXE_SUFFIX=".exe"
@@ -287,7 +292,7 @@ AS_IF([test "x$enable_gprof" = "xyes"], [
     ])
     GPROF_ENABLED=1
     GPROF_LIBS="-ltcmalloc_and_profiler"
-    GPROF_CFLAGS="${pkg_cv_PROFILER_CFLAGS} ${pkg_cv_TCMALLOC_CFLAGS}"
+    GPROF_CFLAGS="-g3 -fvisibility=default -fno-omit-frame-pointer ${pkg_cv_PROFILER_CFLAGS} ${pkg_cv_TCMALLOC_CFLAGS}"
 ])
 
 AC_CHECK_LIB(pthread, pthread_setaffinity_np, AC_DEFINE_UNQUOTED(HAVE_PTHREAD_SETAFFINITY_NP, 1, [libc has pthread_setaffinity_np]))
@@ -364,4 +369,6 @@ AC_SUBST(PCRE_ENABLED)
 AC_SUBST(HANDLE_TLS_SIGS)
 AC_SUBST(DISABLE_NPCAP)
 AC_SUBST(EXE_SUFFIX)
+AC_SUBST(NDPI_CFLAGS)
+AC_SUBST(NDPI_LDFLAGS)
 AC_OUTPUT

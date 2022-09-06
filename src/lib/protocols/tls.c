@@ -1338,8 +1338,18 @@ static void ndpi_int_tls_add_connection(struct ndpi_detection_module_struct *ndp
 
 static void checkExtensions(struct ndpi_detection_module_struct *ndpi_struct,
 			    struct ndpi_flow_struct * const flow, int is_dtls,
-                            u_int16_t extension_id, u_int16_t extension_len, u_int16_t extension_payload_offset)
-{
+                            u_int16_t extension_id, u_int16_t extension_len,
+			    u_int16_t extension_payload_offset) {
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
+
+  if((extension_payload_offset + extension_len) > packet->payload_packet_len) {
+#ifdef DEBUG_TLS
+      printf("[TLS] extension length exceeds remaining packet length: %u > %u.\n",
+	     extension_len, packet->payload_packet_len - extension_payload_offset);
+#endif
+      ndpi_set_risk(ndpi_struct, flow, NDPI_TLS_SUSPICIOUS_EXTENSION, NULL);
+      return;
+    }
 
   /* see: https://www.wireshark.org/docs/wsar_html/packet-tls-utils_8h_source.html */
   static u_int16_t const allowed_non_iana_extensions[] = {
@@ -1356,18 +1366,6 @@ static void checkExtensions(struct ndpi_detection_module_struct *ndpi_struct,
   };
   size_t const allowed_non_iana_extensions_size = sizeof(allowed_non_iana_extensions) /
     sizeof(allowed_non_iana_extensions[0]);
-
-  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
-
-  if(extension_payload_offset + extension_len > packet->payload_packet_len)
-    {
-#ifdef DEBUG_TLS
-      printf("[TLS] extension length exceeds remaining packet length: %u > %u.\n",
-	     extension_len, packet->payload_packet_len - extension_payload_offset);
-#endif
-      ndpi_set_risk(ndpi_struct, flow, NDPI_TLS_SUSPICIOUS_EXTENSION, NULL);
-      return;
-    }
 
   /* see: https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml */
   if(extension_id > 59 && extension_id != 65281)

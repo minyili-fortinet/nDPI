@@ -3605,10 +3605,10 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 		 (long long unsigned int)cumulative_stats.flow_confidence[i]);
       }
 
-      if(0 && cumulative_stats.ndpi_flow_count)
+      if(cumulative_stats.ndpi_flow_count)
 	printf("\tNum dissector calls:   %-13llu (%.2f diss/flow)\n",
-		(long long unsigned int)cumulative_stats.num_dissector_calls,
-		cumulative_stats.num_dissector_calls / (float)cumulative_stats.ndpi_flow_count);
+	       (long long unsigned int)cumulative_stats.num_dissector_calls,
+	       cumulative_stats.num_dissector_calls / (float)cumulative_stats.ndpi_flow_count);
     }
 
     if(results_file) {
@@ -3635,12 +3635,10 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 		  (long long unsigned int)cumulative_stats.flow_confidence[i]);
       }
 
-      if(0 && cumulative_stats.ndpi_flow_count)
+      if(cumulative_stats.ndpi_flow_count)
 	fprintf(results_file, "Num dissector calls: %llu (%.2f diss/flow)\n",
-		(long long unsigned int)cumulative_stats.num_dissector_calls,
-		cumulative_stats.num_dissector_calls / (float)cumulative_stats.ndpi_flow_count);
-
-
+	        (long long unsigned int)cumulative_stats.num_dissector_calls,
+	        cumulative_stats.num_dissector_calls / (float)cumulative_stats.ndpi_flow_count);
 
       fprintf(results_file, "\n");
   }

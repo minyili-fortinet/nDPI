@@ -181,10 +181,18 @@ typedef enum {
   CLIENT_FULL_RISK_PERCENTAGE = 100 /* 0%   server risk */
 } risk_percentage;
 
+typedef enum {
+  NDPI_NO_ACCOUNTABILITY = 0,
+  NDPI_CLIENT_ACCOUNTABLE, /* flow client triggered the risk */
+  NDPI_SERVER_ACCOUNTABLE, /* flow server triggered the risk */
+  NDPI_BOTH_ACCOUNTABLE    /* Both actors are responsible */
+} ndpi_risk_accountability;
+
 typedef struct {
   ndpi_risk_enum risk;
   ndpi_risk_severity severity;
   risk_percentage default_client_risk_pctg; /* 0-100 */
+  ndpi_risk_accountability accountability;
 } ndpi_risk_info;
 
 /* NDPI_VISIT */
@@ -1307,6 +1315,7 @@ struct ndpi_flow_struct {
   u_int8_t l4_proto, protocol_id_already_guessed:1, host_already_guessed:1, fail_with_unknown:1,
     init_finished:1, setup_packet_direction:1, packet_direction:1, check_extra_packets:1, is_ipv6:1,
     ip_port_finished:1;
+  u_int16_t num_dissector_calls;
   ndpi_confidence_t confidence; /* ndpi_confidence_t */
 
   /*

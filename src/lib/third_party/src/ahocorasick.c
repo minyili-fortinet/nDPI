@@ -847,7 +847,6 @@ xmemchr(unsigned char *s, unsigned char c,int n)
 {
   while(n > 0) {
     if (n >= LBLOCKSIZE && !UNALIGNED (s)) {
-
       unsigned long int mask = c * DUPC;
 
       while (n >= LBLOCKSIZE) {
