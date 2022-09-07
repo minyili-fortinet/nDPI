@@ -1311,6 +1311,8 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
     break;
 
   case NDPI_PROTOCOL_HTTP:
+  case NDPI_PROTOCOL_HTTP_CONNECT:
+  case NDPI_PROTOCOL_HTTP_PROXY:
     ndpi_serialize_start_of_block(serializer, "http");
     if(flow->host_server_name[0] != '\0')
       ndpi_serialize_string_string(serializer, "hostname", flow->host_server_name);
@@ -2287,8 +2289,8 @@ static void ndpi_handle_risk_exceptions(struct ndpi_detection_module_struct *ndp
   /* TODO: add IPv6 support */
   if(!flow->ip_risk_mask_evaluated) {
     if(flow->is_ipv6 == 0) {
-      ndpi_check_ipv4_exception(ndpi_str, flow, flow->saddr /* Source */);
-      ndpi_check_ipv4_exception(ndpi_str, flow, flow->daddr /* Destination */);
+      ndpi_check_ipv4_exception(ndpi_str, flow, flow->c_address.v4 /* Client */);
+      ndpi_check_ipv4_exception(ndpi_str, flow, flow->s_address.v4 /* Server */);
     }
 
     flow->ip_risk_mask_evaluated = 1;
