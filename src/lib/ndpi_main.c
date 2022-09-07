@@ -2137,6 +2137,38 @@ u_int16_t ndpi_patricia_get_maxbits(ndpi_patricia_tree_t *tree) {
 
 /* ******************************************************************** */
 
+void ndpi_patricia_get_stats(ndpi_patricia_tree_t *tree, struct ndpi_patricia_tree_stats *stats) {
+  if(tree) {
+    stats->n_search = tree->stats.n_search;
+    stats->n_found = tree->stats.n_found;
+  } else {
+    stats->n_search = 0;
+    stats->n_found = 0;
+  }
+}
+
+/* ******************************************************************** */
+
+int ndpi_get_patricia_stats(struct ndpi_detection_module_struct *ndpi_struct,
+                          ptree_type ptree_type,
+                          struct ndpi_patricia_tree_stats *stats) {
+  switch(ptree_type) {
+  case NDPI_PTREE_RISK_MASK:
+    ndpi_patricia_get_stats((ndpi_patricia_tree_t *)ndpi_struct->ip_risk_mask_ptree, stats);
+    return 0;
+  case NDPI_PTREE_RISK:
+    ndpi_patricia_get_stats((ndpi_patricia_tree_t *)ndpi_struct->ip_risk_ptree, stats);
+    return 0;
+  case NDPI_PTREE_PROTOCOLS:
+    ndpi_patricia_get_stats((ndpi_patricia_tree_t *)ndpi_struct->protocols_ptree, stats);
+    return 0;
+  default:
+    return -1;
+  }
+}
+
+/* ****************************************************** */
+
 int ndpi_fill_prefix_v4(ndpi_prefix_t *p, const struct in_addr *a, int b, int mb) {
   if(b < 0 || b > mb)
     return(-1);
@@ -2974,6 +3006,43 @@ void ndpi_finalize_automa(void *_automa)
 void *ndpi_automa_host(struct ndpi_detection_module_struct *ndpi_struct)
 {
     return (AC_AUTOMATA_t*)ndpi_struct->host_automa.ac_automa;
+}
+
+/* ****************************************************** */
+
+void ndpi_automa_get_stats(void *_automa, struct ndpi_automa_stats *stats) {
+  struct ac_stats ac_stats;
+
+  ac_automata_get_stats((AC_AUTOMATA_t *) _automa, &ac_stats);
+  stats->n_search = ac_stats.n_search;
+  stats->n_found = ac_stats.n_found;
+}
+
+/* ****************************************************** */
+
+int ndpi_get_automa_stats(struct ndpi_detection_module_struct *ndpi_struct,
+			  automa_type automa_type,
+			  struct ndpi_automa_stats *stats)
+{
+  switch(automa_type) {
+  case NDPI_AUTOMA_HOST:
+    ndpi_automa_get_stats(ndpi_struct->host_automa.ac_automa, stats);
+    return 0;
+  case NDPI_AUTOMA_DOMAIN:
+    ndpi_automa_get_stats(ndpi_struct->risky_domain_automa.ac_automa, stats);
+    return 0;
+  case NDPI_AUTOMA_TLS_CERT:
+    ndpi_automa_get_stats(ndpi_struct->tls_cert_subject_automa.ac_automa, stats);
+    return 0;
+  case NDPI_AUTOMA_RISK_MASK:
+    ndpi_automa_get_stats(ndpi_struct->host_risk_mask_automa.ac_automa, stats);
+    return 0;
+  case NDPI_AUTOMA_COMMON_ALPNS:
+    ndpi_automa_get_stats(ndpi_struct->common_alpns_automa.ac_automa, stats);
+    return 0;
+  default:
+    return -1;
+  }
 }
 
 /* ****************************************************** */
@@ -5441,11 +5510,10 @@ static u_int32_t check_ndpi_detection_func(struct ndpi_detection_module_struct *
 					   struct ndpi_flow_struct * const flow,
 					   NDPI_SELECTION_BITMASK_PROTOCOL_SIZE const ndpi_selection_packet,
 					   struct ndpi_call_function_struct const * const callback_buffer,
-					   uint32_t callback_buffer_size)
+					   uint32_t callback_buffer_size,
+					   int is_tcp_without_payload)
 {
   void *func = NULL;
-  u_int32_t a;
-  u_int8_t is_tcp_without_payload = (callback_buffer == ndpi_str->callback_buffer_tcp_no_payload);
   u_int32_t num_calls = 0;
   u_int16_t proto_index = ndpi_str->proto_defaults[flow->guessed_protocol_id].protoIdx;
   u_int16_t proto_id = ndpi_str->proto_defaults[flow->guessed_protocol_id].protoId;
@@ -5474,6 +5542,7 @@ static u_int32_t check_ndpi_detection_func(struct ndpi_detection_module_struct *
 
   if (flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN)
     {
+      u_int32_t a;
       for (a = 0; a < callback_buffer_size; a++) {
         if ((func != callback_buffer[a].func) &&
             (callback_buffer[a].ndpi_selection_bitmask & ndpi_selection_packet) ==
@@ -5510,7 +5579,7 @@ u_int32_t check_ndpi_other_flow_func(struct ndpi_detection_module_struct *ndpi_s
 {
   return check_ndpi_detection_func(ndpi_str, flow, *ndpi_selection_packet,
 				   ndpi_str->callback_buffer_non_tcp_udp,
-				   ndpi_str->callback_buffer_size_non_tcp_udp);
+				   ndpi_str->callback_buffer_size_non_tcp_udp, 0);
 }
 
 /* ************************************************ */
@@ -5521,7 +5590,7 @@ static u_int32_t check_ndpi_udp_flow_func(struct ndpi_detection_module_struct *n
 {
   return check_ndpi_detection_func(ndpi_str, flow, *ndpi_selection_packet,
 				   ndpi_str->callback_buffer_udp,
-				   ndpi_str->callback_buffer_size_udp);
+				   ndpi_str->callback_buffer_size_udp, 0);
 }
 
 /* ************************************************ */
@@ -5533,12 +5602,12 @@ static u_int32_t check_ndpi_tcp_flow_func(struct ndpi_detection_module_struct *n
   if (ndpi_get_packet_struct(ndpi_str)->payload_packet_len != 0) {
     return check_ndpi_detection_func(ndpi_str, flow, *ndpi_selection_packet,
 				     ndpi_str->callback_buffer_tcp_payload,
-				     ndpi_str->callback_buffer_size_tcp_payload);
+				     ndpi_str->callback_buffer_size_tcp_payload, 0);
   } else {
     /* no payload */
     return check_ndpi_detection_func(ndpi_str, flow, *ndpi_selection_packet,
 				     ndpi_str->callback_buffer_tcp_no_payload,
-				     ndpi_str->callback_buffer_size_tcp_no_payload);
+				     ndpi_str->callback_buffer_size_tcp_no_payload, 1);
   }
 }
 
@@ -5952,8 +6021,10 @@ void ndpi_process_extra_packet(struct ndpi_detection_module_struct *ndpi_str, st
 
   /* call the extra packet function (which may add more data/info to flow) */
   if(flow->extra_packets_func) {
-    if((flow->extra_packets_func(ndpi_str, flow)) == 0)
+    if((flow->extra_packets_func(ndpi_str, flow)) == 0) {
       flow->check_extra_packets = 0;
+      flow->extra_packets_func = NULL; /* Enough packets detected */
+    }
 
     if(++flow->num_extra_packets_checked == flow->max_extra_packets_to_check)
       flow->extra_packets_func = NULL; /* Enough packets detected */
@@ -8283,7 +8354,7 @@ void ndpi_set_log_level(struct ndpi_detection_module_struct *ndpi_str, u_int l){
 
 /* LRU cache */
 struct ndpi_lru_cache *ndpi_lru_cache_init(u_int32_t num_entries) {
-  struct ndpi_lru_cache *c = (struct ndpi_lru_cache *) ndpi_malloc(sizeof(struct ndpi_lru_cache));
+  struct ndpi_lru_cache *c = (struct ndpi_lru_cache *) ndpi_calloc(1, sizeof(struct ndpi_lru_cache));
 
   if(!c)
     return(NULL);
@@ -8308,10 +8379,12 @@ u_int8_t ndpi_lru_find_cache(struct ndpi_lru_cache *c, u_int32_t key,
 			     u_int16_t *value, u_int8_t clean_key_when_found) {
   u_int32_t slot = key % c->num_entries;
 
+  c->stats.n_search++;
   if(c->entries[slot].is_full && c->entries[slot].key == key) {
     *value = c->entries[slot].value;
     if(clean_key_when_found)
       c->entries[slot].is_full = 0;
+    c->stats.n_found++;
     return(1);
   } else
     return(0);
@@ -8320,7 +8393,51 @@ u_int8_t ndpi_lru_find_cache(struct ndpi_lru_cache *c, u_int32_t key,
 void ndpi_lru_add_to_cache(struct ndpi_lru_cache *c, u_int32_t key, u_int16_t value) {
   u_int32_t slot = key % c->num_entries;
 
+  c->stats.n_insert++;
   c->entries[slot].is_full = 1, c->entries[slot].key = key, c->entries[slot].value = value;
+}
+
+void ndpi_lru_get_stats(struct ndpi_lru_cache *c, struct ndpi_lru_cache_stats *stats) {
+  if(c) {
+    stats->n_insert = c->stats.n_insert;
+    stats->n_search = c->stats.n_search;
+    stats->n_found = c->stats.n_found;
+  } else {
+    stats->n_insert = 0;
+    stats->n_search = 0;
+    stats->n_found = 0;
+  }
+}
+
+int ndpi_get_lru_cache_stats(struct ndpi_detection_module_struct *ndpi_struct,
+			     lru_cache_type cache_type,
+			     struct ndpi_lru_cache_stats *stats)
+{
+  switch(cache_type) {
+  case NDPI_LRUCACHE_OOKLA:
+    ndpi_lru_get_stats(ndpi_struct->ookla_cache, stats);
+    return 0;
+  case NDPI_LRUCACHE_BITTORRENT:
+    ndpi_lru_get_stats(ndpi_struct->bittorrent_cache, stats);
+    return 0;
+  case NDPI_LRUCACHE_ZOOM:
+    ndpi_lru_get_stats(ndpi_struct->zoom_cache, stats);
+    return 0;
+  case NDPI_LRUCACHE_STUN:
+    ndpi_lru_get_stats(ndpi_struct->stun_cache, stats);
+    return 0;
+  case NDPI_LRUCACHE_TLS_CERT:
+    ndpi_lru_get_stats(ndpi_struct->tls_cert_cache, stats);
+    return 0;
+  case NDPI_LRUCACHE_MINING:
+    ndpi_lru_get_stats(ndpi_struct->mining_cache, stats);
+    return 0;
+  case NDPI_LRUCACHE_MSTEAMS:
+    ndpi_lru_get_stats(ndpi_struct->msteams_cache, stats);
+    return 0;
+  default:
+    return -1;
+  }
 }
 
 /* ******************************************************************** */
@@ -8348,61 +8465,22 @@ u_int8_t ndpi_extra_dissection_possible(struct ndpi_detection_module_struct *ndp
   switch(proto) {
   case NDPI_PROTOCOL_TLS:
   case NDPI_PROTOCOL_DTLS:
-    if(flow->l4.tcp.tls.certificate_processed) return(0);
-
-    if(flow->l4.tcp.tls.num_tls_blocks <= ndpi_str->num_tls_blocks_to_follow) {
-      // printf("*** %u/%u\n", flow->l4.tcp.tls.num_tls_blocks, ndpi_str->num_tls_blocks_to_follow);
-      return(1);
-    }
-    break;
-
   case NDPI_PROTOCOL_HTTP:
   case NDPI_PROTOCOL_HTTP_PROXY:
   case NDPI_PROTOCOL_HTTP_CONNECT:
-    if((flow->host_server_name[0] == '\0') || (flow->http.response_status_code == 0))
-      return(1);
-    break;
-
   case NDPI_PROTOCOL_DNS:
   case NDPI_PROTOCOL_MDNS:
-    if(flow->protos.dns.num_answers == 0)
-      return(1);
-    break;
-
   case NDPI_PROTOCOL_FTP_CONTROL:
-    if(flow->l4.tcp.ftp_imap_pop_smtp.password[0] == '\0' &&
-       flow->l4.tcp.ftp_imap_pop_smtp.auth_tls == 0 &&
-       flow->l4.tcp.ftp_imap_pop_smtp.auth_done == 0)
-      return(1);
-    break;
   case NDPI_PROTOCOL_MAIL_POP:
   case NDPI_PROTOCOL_MAIL_IMAP:
   case NDPI_PROTOCOL_MAIL_SMTP:
-    if(flow->l4.tcp.ftp_imap_pop_smtp.password[0] == '\0' &&
-       (flow->l4.tcp.ftp_imap_pop_smtp.auth_tls == 1 ||
-        flow->l4.tcp.ftp_imap_pop_smtp.auth_done == 0))
-      return(1);
-    break;
-
   case NDPI_PROTOCOL_SSH:
-    if((flow->protos.ssh.hassh_client[0] == '\0') || (flow->protos.ssh.hassh_server[0] == '\0'))
-      return(1);
-    break;
-
   case NDPI_PROTOCOL_TELNET:
-    if(!flow->protos.telnet.password_detected)
-      return(1);
-    break;
-
   case NDPI_PROTOCOL_SKYPE_TEAMS:
   case NDPI_PROTOCOL_QUIC:
   case NDPI_PROTOCOL_KERBEROS:
   case NDPI_PROTOCOL_SNMP:
-    return(1);
-    break;
-
   case NDPI_PROTOCOL_BITTORRENT:
-    if(flow->protos.bittorrent.hash[0] == '\0')
       return(1);
     break;
   }

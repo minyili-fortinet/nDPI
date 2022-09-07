@@ -470,6 +470,8 @@ ndpi_patricia_search_exact (ndpi_patricia_tree_t *patricia, ndpi_prefix_t *prefi
   assert (prefix);
   assert (prefix->bitlen <= patricia->maxbits);
 
+  patricia->stats.n_search++;
+
   if(patricia->head == NULL)
     return (NULL);
 
@@ -525,6 +527,7 @@ ndpi_patricia_search_exact (ndpi_patricia_tree_t *patricia, ndpi_prefix_t *prefi
     fprintf (stderr, "patricia_search_exact: found %s/%d\n", 
 	     ndpi_prefix_toa (node->prefix), node->prefix->bitlen);
 #endif /* PATRICIA_DEBUG */
+    patricia->stats.n_found++;
     return (node);
   }
   return (NULL);
@@ -544,6 +547,8 @@ ndpi_patricia_search_best2 (ndpi_patricia_tree_t *patricia, ndpi_prefix_t *prefi
   assert (patricia);
   assert (prefix);
   assert (prefix->bitlen <= patricia->maxbits);
+
+  patricia->stats.n_search++;
 
   if(patricia->head == NULL)
     return (NULL);
@@ -622,6 +627,7 @@ ndpi_patricia_search_best2 (ndpi_patricia_tree_t *patricia, ndpi_prefix_t *prefi
       fprintf (stderr, "patricia_search_best: found %s/%d\n", 
 	       ndpi_prefix_toa (node->prefix), node->prefix->bitlen);
 #endif /* PATRICIA_DEBUG */
+      patricia->stats.n_found++;
       return (node);
     }
   }
