@@ -440,13 +440,7 @@ struct ndpi_workflow* ndpi_workflow_init(const struct ndpi_workflow_prefs * pref
   if(do_init_flows_root)
     workflow->ndpi_flows_root = ndpi_calloc(workflow->prefs.num_roots, sizeof(void *));
 
-  if (serialization_format != ndpi_serialization_format_unknown &&
-      ndpi_init_serializer(&workflow->ndpi_serializer,
-                           serialization_format) != 0)
-  {
-    LOG(NDPI_LOG_ERROR, "serializer initialization failed\n");
-    exit(-1);
-  }
+  workflow->ndpi_serialization_format = serialization_format;
 
   return workflow;
 }
@@ -538,6 +532,7 @@ static void ndpi_free_flow_data_analysis(struct ndpi_flow_info *flow) {
 void ndpi_flow_info_free_data(struct ndpi_flow_info *flow) {
 
   ndpi_free_flow_info_half(flow);
+  ndpi_term_serializer(&flow->ndpi_flow_serializer);
   ndpi_free_flow_data_analysis(flow);
   ndpi_free_flow_tls_data(flow);
 
@@ -555,8 +550,6 @@ void ndpi_flow_info_free_data(struct ndpi_flow_info *flow) {
 
 void ndpi_workflow_free(struct ndpi_workflow * workflow) {
   u_int i;
-
-  ndpi_term_serializer(&workflow->ndpi_serializer);
 
   for(i=0; i<workflow->prefs.num_roots; i++)
     ndpi_tdestroy(workflow->ndpi_flows_root[i], ndpi_flow_info_freer);
@@ -1086,6 +1079,25 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
       flow->bittorent_hash[j] = '\0';
     }
   }
+  /* SOFTETHER */
+  else if(is_ndpi_proto(flow, NDPI_PROTOCOL_SOFTETHER) && !is_ndpi_proto(flow, NDPI_PROTOCOL_HTTP)) {
+    flow->info_type = INFO_SOFTETHER;
+    ndpi_snprintf(flow->softether.ip, sizeof(flow->softether.ip), "%s",
+                  flow->ndpi_flow->protos.softether.ip);
+    ndpi_snprintf(flow->softether.port, sizeof(flow->softether.port), "%s",
+                  flow->ndpi_flow->protos.softether.port);
+    ndpi_snprintf(flow->softether.hostname, sizeof(flow->softether.hostname), "%s",
+                  flow->ndpi_flow->protos.softether.hostname);
+    ndpi_snprintf(flow->softether.fqdn, sizeof(flow->softether.fqdn), "%s",
+                  flow->ndpi_flow->protos.softether.fqdn);
+  }
+  /* DISCORD */
+  else if(is_ndpi_proto(flow, NDPI_PROTOCOL_DISCORD) && !is_ndpi_proto(flow, NDPI_PROTOCOL_TLS) &&
+          flow->ndpi_flow->protos.discord.client_ip[0] != '\0') {
+    flow->info_type = INFO_GENERIC;
+    ndpi_snprintf(flow->info, sizeof(flow->info), "Client IP: %s",
+                  flow->ndpi_flow->protos.discord.client_ip);
+  }
   /* DNS */
   else if(is_ndpi_proto(flow, NDPI_PROTOCOL_DNS)) {
     if(flow->ndpi_flow->protos.dns.rsp_type == 0x1)
@@ -1276,6 +1288,26 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
 	workflow->__flow_detected_callback(workflow, flow, workflow->__flow_detected_udata);
     }
 
+    if (workflow->ndpi_serialization_format != ndpi_serialization_format_unknown)
+    {
+      if (ndpi_init_serializer(&flow->ndpi_flow_serializer,
+                               workflow->ndpi_serialization_format) != 0)
+      {
+        LOG(NDPI_LOG_ERROR, "ndpi serializer init failed\n");
+        exit(-1);
+      }
+      if (ndpi_flow2json(workflow->ndpi_struct, flow->ndpi_flow,
+                         flow->ip_version, flow->protocol,
+                         flow->src_ip, flow->dst_ip,
+                         &flow->src_ip6, &flow->dst_ip6,
+                         flow->src_port, flow->dst_port,
+                         flow->detected_protocol,
+                         &flow->ndpi_flow_serializer) != 0)
+      {
+        LOG(NDPI_LOG_ERROR, "flow2json failed\n");
+        exit(-1);
+      }
+    }
     ndpi_free_flow_info_half(flow);
   }
 }

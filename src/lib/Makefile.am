@@ -30,6 +30,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     ndpi_serializer.c \
 		     ndpi_community_id.c \
 		     ndpi_geoip.c \
+		     protocols/activision.c \
 		     protocols/afp.c \
 		     protocols/alicloud.c \
 		     protocols/ajp.c \
@@ -63,6 +64,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/diameter.c \
 		     protocols/directconnect.c \
 		     protocols/directdownloadlink.c \
+		     protocols/discord.c \
 		     protocols/dns.c \
 		     protocols/dnscrypt.c \
 		     protocols/dnp3.c \
@@ -159,6 +161,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/snmp_proto.c \
 		     protocols/soap.c \
 		     protocols/socks45.c \
+		     protocols/softether.c \
 		     protocols/sopcast.c \
 		     protocols/spotify.c \
 		     protocols/ssdp.c \

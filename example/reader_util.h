@@ -162,6 +162,7 @@ enum info_type {
     INFO_INVALID = 0,
     INFO_GENERIC,
     INFO_KERBEROS,
+    INFO_SOFTETHER,
     INFO_FTP_IMAP_POP_SMTP,
     INFO_TLS_QUIC_ALPN_VERSION,
     INFO_TLS_QUIC_ALPN_ONLY,
@@ -228,7 +229,15 @@ typedef struct ndpi_flow_info {
       char hostname[85];
       char username[86];
     } kerberos;
+    struct {
+      char ip[16];
+      char port[6];
+      char hostname[48];
+      char fqdn[48];
+    } softether;
   };
+
+  ndpi_serializer ndpi_flow_serializer;
 
   char flow_extra_info[16];
   char host_server_name[80]; /* Hostname/SNI */
@@ -342,7 +351,7 @@ typedef struct ndpi_workflow {
   u_int32_t num_allocated_flows;
 
   /* CSV,TLV,JSON serialization interface */
-  ndpi_serializer ndpi_serializer;
+  ndpi_serialization_format ndpi_serialization_format;
 } ndpi_workflow_t;
 
 

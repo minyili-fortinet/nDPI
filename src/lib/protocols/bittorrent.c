@@ -942,7 +942,7 @@ static void ndpi_add_connection_as_bittorrent(
 		struct ndpi_detection_module_struct *ndpi_struct,
 		struct ndpi_flow_struct *flow,
 		int bt_offset, int check_hash,
-		const u_int8_t save_detection,
+		const u_int8_t confidence,
 		const u_int8_t encrypted_connection)
 {
   int p1 = 0,p2 = 0;
@@ -963,7 +963,8 @@ static void ndpi_add_connection_as_bittorrent(
   if(check_hash)
      ndpi_search_bittorrent_hash(ndpi_struct, flow, bt_offset);
 
-  ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_BITTORRENT, NDPI_PROTOCOL_UNKNOWN, save_detection);
+  ndpi_set_detected_protocol_keeping_master(ndpi_struct, flow, NDPI_PROTOCOL_BITTORRENT,
+					    confidence);
   
   if(flow->protos.bittorrent.hash[0] == '\0') {
     /* This is necessary to inform the core to call this dissector again */

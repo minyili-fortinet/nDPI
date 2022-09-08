@@ -29,7 +29,7 @@ RC=0
 PCAPS=`cd pcap; /bin/ls *.pcap *.pcapng *.cap`
 
 if [ ! -x "../example/ndpiReader${EXE_SUFFIX}" ]; then
-  echo "$0: Missing $(realpath ../example/ndpiReader${EXE_SUFFIX})"
+  echo "$0: Missing ../example/ndpiReader${EXE_SUFFIX}"
   echo "$0: Run ./configure and make first"
   exit 1
 fi
@@ -58,7 +58,7 @@ build_results() {
 	#echo $f
 	# create result files if not present
 	if [ ! -f result/$f.out ]; then
-	    CMD="$READER -q -K JSON -k /dev/null -t -i pcap/$f -w result/$f.out -v 2"
+	    CMD="$READER -q -k /dev/null -t -i pcap/$f -w result/$f.out -v 2"
 	    $CMD
 	fi
     done

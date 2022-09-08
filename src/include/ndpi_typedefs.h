@@ -726,7 +726,7 @@ struct ndpi_flow_tcp_struct {
   /* NDPI_PROTOCOL_MAIL_SMTP */
   /* NDPI_PROTOCOL_MAIL_POP */
   /* NDPI_PROTOCOL_MAIL_IMAP */
-  /* NDPI_PROTOCOL_MAIL_FTP */
+  /* NDPI_PROTOCOL_FTP_CONTROL */
   /* TODO: something clever to save memory */
   struct {
     u_int8_t auth_found:1, auth_failed:1, auth_tls:1, auth_done:1, _pad:4;
@@ -781,6 +781,7 @@ struct ndpi_flow_tcp_struct {
 
     /* NDPI_PROTOCOL_TLS */
     u_int8_t certificate_processed:1, fingerprint_set:1, _pad:6;
+    u_int8_t app_data_seen[2];
     u_int8_t num_tls_blocks;
     int16_t tls_application_blocks_len[NDPI_MAX_NUM_TLS_APPL_BLOCKS]; /* + = src->dst, - = dst->src */
   } tls;
@@ -1494,6 +1495,13 @@ struct ndpi_flow_struct {
     } kerberos;
 
     struct {
+      char ip[16];
+      char port[6];
+      char hostname[48];
+      char fqdn[48];
+    } softether;
+
+    struct {
       char *server_names, *alpn, *tls_supported_versions, *issuerDN, *subjectDN;
       u_int32_t notBefore, notAfter;
       char ja3_client[33], ja3_server[33];
@@ -1544,6 +1552,10 @@ struct ndpi_flow_struct {
     struct {
       char client_username[32];
     } collectd;
+
+    struct {
+      char client_ip[16];
+    } discord;
 
     struct {
       char version[32];
