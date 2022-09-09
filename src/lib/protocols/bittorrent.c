@@ -105,6 +105,17 @@ static void ndpi_search_bittorrent_hash(struct ndpi_detection_module_struct *ndp
 
 /* *********************************************** */
 
+static int search_bittorrent_again(struct ndpi_detection_module_struct *ndpi_struct,
+				   struct ndpi_flow_struct *flow) {
+  ndpi_search_bittorrent(ndpi_struct, flow);
+  ndpi_search_bittorrent_hash(ndpi_struct, flow, -1);
+  
+  /* Possibly more processing */
+  return flow->extra_packets_func != NULL;
+}
+
+/* *********************************************** */
+
 static u_int8_t is_utpv1_pkt(const u_int8_t *payload, u_int payload_len) {
   struct ndpi_utp_hdr *h = (struct ndpi_utp_hdr*)payload;
 
@@ -968,9 +979,11 @@ static void ndpi_add_connection_as_bittorrent(
   
   if(flow->protos.bittorrent.hash[0] == '\0') {
     /* This is necessary to inform the core to call this dissector again */
-    flow->check_extra_packets = 1;
+    flow->_check_extra_packets = 1; // FIXME
+    /* Don't use just 1 as in TCP DNS more packets could be returned (e.g. ACK). */
     flow->max_extra_packets_to_check = 255;
-    flow->extra_packets_func = ndpi_search_dht_again;
+    // flow->extra_packets_func = ndpi_search_dht_again;
+    flow->extra_packets_func = search_bittorrent_again;
   }
 
   if(packet->iph) {

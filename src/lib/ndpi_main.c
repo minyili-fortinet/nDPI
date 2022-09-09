@@ -2062,6 +2062,14 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
                           "AVAST", NDPI_PROTOCOL_CATEGORY_NETWORK,
                           ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
                           ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_TIVOCONNECT,
+                          "TiVoConnect", NDPI_PROTOCOL_CATEGORY_NETWORK,
+                          ndpi_build_default_ports(ports_a, 2190, 0, 0, 0, 0) /* TCP */,
+                          ndpi_build_default_ports(ports_b, 2190, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_KISMET,
+                          "Kismet", NDPI_PROTOCOL_CATEGORY_NETWORK,
+                          ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+                          ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -4697,6 +4705,12 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* Discord */
   init_discord_dissector(ndpi_str, &a, detection_bitmask);
 
+  /* TiVoConnect */
+  init_tivoconnect_dissector(ndpi_str, &a, detection_bitmask);
+
+  /* Kismet */
+  init_kismet_dissector(ndpi_str, &a, detection_bitmask);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -6034,10 +6048,8 @@ void ndpi_process_extra_packet(struct ndpi_detection_module_struct *ndpi_str, st
 
   /* call the extra packet function (which may add more data/info to flow) */
   if(flow->extra_packets_func) {
-    if((flow->extra_packets_func(ndpi_str, flow)) == 0) {
-      flow->check_extra_packets = 0;
+    if((flow->extra_packets_func(ndpi_str, flow)) == 0)
       flow->extra_packets_func = NULL; /* Enough packets detected */
-    }
 
     if(++flow->num_extra_packets_checked == flow->max_extra_packets_to_check)
       flow->extra_packets_func = NULL; /* Enough packets detected */
@@ -6443,7 +6455,7 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
   ret.master_protocol = flow->detected_protocol_stack[1],
     ret.app_protocol = flow->detected_protocol_stack[0];
 
-  if(flow->check_extra_packets) {
+  if(flow->extra_packets_func) {
     ndpi_process_extra_packet(ndpi_str, flow, packet_data, packetlen, current_time_ms, input_info);
     /* Update in case of new match */
     ret.master_protocol = flow->detected_protocol_stack[1];
@@ -8478,10 +8490,10 @@ int ndpi_get_lru_cache_stats(struct ndpi_detection_module_struct *ndpi_struct,
 */
 u_int8_t ndpi_extra_dissection_possible(struct ndpi_detection_module_struct *ndpi_str,
 					struct ndpi_flow_struct *flow) {
+#if 0
   u_int16_t proto =
     flow->detected_protocol_stack[1] ? flow->detected_protocol_stack[1] : flow->detected_protocol_stack[0];
 
-#if 0
   printf("[DEBUG] %s(%u.%u): %u\n", __FUNCTION__,
 	 flow->detected_protocol_stack[0],
 	 flow->detected_protocol_stack[1],
@@ -8490,37 +8502,7 @@ u_int8_t ndpi_extra_dissection_possible(struct ndpi_detection_module_struct *ndp
 
   if(!flow->extra_packets_func)
     return(0);
-
-  switch(proto) {
-  case NDPI_PROTOCOL_TLS:
-  case NDPI_PROTOCOL_DTLS:
-  case NDPI_PROTOCOL_MAIL_POPS:
-  case NDPI_PROTOCOL_MAIL_IMAPS:
-  case NDPI_PROTOCOL_MAIL_SMTPS:
-  case NDPI_PROTOCOL_HTTP:
-  case NDPI_PROTOCOL_HTTP_PROXY:
-  case NDPI_PROTOCOL_HTTP_CONNECT:
-  case NDPI_PROTOCOL_DNS:
-  case NDPI_PROTOCOL_MDNS:
-  case NDPI_PROTOCOL_FTP_CONTROL:
-  case NDPI_PROTOCOL_MAIL_POP:
-  case NDPI_PROTOCOL_MAIL_IMAP:
-  case NDPI_PROTOCOL_MAIL_SMTP:
-  case NDPI_PROTOCOL_SSH:
-  case NDPI_PROTOCOL_TELNET:
-  case NDPI_PROTOCOL_SKYPE_TEAMS:
-  case NDPI_PROTOCOL_QUIC:
-  case NDPI_PROTOCOL_KERBEROS:
-  case NDPI_PROTOCOL_SNMP:
-  case NDPI_PROTOCOL_BITTORRENT:
-      return(1);
-    break;
-
-  case NDPI_PROTOCOL_SOFTETHER:
-    return(1);
-  }
-
-  return(0);
+  return(1);
 }
 
 /* ******************************************************************** */

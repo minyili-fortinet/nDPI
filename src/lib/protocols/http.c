@@ -367,8 +367,6 @@ static void ndpi_int_http_add_connection(struct ndpi_detection_module_struct *nd
 			       master_protocol,
 			       NDPI_CONFIDENCE_DPI);
 
-  /* This is necessary to inform the core to call this dissector again */
-  flow->check_extra_packets = 1;
   flow->max_extra_packets_to_check = 8;
   flow->extra_packets_func = ndpi_search_http_tcp_again;
   flow->http_detected = 1;
@@ -725,7 +723,6 @@ static void check_content_type_and_change_protocol(struct ndpi_detection_module_
 
     /* Copy result for nDPI apps */
     ndpi_hostname_sni_set(flow, packet->host_line.ptr, packet->host_line.len);
-    flow->extra_packets_func = NULL; /* We're good now */
 
     if(strlen(flow->host_server_name) > 0) {
       ndpi_check_dga_name(ndpi_struct, flow, flow->host_server_name, 1);
@@ -764,7 +761,8 @@ static void check_content_type_and_change_protocol(struct ndpi_detection_module_
     if(flow->detected_protocol_stack[1] == NDPI_PROTOCOL_UNKNOWN) {
       /* Avoid putting as subprotocol a "core" protocol such as SSL or DNS */
       if(ndpi_struct->proto_defaults[flow->guessed_protocol_id].subprotocol_count == 0) {
-	if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN) {
+	if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN &&
+	   flow->guessed_host_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
 	  flow->detected_protocol_stack[0] = flow->guessed_host_protocol_id;
 	  flow->detected_protocol_stack[1] = flow->guessed_protocol_id;
         }
@@ -860,7 +858,8 @@ static void check_content_type_and_change_protocol(struct ndpi_detection_module_
       /* Matching on Content-Type.
           OCSP:  application/ocsp-request, application/ocsp-response
        */
-      if(strncmp((const char *)packet->content_line.ptr, "application/ocsp-", 17) == 0) {
+      if(packet->content_line.len > 17 &&
+         strncmp((const char *)packet->content_line.ptr, "application/ocsp-", 17) == 0) {
         NDPI_LOG_DBG2(ndpi_struct, "Found OCSP\n");
         ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_OCSP, NDPI_PROTOCOL_HTTP, NDPI_CONFIDENCE_DPI);
       }

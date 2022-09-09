@@ -524,6 +524,11 @@ static void help(u_int long_help) {
 #endif
 
   if(long_help) {
+    printf("\n\nSize of nDPI Flow structure: %u\n"
+           "Sizeof of nDPI Flow protocol union: %zu\n",
+           ndpi_detection_get_sizeof_ndpi_flow_struct(),
+           sizeof(((struct ndpi_flow_struct *)0)->protos));
+
     NDPI_PROTOCOL_BITMASK all;
 
     ndpi_info_mod = ndpi_init_detection_module(ndpi_no_prefs);
@@ -1485,6 +1490,25 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
         }
         break;
 
+      case INFO_TIVOCONNECT:
+        if (flow->tivoconnect.identity_uuid[0] != '\0')
+        {
+          fprintf(out, "[UUID: %s]", flow->tivoconnect.identity_uuid);
+        }
+        if (flow->tivoconnect.machine[0] != '\0')
+        {
+          fprintf(out, "[Machine: %s]", flow->tivoconnect.machine);
+        }
+        if (flow->tivoconnect.platform[0] != '\0')
+        {
+          fprintf(out, "[Platform: %s]", flow->tivoconnect.platform);
+        }
+        if (flow->tivoconnect.services[0] != '\0')
+        {
+          fprintf(out, "[Services: %s]", flow->tivoconnect.services);
+        }
+        break;
+
       case INFO_FTP_IMAP_POP_SMTP:
         if (flow->ftp_imap_pop_smtp.username[0] != '\0')
         {
@@ -1656,9 +1680,9 @@ static void printFlowSerialized(u_int16_t thread_id,
   float data_ratio = ndpi_data_ratio(flow->src2dst_bytes, flow->dst2src_bytes);
 
   ndpi_serialize_string_uint32(serializer, "flow_id", flow->flow_id);
-  ndpi_serialize_string_float(serializer, "first_seen_ms", f, "%.3f");
-  ndpi_serialize_string_float(serializer, "last_seen_ms", l, "%.3f");
-  ndpi_serialize_string_float(serializer, "duration_ms", (l-f)/1000.0, "%.3f");
+  ndpi_serialize_string_double(serializer, "first_seen", f / 1000., "%.3f");
+  ndpi_serialize_string_double(serializer, "last_seen", l / 1000., "%.3f");
+  ndpi_serialize_string_double(serializer, "duration", (l-f)/1000.0, "%.3f");
   ndpi_serialize_string_uint32(serializer, "vlan_id", flow->vlan_id);
   ndpi_serialize_string_uint32(serializer, "bidirectional", flow->bidirectional);
 

@@ -102,6 +102,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/jabber.c \
 		     protocols/kakaotalk_voice.c \
 		     protocols/kerberos.c \
+		     protocols/kismet.c \
 		     protocols/kontiki.c \
 		     protocols/ldap.c \
 		     protocols/lotus_notes.c \
@@ -182,6 +183,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/threema.c \
 		     protocols/teredo.c \
 		     protocols/riotgames.c \
+		     protocols/tivoconnect.c \
 		     protocols/tvuplayer.c \
 		     protocols/tocaboca.c \
 		     protocols/ubntac2.c \

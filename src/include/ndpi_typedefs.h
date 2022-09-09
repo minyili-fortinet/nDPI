@@ -1383,7 +1383,7 @@ struct ndpi_flow_struct {
   /* init parameter, internal used to set up timestamp,... */
   u_int16_t guessed_protocol_id, guessed_host_protocol_id, guessed_category, guessed_header_category;
   u_int8_t l4_proto, protocol_id_already_guessed:1, host_already_guessed:1, fail_with_unknown:1,
-    init_finished:1, client_packet_direction:1, packet_direction:1, check_extra_packets:1, is_ipv6:1,
+    init_finished:1, client_packet_direction:1, packet_direction:1, _check_extra_packets:1, is_ipv6:1,
     ip_port_finished:1;
   u_int16_t num_dissector_calls;
   ndpi_confidence_t confidence; /* ndpi_confidence_t */
@@ -1579,6 +1579,13 @@ struct ndpi_flow_struct {
       u_int8_t primitive; /* GET, SET... */
       u_int8_t error_status;
     } snmp;
+
+    struct {
+      char identity_uuid[36];
+      char machine[48];
+      char platform[32];
+      char services[48];
+    } tivoconnect;
   } protos;
 
   /*** ALL protocol specific 64 bit variables here ***/
@@ -1660,6 +1667,17 @@ struct ndpi_flow_struct {
   u_int8_t priv_data[16];
 };
 
+#if !defined(NDPI_CFFI_PREPROCESSING) && defined(__linux__)
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 200,
+               "Size of the struct member protocols increased to more than 200 bytes, "
+               "please check if this change is necessary.");
+_Static_assert(sizeof(struct ndpi_flow_struct) <= 904,
+               "Size of the flow struct increased to more than 904 bytes, "
+               "please check if this change is necessary.");
+#endif
+#endif
+
 #define NDPI_PROTOCOL_DEFAULT_LEVEL	0
 
 typedef struct {
@@ -1736,6 +1754,7 @@ typedef enum {
   ndpi_serialization_int32,
   ndpi_serialization_int64,
   ndpi_serialization_float,
+  ndpi_serialization_double,
   ndpi_serialization_string,
   ndpi_serialization_start_of_block,
   ndpi_serialization_end_of_block,
