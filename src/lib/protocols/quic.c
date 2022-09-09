@@ -1453,7 +1453,7 @@ static void process_chlo(struct ndpi_detection_module_struct *ndpi_struct,
 static int may_be_0rtt(struct ndpi_detection_module_struct *ndpi_struct,
 		       struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   uint32_t version;
   u_int8_t first_byte;
   u_int8_t pub_bit1, pub_bit2, pub_bit3, pub_bit4;

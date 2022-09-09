@@ -74,6 +74,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/eaq.c \
 		     protocols/edonkey.c \
 		     protocols/ethernet_ip.c \
+		     protocols/fastcgi.c \
 		     protocols/fasttrack.c \
 		     protocols/fiesta.c \
 		     protocols/fix.c \
