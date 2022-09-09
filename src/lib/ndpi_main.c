@@ -5686,11 +5686,11 @@ u_int16_t ndpi_guess_host_protocol_id(struct ndpi_detection_module_struct *ndpi_
 
     /* guess host protocol; server first */
     addr.s_addr = flow->s_address.v4;
-    ret = ndpi_network_port_ptree_match(ndpi_str, &addr, ntohs(flow->s_port));
+    ret = ndpi_network_port_ptree_match(ndpi_str, &addr, flow->s_port);
 
     if(ret == NDPI_PROTOCOL_UNKNOWN) {
       addr.s_addr = flow->c_address.v4;
-      ret = ndpi_network_port_ptree_match(ndpi_str, &addr, ntohs(flow->c_port));
+      ret = ndpi_network_port_ptree_match(ndpi_str, &addr, flow->c_port);
     }
   }
 
@@ -8743,7 +8743,7 @@ static int ndpi_is_vowel(char c) {
 
 int ndpi_check_dga_name(struct ndpi_detection_module_struct *ndpi_str,
 			struct ndpi_flow_struct *flow,
-			char *name, u_int8_t is_hostname) {
+			char *name, u_int8_t is_hostname, u_int8_t check_subproto) {
   if(ndpi_dga_function != NULL) {
     /* A custom DGA function is defined */
     int rc = ndpi_dga_function(name, is_hostname);
@@ -8774,7 +8774,8 @@ int ndpi_check_dga_name(struct ndpi_detection_module_struct *ndpi_str,
     if(flow && (flow->detected_protocol_stack[1] != NDPI_PROTOCOL_UNKNOWN))
       return(0); /* Ignore DGA check for protocols already fully detected */
 
-    if(ndpi_match_string_subprotocol(ndpi_str, name, strlen(name), &ret_match) > 0)
+    if(check_subproto &&
+       ndpi_match_string_subprotocol(ndpi_str, name, strlen(name), &ret_match) > 0)
       return(0); /* Ignore DGA for known domain names */
 
     if(isdigit((int)name[0])) {

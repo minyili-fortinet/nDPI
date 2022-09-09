@@ -143,7 +143,7 @@ static int fcgi_parse_params(struct ndpi_flow_struct * const flow,
 
   if (flow->http.url == NULL && packet->http_url_name.len > 0)
   {
-    flow->http.url = malloc(packet->http_url_name.len + 1);
+    flow->http.url = ndpi_malloc(packet->http_url_name.len + 1);
     if (flow->http.url != NULL)
     {
       strncpy(flow->http.url, (char const *)packet->http_url_name.ptr, packet->http_url_name.len);
@@ -212,7 +212,7 @@ void ndpi_search_fastcgi(struct ndpi_detection_module_struct *ndpi_struct,
                                   strlen(flow->host_server_name),
                                   &ret_match, NDPI_PROTOCOL_FASTCGI);
       ndpi_check_dga_name(ndpi_struct, flow,
-                          flow->host_server_name, 1);
+                          flow->host_server_name, 1, 0);
       if(ndpi_is_valid_hostname(flow->host_server_name,
                                 strlen(flow->host_server_name)) == 0) {
         char str[128];
