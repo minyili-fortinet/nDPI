@@ -58,7 +58,7 @@ int mbedtls_aesni_has_support( unsigned int what )
 
 #if defined(linux) || defined(__linux__)
   unsigned int eax, ebx, ecx, edx;
-
+#ifndef __KERNEL__
   if(what == MBEDTLS_AESNI_AES) {
     /*
       NOTE
@@ -88,6 +88,7 @@ int mbedtls_aesni_has_support( unsigned int what )
       return(found);
     }
   }
+#endif
 
   if (__get_cpuid(1, &eax, &ebx, &ecx, &edx) == 0)
   {
