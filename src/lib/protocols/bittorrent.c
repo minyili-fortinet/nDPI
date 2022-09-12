@@ -981,7 +981,7 @@ static void ndpi_add_connection_as_bittorrent(
     /* This is necessary to inform the core to call this dissector again */
     flow->_check_extra_packets = 1; // FIXME
     /* Don't use just 1 as in TCP DNS more packets could be returned (e.g. ACK). */
-    flow->max_extra_packets_to_check = 255;
+    flow->max_extra_packets_to_check = 3; //255;
     // flow->extra_packets_func = ndpi_search_dht_again;
     flow->extra_packets_func = search_bittorrent_again;
   }
@@ -1577,7 +1577,7 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
 
       flow->bittorrent_stage++;
 
-      if(flow->bittorrent_stage < 10) {
+      if(flow->bittorrent_stage < 5) { // FIXME 10
           if( packet->payload_packet_len > 28 &&
 	      bdecode((const u_int8_t *)packet->payload,
 			packet->payload_packet_len, ndpi_struct,flow,&utp_type)) {
