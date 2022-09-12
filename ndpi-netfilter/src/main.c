@@ -1002,6 +1002,11 @@ ndpi_process_packet(struct ndpi_net *n, struct nf_conn * ct, struct nf_ct_ext_nd
 		}
 	}
 
+	{
+	struct ndpi_flow_input_info input_info;
+	memset(&input_info, '\0', sizeof(input_info));
+	input_info.in_pkt_dir = dir;
+	input_info.seen_flow_beginning = NDPI_FLOW_BEGINNING_UNKNOWN;
 	flow->packet_direction = dir;
 	preempt_disable();
 	*proto = ndpi_detection_process_packet(n->ndpi_struct,flow,
@@ -1009,7 +1014,8 @@ ndpi_process_packet(struct ndpi_net *n, struct nf_conn * ct, struct nf_ct_ext_nd
 				ip6h ?	(uint8_t *) ip6h :
 #endif
 					(uint8_t *) iph, 
-					 skb->len, time);
+					 skb->len, time, &input_info);
+	}
 
 	if(proto->master_protocol == NDPI_PROTOCOL_UNKNOWN && 
 	          proto->app_protocol == NDPI_PROTOCOL_UNKNOWN ) {
@@ -1578,7 +1584,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 			kfree_skb(linearized_skb);
 
 		if(_DBG_TRACE_DPI && ct_ndpi->flow)
-		   pr_info(" ndpi_process_packet dpi: g_pr:%d g_host_pr:%d m:%d a:%d cl:%s; ct: m:%d a:%d cl:%s pcnt %d [%d,%d]%s%s%s\n",
+		   pr_info(" ndpi_process_packet dpi: g_pr:%d g_host_pr:%d m:%d a:%d cl:%s; ct: m:%d a:%d cl:%s pcnt %d [%d,%d]%s%s\n",
 			ct_ndpi->flow->guessed_protocol_id,
 			ct_ndpi->flow->guessed_host_protocol_id,
 			proto.master_protocol,
@@ -1590,7 +1596,6 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 			ct_ndpi->flow->packet_counter,
 			ct_ndpi->flow->packet_direction_counter[0],
 			ct_ndpi->flow->packet_direction_counter[1],
-			ct_ndpi->flow->check_extra_packets ? ", extra_pkt":"",
 			ct_ndpi->flow->extra_packets_func ? ", extra_func":"",
 			ct_ndpi->flow->fail_with_unknown ? ", end_dpi":"");
 
@@ -1629,7 +1634,6 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		if(flow->fail_with_unknown) {
 		    if(_DBG_TRACE_DDONE)
 			packet_trace(skb,ct,ct_ndpi,"fail_with_unknown","%s",
-		    			flow->check_extra_packets &&
 					flow->extra_packets_func ?
 					  " extra_packets":" free_ct_flow");
 		    COUNTER(ndpi_p_c_end_fail);
@@ -1646,8 +1650,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		    detect_complete  = 1;
 		    if(_DBG_TRACE_DDONE)
 			packet_trace(skb,ct,ct_ndpi,"dpi_completed","tls %d %s",
-		    			tls,flow->check_extra_packets && 
-					flow->extra_packets_func ?
+		    			tls, flow->extra_packets_func ?
 					  " extra_packets":" free_ct_flow");
 		    if(!flow->extra_packets_func) {
 			set_detect_done(ct_ndpi);

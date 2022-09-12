@@ -126,7 +126,7 @@ extern int is_version_with_var_int_transport_params(uint32_t version);
   159a76.....
 */
 
-#define NDPI_MAX_TLS_REQUEST_SIZE 10000
+#define NDPI_MAX_TLS_REQUEST_SIZE 16384
 #define TLS_THRESHOLD             34387200 /* Threshold for certificate validity                                */
 #define TLS_LIMIT_DATE            1598918400 /* From 01/09/2020 TLS certificates lifespan is limited to 13 months */
 
@@ -220,13 +220,14 @@ void ndpi_search_tls_tcp_memory(struct ndpi_detection_module_struct *ndpi_struct
     newbuf  = ndpi_realloc(message->buffer, message->buffer_len, new_len);
     if(!newbuf) return;
 
+#ifdef DEBUG_TLS_MEMORY
+    printf("[TLS Mem] Enlarging %u -> %u buffer\n", message->buffer_len, new_len);
+#endif
+
     message->buffer = (u_int8_t*)newbuf;
     message->buffer_len = new_len;
     avail_bytes = message->buffer_len - message->buffer_used;
 
-#ifdef DEBUG_TLS_MEMORY
-    printf("[TLS Mem] Enlarging %u -> %u buffer\n", message->buffer_len, new_len);
-#endif
   }
 
   if(packet->payload_packet_len > 0 && avail_bytes >= packet->payload_packet_len) {
@@ -1347,7 +1348,6 @@ static void tlsCheckUncommonALPN(struct ndpi_detection_module_struct *ndpi_struc
 
 static void ndpi_int_tls_add_connection(struct ndpi_detection_module_struct *ndpi_struct,
 					struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int32_t protocol;
 #ifdef DEBUG_TLS
   printf("[TLS] %s()\n", __FUNCTION__);

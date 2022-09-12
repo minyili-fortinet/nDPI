@@ -6446,8 +6446,14 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 #endif
   };
 
-  NDPI_LOG_DBG(ndpi_str, "[%d/%d] START packet processing\n",
-               flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
+  if(ndpi_str->ndpi_log_level >= NDPI_LOG_TRACE)
+    NDPI_LOG(flow ? flow->detected_protocol_stack[0] : NDPI_PROTOCOL_UNKNOWN, ndpi_str, NDPI_LOG_TRACE,
+             "START packet processing p:%u/%u\n",
+	     flow->num_processed_pkts,ndpi_str->max_packets_to_process
+	     );
+
+//  NDPI_LOG_DBG(ndpi_str, "[%d/%d] START packet processing\n",
+//               flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
 
   if(flow == NULL)
     return(ret);

@@ -22,7 +22,6 @@
 
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_AVAST
 
-#include <stdlib.h>
 #include "ndpi_api.h"
 
 static void ndpi_int_avast_add_connection(struct ndpi_detection_module_struct *ndpi_struct,

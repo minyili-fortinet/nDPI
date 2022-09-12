@@ -2697,7 +2697,7 @@ int ndpi_vsnprintf(char * str, size_t size, char const * format, va_list va_args
 }
 
 /* ******************************************* */
-
+#ifndef __KERNEL__
 struct tm *ndpi_gmtime_r(const time_t *timep,
                          struct tm *result)
 {
@@ -2708,7 +2708,7 @@ struct tm *ndpi_gmtime_r(const time_t *timep,
   return gmtime_r(timep, result);
 #endif
 }
-
+#endif
 /* ******************************************* */
 
 int ndpi_snprintf(char * str, size_t size, char const * format, ...) {
@@ -2826,6 +2826,7 @@ u_int8_t ndpi_check_flow_risk_exceptions(struct ndpi_detection_module_struct *nd
   return(0);
 }
 
+#endif
 /* ******************************************* */
 
 int64_t ndpi_asn1_ber_decode_length(const unsigned char *payload, int payload_len, u_int16_t *value_len)
@@ -2862,4 +2863,3 @@ int64_t ndpi_asn1_ber_decode_length(const unsigned char *payload, int payload_le
   return value;
 }
 
-#endif

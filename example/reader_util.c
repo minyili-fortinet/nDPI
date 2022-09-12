@@ -1624,6 +1624,16 @@ static struct ndpi_proto packet_processing(struct ndpi_workflow * workflow,
     /* Set here any information (easily) available; in this trivial example we don't have any */
     input_info.in_pkt_dir = NDPI_IN_PKT_DIR_UNKNOWN;
     input_info.seen_flow_beginning = NDPI_FLOW_BEGINNING_UNKNOWN;
+#if 1
+    if(nDPI_LogLevel > 1 && iph) {
+  	char ip1[48],ip2[48];
+       	inet_ntop(AF_INET, &flow->src_ip, ip1, sizeof(ip1));
+	inet_ntop(AF_INET, &flow->dst_ip, ip2, sizeof(ip2));
+	LOG(NDPI_LOG_DEBUG,"DPI Packets %s %s:%u => %s:%u len %u\n",
+		proto == IPPROTO_TCP ? "TCP":(proto == IPPROTO_UDP ? "UDP":"OTH"),
+		ip1,sport,ip2,dport,ipsize);
+    }
+#endif
     flow->detected_protocol = ndpi_detection_process_packet(workflow->ndpi_struct, ndpi_flow,
 							    iph ? (uint8_t *)iph : (uint8_t *)iph6,
 							    ipsize, time_ms, &input_info);

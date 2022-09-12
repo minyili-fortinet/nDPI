@@ -978,10 +978,12 @@ static void ndpi_add_connection_as_bittorrent(
 					    confidence);
   
   if(flow->protos.bittorrent.hash[0] == '\0') {
-    /* This is necessary to inform the core to call this dissector again */
-    flow->_check_extra_packets = 1; // FIXME
     /* Don't use just 1 as in TCP DNS more packets could be returned (e.g. ACK). */
-    flow->max_extra_packets_to_check = 3; //255;
+#ifndef __KERNEL__
+    flow->max_extra_packets_to_check = 3;
+#else
+    flow->max_extra_packets_to_check = 255;
+#endif
     // flow->extra_packets_func = ndpi_search_dht_again;
     flow->extra_packets_func = search_bittorrent_again;
   }
@@ -1425,16 +1427,18 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
   }
 #ifndef __KERNEL__
   NDPI_LOG_DBG2(ndpi_struct,
-	   "BT: BITTORRENT search packet %s len %d %d:%d tcp_retrans %d pac_cnt %d dir %d\n",
+	   "BT: BITTORRENT search packet %s len %d %d:%d tcp_retrans %d bt_stage %d pac_cnt %d dir %d\n",
 	   packet->tcp ? "tcp" : ( packet->udp ? "udp" : "x"),
 	   packet->payload_packet_len,
 	   htons(packet->tcp ? packet->tcp->source: packet->udp ? packet->udp->source:0),
 	   htons(packet->tcp ? packet->tcp->dest: packet->udp ? packet->udp->dest:0),
-	   packet->tcp_retransmission,
+	   packet->tcp_retransmission, flow->bittorrent_stage,
 	   flow->packet_counter,packet->packet_direction);
   	   if(bt_parse_debug)
 		   dump_hex((u_int8_t *)packet->payload,packet->payload_packet_len,128);
 #endif
+
+#ifndef __KERNEL__
   if(packet->detected_protocol_stack[0] == NDPI_PROTOCOL_BITTORRENT) {
 	if(packet->udp != NULL &&  packet->payload_packet_len > 28 ) {
 	    if(bt_utp2(packet->payload, packet->payload_packet_len,ndpi_struct,flow,&utp_type))
@@ -1444,6 +1448,7 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
 	    }
 	return;
   }
+#endif
 
 #ifndef __KERNEL__
     if((flow->packet_counter == 0 /* Do the check once */) && ndpi_struct->bittorrent_cache) {
@@ -1486,13 +1491,12 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
 
     if(packet->tcp != NULL) {
       ndpi_int_search_bittorrent_tcp(ndpi_struct, flow);
-      return;
-    }
-    if(packet->udp == NULL) {
       if(flow->packet_counter > 8)
         ndpi_skip_bittorrent(ndpi_struct, flow, packet);
       return;
     }
+    if(packet->udp == NULL) 
+      return;
 
       /* UDP */
 
