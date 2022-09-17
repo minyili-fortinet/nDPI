@@ -622,13 +622,21 @@ static inline struct nf_ct_ext_ndpi *nf_ct_get_ext_ndpi(struct nf_ct_ext_labels 
 
 static inline struct nf_ct_ext_ndpi *nf_ct_ext_find_ndpi(const struct nf_conn * ct)
 {
-struct nf_ct_ext_labels *l = (struct nf_ct_ext_labels *)__nf_ct_ext_find(ct,nf_ct_ext_id_ndpi);
-return nf_ct_get_ext_ndpi(l);
+#if   LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
+	struct nf_ct_ext_labels *l = (struct nf_ct_ext_labels *)nf_ct_ext_find(ct,nf_ct_ext_id_ndpi);
+#else /* < 5.19 */
+	struct nf_ct_ext_labels *l = (struct nf_ct_ext_labels *)__nf_ct_ext_find(ct,nf_ct_ext_id_ndpi);
+#endif
+	return nf_ct_get_ext_ndpi(l);
 }
 
 static inline struct nf_ct_ext_labels *nf_ct_ext_find_label(const struct nf_conn * ct)
 {
+#if   LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
+	return (struct nf_ct_ext_labels *)nf_ct_ext_find(ct,nf_ct_ext_id_ndpi);
+#else /* < 5.19 */
 	return (struct nf_ct_ext_labels *)__nf_ct_ext_find(ct,nf_ct_ext_id_ndpi);
+#endif
 }
 
 
@@ -2771,8 +2779,15 @@ static void __net_exit ndpi_net_exit(struct net *net)
 #endif
 	net->ct.labels_used--;
 #endif
-
-#if   LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if   LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
+	struct nf_ct_iter_data iter_data = {
+		.net    = net,
+		.data   = n,
+		.portid = 0,
+		.report = 0
+	};
+	nf_ct_iterate_cleanup_net(__ndpi_free_flow, &iter_data);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 	nf_ct_iterate_cleanup_net(net, __ndpi_free_flow, n, 0 ,0);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)
 	nf_ct_iterate_cleanup(net, __ndpi_free_flow, n, 0 ,0);
