@@ -1495,8 +1495,7 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
         ndpi_skip_bittorrent(ndpi_struct, flow, packet);
       return;
     }
-    if(packet->udp == NULL) 
-      return;
+    if(packet->udp == NULL) return;
 
       /* UDP */
 
