@@ -1016,15 +1016,16 @@ typedef struct {
 } ndpi_port_range;
 
 typedef enum {
-  NDPI_CONFIDENCE_UNKNOWN = 0,		/* Unknown classification */
-  NDPI_CONFIDENCE_MATCH_BY_PORT,	/* Classification obtained looking only at the L4 ports */
-  NDPI_CONFIDENCE_MATCH_BY_IP,		/* Classification obtained looking only at the L3 addresses */
-  NDPI_CONFIDENCE_USERDEF,		/* Classification from user definitions */
-  NDPI_CONFIDENCE_DPI_PARTIAL,		/* Classification results based on partial/incomplete DPI information */
-  NDPI_CONFIDENCE_DPI_PARTIAL_CACHE,	/* Classification results based on some LRU cache with partial/incomplete DPI information */
-  NDPI_CONFIDENCE_DPI_CACHE,		/* Classification results based on some LRU cache (i.e. correlation among sessions) */
-  NDPI_CONFIDENCE_DPI,			/* Deep packet inspection */
-  NDPI_CONFIDENCE_NBPF,			/* PF_RING nBPF (custom protocol) */
+  /* Try to have "stable" values (across releases/changes) */
+  NDPI_CONFIDENCE_UNKNOWN           = 0,	/* Unknown classification */
+  NDPI_CONFIDENCE_MATCH_BY_PORT     = 10,	/* Classification obtained looking only at the L4 ports */
+  NDPI_CONFIDENCE_MATCH_BY_IP       = 20,	/* Classification obtained looking only at the L3 addresses */
+  NDPI_CONFIDENCE_USERDEF           = 30,	/* Classification from user definitions */
+  NDPI_CONFIDENCE_NBPF              = 50,	/* PF_RING nBPF (custom protocol) */
+  NDPI_CONFIDENCE_DPI_PARTIAL       = 100,	/* Classification results based on partial/incomplete DPI information */
+  NDPI_CONFIDENCE_DPI_PARTIAL_CACHE = 110,	/* Classification results based on some LRU cache with partial/incomplete DPI information */
+  NDPI_CONFIDENCE_DPI_CACHE         = 200,	/* Classification results based on some LRU cache (i.e. correlation among sessions) */
+  NDPI_CONFIDENCE_DPI               = 210,	/* Deep packet inspection */
 
   /*
     IMPORTANT
@@ -1176,7 +1177,7 @@ typedef struct ndpi_proto {
     below we do not use ndpi_protocol_id_t as users can define their own
     custom protocols and thus the typedef could be too short in size.
   */
-  u_int16_t master_protocol /* e.g. HTTP */, app_protocol /* e.g. FaceBook */;
+  u_int16_t master_protocol /* e.g. HTTP */, app_protocol /* e.g. FaceBook */, protocol_by_ip;
 #ifndef __KERNEL__
   ndpi_protocol_category_t category;
   void *custom_category_userdata;
@@ -1184,9 +1185,9 @@ typedef struct ndpi_proto {
 } ndpi_protocol;
 
 #ifndef __KERNEL__
-  #define NDPI_PROTOCOL_NULL { NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_CATEGORY_UNSPECIFIED , NULL }
+  #define NDPI_PROTOCOL_NULL { NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL }
 #else
-  #define NDPI_PROTOCOL_NULL { NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN }
+  #define NDPI_PROTOCOL_NULL { NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN }
 #endif
 
 #define NUM_CUSTOM_CATEGORIES      5
@@ -1369,6 +1370,7 @@ struct ndpi_detection_module_struct {
   const struct ndpi_flow_input_info *input_info;
 
 #ifdef HAVE_NBPF
+  u_int8_t num_nbpf_custom_proto;
   nbpf_filter nbpf_custom_proto[MAX_NBPF_CUSTOM_PROTO];
 #endif
 };
