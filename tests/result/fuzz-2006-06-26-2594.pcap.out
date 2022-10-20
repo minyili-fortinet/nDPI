@@ -6,7 +6,7 @@ DPI Packets (other):	5	(1.00 pkts/flow)
 Confidence Unknown          : 30 (flows)
 Confidence Match by port    : 28 (flows)
 Confidence DPI              : 193 (flows)
-Num dissector calls: 5389 (21.47 diss/flow)
+Num dissector calls: 5411 (21.56 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -21,7 +21,7 @@ Automa risk mask:     38/0 (search/found)
 Automa common alpns:  0/0 (search/found)
 Patricia risk mask:   458/0 (search/found)
 Patricia risk:        26/0 (search/found)
-Patricia protocols:   1074/0 (search/found)
+Patricia protocols:   572/0 (search/found)
 
 Unknown	30	3356	30
 FTP_CONTROL	36	2569	12

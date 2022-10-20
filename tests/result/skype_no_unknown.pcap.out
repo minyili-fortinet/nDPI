@@ -6,7 +6,7 @@ DPI Packets (other):	5	(1.00 pkts/flow)
 Confidence Unknown          : 45 (flows)
 Confidence Match by port    : 22 (flows)
 Confidence DPI              : 200 (flows)
-Num dissector calls: 24024 (89.98 diss/flow)
+Num dissector calls: 24281 (90.94 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -21,7 +21,7 @@ Automa risk mask:     4/0 (search/found)
 Automa common alpns:  0/0 (search/found)
 Patricia risk mask:   536/0 (search/found)
 Patricia risk:        0/0 (search/found)
-Patricia protocols:   1482/6 (search/found)
+Patricia protocols:   918/3 (search/found)
 
 Unknown	850	152468	45
 DNS	2	267	1

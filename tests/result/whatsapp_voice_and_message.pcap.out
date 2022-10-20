@@ -3,7 +3,7 @@ Guessed flow protos:	0
 DPI Packets (TCP):	20	(4.00 pkts/flow)
 DPI Packets (UDP):	8	(1.00 pkts/flow)
 Confidence DPI              : 13 (flows)
-Num dissector calls: 488 (37.54 diss/flow)
+Num dissector calls: 493 (37.92 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -18,7 +18,7 @@ Automa risk mask:     0/0 (search/found)
 Automa common alpns:  0/0 (search/found)
 Patricia risk mask:   26/0 (search/found)
 Patricia risk:        0/0 (search/found)
-Patricia protocols:   46/16 (search/found)
+Patricia protocols:   28/8 (search/found)
 
 WhatsAppCall	44	5916	8
 WhatsApp	217	22139	5
