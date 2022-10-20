@@ -2075,9 +2075,21 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
                           ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
                           ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_UNSAFE, NDPI_PROTOCOL_FTPS,
-			  "FTPS", NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT,
-			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
-			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+                          "FTPS", NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT,
+                          ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+                          ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_NATPMP,
+                          "NAT-PMP", NDPI_PROTOCOL_CATEGORY_NETWORK,
+                          ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+                          ndpi_build_default_ports(ports_b, 5351, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_SYNCTHING,
+                          "Syncthing", NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT,
+                          ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+                          ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_CRYNET,
+                          "CryNetwork", NDPI_PROTOCOL_CATEGORY_GAME,
+                          ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+                          ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -4727,6 +4739,15 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* FastCGI */
   init_fastcgi_dissector(ndpi_str, &a, detection_bitmask);
 
+  /* NATPMP */
+  init_natpmp_dissector(ndpi_str, &a, detection_bitmask);
+
+  /* Syncthing */
+  init_syncthing_dissector(ndpi_str, &a, detection_bitmask);
+
+  /* CryNetwork */
+  init_crynet_dissector(ndpi_str, &a, detection_bitmask);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -5955,17 +5976,6 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
          (flow->stun.num_processed_pkts > 0)) {
 	guessed_protocol_id = NDPI_PROTOCOL_STUN;
 	confidence = NDPI_CONFIDENCE_DPI_PARTIAL;
-      }
-
-      if(flow->host_server_name[0] != '\0') {
-        ndpi_protocol_match_result ret_match;
-
-        ndpi_match_host_subprotocol(ndpi_str, flow, (char *) flow->host_server_name,
-				    strlen((const char *) flow->host_server_name), &ret_match,
-				    NDPI_PROTOCOL_DNS);
-
-        if(ret_match.protocol_id != NDPI_PROTOCOL_UNKNOWN)
-          guessed_host_protocol_id = ret_match.protocol_id;
       }
 
       *protocol_was_guessed = 1;

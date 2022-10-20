@@ -1705,6 +1705,8 @@ ndpi_protocol_match host_match[] =
 
    { "cachefly.com",           "CacheFly", NDPI_PROTOCOL_CACHEFLY, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
 
+   { "discovery.syncthing.net", "Syncthing", NDPI_PROTOCOL_SYNCTHING, NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_content_match_host_match.c.inc"
 #endif
