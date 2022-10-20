@@ -6438,7 +6438,7 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
   u_int32_t num_calls = 0;
   ndpi_protocol ret = { flow->detected_protocol_stack[1], flow->detected_protocol_stack[0], flow->guessed_protocol_id_by_ip,
 #ifndef __KERNEL__
-	  , flow->category, NULL
+	  flow->category, NULL
 #endif
   };
 
@@ -6478,8 +6478,8 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
   if(flow->extra_packets_func) {
     ndpi_process_extra_packet(ndpi_str, flow, packet_data, packetlen, current_time_ms, input_info);
     /* Update in case of new match */
-    ret.master_protocol = flow->detected_protocol_stack[1],
-      ret.app_protocol = flow->detected_protocol_stack[0],
+    ret.master_protocol = flow->detected_protocol_stack[1];
+      ret.app_protocol = flow->detected_protocol_stack[0];
 #ifndef __KERNEL__
       ret.category = flow->category;
 #endif
@@ -7749,6 +7749,8 @@ const char *ndpi_confidence_get_name(ndpi_confidence_t confidence)
     return "DPI (cache)";
   case NDPI_CONFIDENCE_DPI:
     return "DPI";
+  case NDPI_CONFIDENCE_NBPF:
+    return "nBPF";
   default:
     return NULL;
   }
@@ -7805,30 +7807,6 @@ void ndpi_category_set_name(struct ndpi_detection_module_struct *ndpi_str,
 
   default:
     break;
-  }
-}
-
-/* ****************************************************** */
-
-const char *ndpi_confidence_get_name(ndpi_confidence_t confidence)
-{
-  switch(confidence) {
-  case NDPI_CONFIDENCE_UNKNOWN:
-    return "Unknown";
-  case NDPI_CONFIDENCE_MATCH_BY_PORT:
-    return "Match by port";
-  case NDPI_CONFIDENCE_DPI_PARTIAL:
-    return "DPI (partial)";
-  case NDPI_CONFIDENCE_DPI_PARTIAL_CACHE:
-    return "DPI (partial cache)";
-  case NDPI_CONFIDENCE_DPI_CACHE:
-    return "DPI (cache)";
-  case NDPI_CONFIDENCE_DPI:
-    return "DPI";
-  case NDPI_CONFIDENCE_NBPF:
-    return "nBPF";
-  default:
-    return NULL;
   }
 }
 

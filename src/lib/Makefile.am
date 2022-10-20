@@ -57,6 +57,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/collectd.c \
 		     protocols/corba.c \
 		     protocols/crossfire.c \
+		     protocols/crynet.c \
 		     protocols/csgo.c \
 		     protocols/dcerpc.c \
 		     protocols/dhcp.c \
@@ -123,6 +124,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/mqtt.c \
 		     protocols/mssql_tds.c \
 		     protocols/mysql.c \
+		     protocols/natpmp.c \
 		     protocols/nats.c \
 		     protocols/nest_log_sink.c \
 		     protocols/netbios.c \
@@ -172,6 +174,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/stealthnet.c \
 		     protocols/steam.c \
 		     protocols/stun.c \
+		     protocols/syncthing.c \
 		     protocols/syslog.c \
 		     protocols/tcp_udp.c \
 		     protocols/teamspeak.c \

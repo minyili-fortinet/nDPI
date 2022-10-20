@@ -31,7 +31,7 @@
 #include "btlib.h"
 
 #define NDPI_PROTOCOL_UNSAFE_DETECTION 	0
-#define NDPI_PROTOCOL_SAFE_DETECTION 		1
+//#define NDPI_PROTOCOL_SAFE_DETECTION 		1
 
 #define NDPI_PROTOCOL_PLAIN_DETECTION 	0
 #define NDPI_PROTOCOL_WEBSEED_DETECTION 	2
@@ -1174,7 +1174,7 @@ static u_int8_t ndpi_int_search_bittorrent_tcp_zero(struct ndpi_detection_module
 	 || memcmp_packet_hdr(packet,user_agent_line_idx, NDPI_STATICSTRING("BTWebClient"), 0) == 0) {
       NDPI_LOG_INFO(ndpi_struct, "Azureus /Bittorrent user agent line detected\n");
       ndpi_add_connection_as_bittorrent(ndpi_struct, flow, -1, 1,
-					NDPI_PROTOCOL_SAFE_DETECTION, NDPI_PROTOCOL_WEBSEED_DETECTION);
+					NDPI_CONFIDENCE_DPI, NDPI_PROTOCOL_WEBSEED_DETECTION);
       return 1;
     }
 
@@ -1182,7 +1182,7 @@ static u_int8_t ndpi_int_search_bittorrent_tcp_zero(struct ndpi_detection_module
 	 memcmp_packet_line(packet,8, NDPI_STATICSTRING("X-Queue: "), 0) == 0) {
       NDPI_LOG_INFO(ndpi_struct, "Bittorrent Shareaza detected.\n");
       ndpi_add_connection_as_bittorrent(ndpi_struct, flow, -1, 1,
-					NDPI_PROTOCOL_SAFE_DETECTION, NDPI_PROTOCOL_WEBSEED_DETECTION);
+					NDPI_CONFIDENCE_DPI, NDPI_PROTOCOL_WEBSEED_DETECTION);
       return 1;
     }
 
@@ -1618,7 +1618,7 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
         NDPI_LOG_INFO(ndpi_struct,
 	     "BT: BitTorrent protocol detected: %s\n",detect_type ? detect_type : "(NULL)");
         ndpi_add_connection_as_bittorrent(ndpi_struct, flow, -1, bt_proto ? 1:0,
-				      NDPI_PROTOCOL_SAFE_DETECTION,
+				      NDPI_CONFIDENCE_DPI,
 				      NDPI_PROTOCOL_PLAIN_DETECTION);
   return;
 }

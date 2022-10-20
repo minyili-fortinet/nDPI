@@ -232,7 +232,7 @@ static inline int flow_have_info( struct nf_ct_ext_ndpi *c) {
 	return (READ_ONCE(c->flags) & m) == m;
 }
 
-static ndpi_protocol_nf proto_null = NDPI_PROTOCOL_NULL;
+static ndpi_protocol_nf proto_null = {NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN};
 
 unsigned long int ndpi_flow_limit=10000000; // 4.3Gb
 unsigned long int ndpi_enable_flow=0;
@@ -1058,7 +1058,7 @@ ndpi_process_packet(struct ndpi_net *n, struct nf_conn * ct, struct nf_ct_ext_nd
 		    flow->ipdef_proto_level = l_conf;
 
 		    if(flow->ipdef_proto != NDPI_PROTOCOL_UNKNOWN ) {
-			flow->guessed_host_protocol_id = flow->ipdef_proto;
+			flow->guessed_protocol_id_by_ip = flow->ipdef_proto;
 			if(_DBG_TRACE_DPI || _DBG_TRACE_GUESSED)
 				packet_trace(skb,ct,ct_ndpi," check_known4",
 						" clevel %d [%d]",l_conf,flow->ipdef_proto);
@@ -1303,15 +1303,15 @@ static int check_guessed_protocol(struct nf_ct_ext_ndpi *ct_ndpi,ndpi_protocol *
 				ct_ndpi->confidence,
 				proto->app_protocol,
 				flow->confidence,
-				flow->guessed_host_protocol_id,
+				flow->guessed_protocol_id_by_ip,
 				flow->guessed_protocol_id);
 	if(ct_ndpi->confidence >= NDPI_CONFIDENCE_DPI_CACHE) return 0;
 
 	if(proto->app_protocol != NDPI_PROTOCOL_UNKNOWN) return 0;
 
-	if(flow->guessed_host_protocol_id != NDPI_PROTOCOL_UNKNOWN &&
+	if(flow->guessed_protocol_id_by_ip != NDPI_PROTOCOL_UNKNOWN &&
 	   flow->ipdef_proto_level > flow->confidence) {
-		proto->app_protocol = flow->guessed_host_protocol_id;
+		proto->app_protocol = flow->guessed_protocol_id_by_ip;
 		flow->confidence = flow->ipdef_proto_level;
 		if(_DBG_TRACE_GUESSED)
 			pr_info("%s: host app_protocol %d\n",__func__,proto->app_protocol);
@@ -1594,7 +1594,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		if(_DBG_TRACE_DPI && ct_ndpi->flow)
 		   pr_info(" ndpi_process_packet dpi: g_pr:%d g_host_pr:%d m:%d a:%d cl:%s; ct: m:%d a:%d cl:%s pcnt %d [%d,%d]%s%s\n",
 			ct_ndpi->flow->guessed_protocol_id,
-			ct_ndpi->flow->guessed_host_protocol_id,
+			ct_ndpi->flow->guessed_protocol_id_by_ip,
 			proto.master_protocol,
 			proto.app_protocol,
 			ndpi_confidence_get_name(ct_ndpi->flow->confidence),
