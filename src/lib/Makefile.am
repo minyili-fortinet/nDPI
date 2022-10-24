@@ -108,6 +108,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/kontiki.c \
 		     protocols/ldap.c \
 		     protocols/lotus_notes.c \
+		     protocols/line.c \
 		     protocols/lisp.c \
 		     protocols/mail_imap.c \
 		     protocols/mail_pop.c \

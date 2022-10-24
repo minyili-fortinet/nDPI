@@ -85,7 +85,6 @@
 #include "inc_generated/ndpi_ms_skype_teams_match.c.inc"
 #include "inc_generated/ndpi_google_match.c.inc"
 #include "inc_generated/ndpi_google_cloud_match.c.inc"
-#include "inc_generated/ndpi_icloud_private_relay_match.c.inc"
 #include "inc_generated/ndpi_asn_telegram.c.inc"
 #include "inc_generated/ndpi_asn_apple.c.inc"
 #include "inc_generated/ndpi_asn_twitter.c.inc"
@@ -113,6 +112,7 @@
 #include "inc_generated/ndpi_asn_discord.c.inc"
 #endif
 
+#include "inc_generated/ndpi_icloud_private_relay_match.c.inc"
 #include "inc_generated/ndpi_asn_line.c.inc"
 
 /* Third party libraries */

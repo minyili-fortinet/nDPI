@@ -20,6 +20,7 @@
 /* ****************************************************** */
 
 
+#if 0
 static ndpi_network ndpi_protocol_line_protocol_list[] = {
  { 0x2BDF0000 /* 43.223.0.0/16 */, 16, NDPI_PROTOCOL_LINE },
  { 0x67021C00 /* 103.2.28.0/24 */, 24, NDPI_PROTOCOL_LINE },
@@ -37,3 +38,4 @@ static ndpi_network ndpi_protocol_line_protocol_list[] = {
  /* End */
  { 0x0, 0, 0 }
 };
+#endif

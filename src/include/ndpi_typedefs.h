@@ -1021,6 +1021,8 @@ typedef struct {
 typedef enum {
   NDPI_CONFIDENCE_UNKNOWN           = 0,    /* Unknown classification */
   NDPI_CONFIDENCE_MATCH_BY_PORT,            /* Classification obtained looking only at the L4 ports */
+  NDPI_CONFIDENCE_MATCH_BY_IP,              /* Classification obtained looking only at the IP */
+  NDPI_CONFIDENCE_USERDEF,                  /* Classification obtained looking IP+port */
   NDPI_CONFIDENCE_NBPF,                     /* PF_RING nBPF (custom protocol) */
   NDPI_CONFIDENCE_DPI_PARTIAL,              /* Classification results based on partial/incomplete DPI information */
   NDPI_CONFIDENCE_DPI_PARTIAL_CACHE,        /* Classification results based on some LRU cache with partial/incomplete DPI information */
