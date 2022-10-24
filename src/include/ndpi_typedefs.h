@@ -1611,7 +1611,7 @@ struct ndpi_flow_struct {
     } snmp;
 
     struct {
-      char identity_uuid[36];
+      char identity_uuid[37];
       char machine[48];
       char platform[32];
       char services[48];
