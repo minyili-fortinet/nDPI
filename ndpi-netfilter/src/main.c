@@ -1159,8 +1159,8 @@ static void ndpi_host_info(struct nf_ct_ext_ndpi *ct_ndpi) {
 	size_t l = 0;
 
        	if(_DBG_TRACE_TLS)
-		pr_info("%s: TLS in progress, cert %d\n",__func__,flow->l4.tcp.tls.certificate_processed);
-	if(!flow->l4.tcp.tls.certificate_processed)
+		pr_info("%s: TLS in progress, cert %d\n",__func__,flow->tls_quic.certificate_processed);
+	if(!flow->tls_quic.certificate_processed)
 		return;
 
 	set_tlsdone(ct_ndpi);
@@ -1176,7 +1176,7 @@ static void ndpi_host_info(struct nf_ct_ext_ndpi *ct_ndpi) {
 			  flow->protos.tls_quic.ja3_client);
 	    buf[l++] = 0;
 	}
-	if(flow->l4.tcp.tls.fingerprint_set) {
+	if(flow->protos.tls_quic.fingerprint_set) {
 	    uint32_t * sha1 = (uint32_t *)flow->protos.tls_quic.sha1_certificate_fingerprint;
 	    ct_ndpi->tlsfp = l+1;
 	    l += snprintf(&buf[l],sizeof(buf)-1-l,"%08x%08x%08x%08x%08x",
