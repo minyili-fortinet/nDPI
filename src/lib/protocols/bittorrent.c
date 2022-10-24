@@ -998,10 +998,8 @@ static void ndpi_add_connection_as_bittorrent(
   }
 
 #ifndef __KERNEL__
-  if(packet->udp || packet->tcp) {
-    u_int32_t key1, key2,i;
-    if(ndpi_struct->bittorrent_cache == NULL)
-      ndpi_struct->bittorrent_cache = ndpi_lru_cache_init(1024);
+  if(ndpi_struct->bittorrent_cache && packet->iph) {
+    u_int32_t key1, key2, i;
 
     key1 = ndpi_ip_port_hash_funct(flow->c_address.v4, flow->c_port), key2 = ndpi_ip_port_hash_funct(flow->s_address.v4, flow->s_port);
     

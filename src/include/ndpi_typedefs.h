@@ -1312,29 +1312,36 @@ struct ndpi_detection_module_struct {
   struct bt_announce *bt_ann;
   int    bt_ann_len;
 
-  /* NDPI_PROTOCOL_OOKLA */
-  struct ndpi_lru_cache *ookla_cache;
-
   /* NDPI_PROTOCOL_TINC */
   struct cache *tinc_cache;
 
+  /* NDPI_PROTOCOL_OOKLA */
+  struct ndpi_lru_cache *ookla_cache;
+  u_int32_t ookla_cache_num_entries;
+
   /* NDPI_PROTOCOL_BITTORRENT */
   struct ndpi_lru_cache *bittorrent_cache;
+  u_int32_t bittorrent_cache_num_entries;
 
   /* NDPI_PROTOCOL_ZOOM */
   struct ndpi_lru_cache *zoom_cache;
+  u_int32_t zoom_cache_num_entries;
 
   /* NDPI_PROTOCOL_STUN and subprotocols */
   struct ndpi_lru_cache *stun_cache;
+  u_int32_t stun_cache_num_entries;
 
   /* NDPI_PROTOCOL_TLS and subprotocols */
   struct ndpi_lru_cache *tls_cert_cache;
+  u_int32_t tls_cert_cache_num_entries;
   
   /* NDPI_PROTOCOL_MINING and subprotocols */
   struct ndpi_lru_cache *mining_cache;
+  u_int32_t mining_cache_num_entries;
 
   /* NDPI_PROTOCOL_MSTEAMS */
   struct ndpi_lru_cache *msteams_cache;
+  u_int32_t msteams_cache_num_entries;
 
   /* *** If you add a new LRU cache, please update lru_cache_type above! *** */
 
@@ -1607,6 +1614,13 @@ struct ndpi_flow_struct {
       char platform[32];
       char services[48];
     } tivoconnect;
+
+    struct {
+      u_int16_t result_code;
+      u_int16_t internal_port;
+      u_int16_t external_port;
+      ndpi_ip_addr_t external_address;
+    } natpmp;
   } protos;
 
   /*** ALL protocol specific 64 bit variables here ***/

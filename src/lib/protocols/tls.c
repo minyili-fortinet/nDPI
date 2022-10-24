@@ -758,9 +758,6 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 #endif
 	ndpi_check_subprotocol_risk(ndpi_struct, flow, proto_id);
 
-	if(ndpi_struct->tls_cert_cache == NULL)
-	  ndpi_struct->tls_cert_cache = ndpi_lru_cache_init(1024);
-
 	if(ndpi_struct->tls_cert_cache && packet->iph && packet->tcp) {
 	  u_int32_t key = packet->iph->saddr + packet->tcp->source; /* Server */
 

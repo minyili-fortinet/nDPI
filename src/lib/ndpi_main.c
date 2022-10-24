@@ -2892,6 +2892,14 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
     return(NULL);
   }
 
+  ndpi_str->ookla_cache_num_entries = 1024;
+  ndpi_str->bittorrent_cache_num_entries = 32768;
+  ndpi_str->zoom_cache_num_entries = 512;
+  ndpi_str->stun_cache_num_entries = 1024;
+  ndpi_str->tls_cert_cache_num_entries = 1024;
+  ndpi_str->mining_cache_num_entries = 1024;
+  ndpi_str->msteams_cache_num_entries = 1024;
+
   ndpi_str->opportunistic_tls_smtp_enabled = 1;
   ndpi_str->opportunistic_tls_imap_enabled = 1;
   ndpi_str->opportunistic_tls_pop_enabled = 1;
@@ -2977,6 +2985,56 @@ void ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str)
   u_int i;
 
   ndpi_add_domain_risk_exceptions(ndpi_str);
+
+  if(ndpi_str->ookla_cache_num_entries > 0) {
+    ndpi_str->ookla_cache = ndpi_lru_cache_init(ndpi_str->ookla_cache_num_entries);
+    if(!ndpi_str->ookla_cache) {
+      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
+                   ndpi_str->ookla_cache_num_entries);
+    }
+  }
+  if(ndpi_str->bittorrent_cache_num_entries > 0) {
+    ndpi_str->bittorrent_cache = ndpi_lru_cache_init(ndpi_str->bittorrent_cache_num_entries);
+    if(!ndpi_str->bittorrent_cache) {
+      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
+                   ndpi_str->bittorrent_cache_num_entries);
+    }
+  }
+  if(ndpi_str->zoom_cache_num_entries > 0) {
+    ndpi_str->zoom_cache = ndpi_lru_cache_init(ndpi_str->zoom_cache_num_entries);
+    if(!ndpi_str->zoom_cache) {
+      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
+                   ndpi_str->zoom_cache_num_entries);
+    }
+  }
+  if(ndpi_str->stun_cache_num_entries > 0) {
+    ndpi_str->stun_cache = ndpi_lru_cache_init(ndpi_str->stun_cache_num_entries);
+    if(!ndpi_str->stun_cache) {
+      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
+                   ndpi_str->stun_cache_num_entries);
+    }
+  }
+  if(ndpi_str->tls_cert_cache_num_entries > 0) {
+    ndpi_str->tls_cert_cache = ndpi_lru_cache_init(ndpi_str->tls_cert_cache_num_entries);
+    if(!ndpi_str->tls_cert_cache) {
+      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
+                   ndpi_str->tls_cert_cache_num_entries);
+    }
+  }
+  if(ndpi_str->mining_cache_num_entries > 0) {
+    ndpi_str->mining_cache = ndpi_lru_cache_init(ndpi_str->mining_cache_num_entries);
+    if(!ndpi_str->mining_cache) {
+      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
+                   ndpi_str->mining_cache_num_entries);
+    }
+  }
+  if(ndpi_str->msteams_cache_num_entries > 0) {
+    ndpi_str->msteams_cache = ndpi_lru_cache_init(ndpi_str->msteams_cache_num_entries);
+    if(!ndpi_str->msteams_cache) {
+      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
+                   ndpi_str->msteams_cache_num_entries);
+    }
+  }
 
   if(ndpi_str->ac_automa_finalized) return;
 
@@ -5790,9 +5848,6 @@ static void ndpi_reconcile_protocols(struct ndpi_detection_module_struct *ndpi_s
     if(flow->is_ipv6 == 0 && flow->l4_proto == IPPROTO_TCP) {
       // printf("====>> NDPI_PROTOCOL_MSTEAMS\n");
 
-      if(ndpi_str->msteams_cache == NULL)
-	ndpi_str->msteams_cache = ndpi_lru_cache_init(1024);
-
       if(ndpi_str->msteams_cache)
 	ndpi_lru_add_to_cache(ndpi_str->msteams_cache,
 			      htonl(flow->c_address.v4),
@@ -5935,9 +5990,6 @@ static u_int8_t ndpi_search_into_zoom_cache(struct ndpi_detection_module_struct 
 
 static void ndpi_add_connection_as_zoom(struct ndpi_detection_module_struct *ndpi_struct,
 					u_int32_t daddr /* Network byte order */) {
-  if(ndpi_struct->zoom_cache == NULL)
-    ndpi_struct->zoom_cache = ndpi_lru_cache_init(512);
-
   if(ndpi_struct->zoom_cache)
     ndpi_lru_add_to_cache(ndpi_struct->zoom_cache, daddr, NDPI_PROTOCOL_ZOOM);
 }
@@ -7856,6 +7908,7 @@ static int category_depends_on_master(int proto)
   case NDPI_PROTOCOL_MAIL_POPS:
   case NDPI_PROTOCOL_MAIL_SMTPS:
   case NDPI_PROTOCOL_MAIL_IMAPS:
+  case NDPI_PROTOCOL_DNS:
 	  return 1;
   }
   return 0;
@@ -8523,6 +8576,68 @@ int ndpi_get_lru_cache_stats(struct ndpi_detection_module_struct *ndpi_struct,
     return 0;
   case NDPI_LRUCACHE_MSTEAMS:
     ndpi_lru_get_stats(ndpi_struct->msteams_cache, stats);
+    return 0;
+  default:
+    return -1;
+  }
+}
+
+int ndpi_set_lru_cache_size(struct ndpi_detection_module_struct *ndpi_struct,
+			    lru_cache_type cache_type,
+			    u_int32_t num_entries)
+{
+  switch(cache_type) {
+  case NDPI_LRUCACHE_OOKLA:
+    ndpi_struct->ookla_cache_num_entries = num_entries;
+    return 0;
+  case NDPI_LRUCACHE_BITTORRENT:
+    ndpi_struct->bittorrent_cache_num_entries = num_entries;
+    return 0;
+  case NDPI_LRUCACHE_ZOOM:
+    ndpi_struct->zoom_cache_num_entries = num_entries;
+    return 0;
+  case NDPI_LRUCACHE_STUN:
+    ndpi_struct->stun_cache_num_entries = num_entries;
+    return 0;
+  case NDPI_LRUCACHE_TLS_CERT:
+    ndpi_struct->tls_cert_cache_num_entries = num_entries;
+    return 0;
+  case NDPI_LRUCACHE_MINING:
+    ndpi_struct->mining_cache_num_entries = num_entries;
+    return 0;
+  case NDPI_LRUCACHE_MSTEAMS:
+    ndpi_struct->msteams_cache_num_entries = num_entries;
+    return 0;
+  default:
+    return -1;
+  }
+}
+
+int ndpi_get_lru_cache_size(struct ndpi_detection_module_struct *ndpi_struct,
+			    lru_cache_type cache_type,
+			    u_int32_t *num_entries)
+{
+  switch(cache_type) {
+  case NDPI_LRUCACHE_OOKLA:
+    *num_entries = ndpi_struct->ookla_cache_num_entries;
+    return 0;
+  case NDPI_LRUCACHE_BITTORRENT:
+    *num_entries = ndpi_struct->bittorrent_cache_num_entries;
+    return 0;
+  case NDPI_LRUCACHE_ZOOM:
+    *num_entries = ndpi_struct->zoom_cache_num_entries;
+    return 0;
+  case NDPI_LRUCACHE_STUN:
+    *num_entries = ndpi_struct->stun_cache_num_entries;
+    return 0;
+  case NDPI_LRUCACHE_TLS_CERT:
+    *num_entries = ndpi_struct->tls_cert_cache_num_entries;
+    return 0;
+  case NDPI_LRUCACHE_MINING:
+    *num_entries = ndpi_struct->mining_cache_num_entries;
+    return 0;
+  case NDPI_LRUCACHE_MSTEAMS:
+    *num_entries = ndpi_struct->msteams_cache_num_entries;
     return 0;
   default:
     return -1;
