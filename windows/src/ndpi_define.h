@@ -24,29 +24,13 @@
 #define __NDPI_DEFINE_INCLUDE_FILE__
 
 /*
- * The #define below is used for apps that dynamically link with nDPI to make
- * sure that datastructures and in sync across versions
+ * Not supported for Visual Studio.
  */
-#define NDPI_API_VERSION @NDPI_API_VERSION@
+#define NDPI_API_VERSION 0
 
 /*
   gcc -E -dM - < /dev/null |grep ENDIAN
 */
-
-#ifdef __KERNEL__
-
-#define        LITTLE_ENDIAN   1234    /* least-significant byte first (vax, pc) */
-#define        BIG_ENDIAN      4321    /* most-significant byte first (IBM, net) */
-
-#ifdef __LITTLE_ENDIAN
-#define BYTE_ORDER __LITTLE_ENDIAN
-#endif
-#ifdef __BIG_ENDIAN
-#define BYTE_ORDER __BIG_ENDIAN
-#endif
-#define __BYTE_ORDER BYTE_ORDER
-
-#else
 
 #if defined(__FreeBSD__) || defined(__NetBSD__)
 #include <sys/endian.h>
@@ -63,7 +47,6 @@
 #define __BIG_ENDIAN__
 #endif/* BYTE_ORDER */
 #endif/* __OPENBSD__ */
-#endif/* __KERNEL__ */
 
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -363,9 +346,12 @@ static inline u_int64_t get_u_int64_t(const u_int8_t* X, int O)
 #define NDPI_MAX_DNS_REQUESTS                   16
 #define NDPI_MIN_NUM_STUN_DETECTION             8
 
-#define NDPI_MAJOR                              @NDPI_MAJOR@
-#define NDPI_MINOR                              @NDPI_MINOR@
-#define NDPI_PATCH                              @NDPI_PATCH@
+/*
+ * Not supported for Visual Studio.
+ */
+#define NDPI_MAJOR                              0
+#define NDPI_MINOR                              0
+#define NDPI_PATCH                              0
 
 /* IMPORTANT: order according to its severity */
 #define NDPI_CIPHER_SAFE                        0
@@ -376,7 +362,7 @@ static inline u_int64_t get_u_int64_t(const u_int8_t* X, int O)
 
 #define NDPI_MAX_NUM_TLS_APPL_BLOCKS            8
 
-@HANDLE_TLS_SIGS@#define TLS_HANDLE_SIGNATURE_ALGORITMS 1
+//#define TLS_HANDLE_SIGNATURE_ALGORITMS 1
 
 #ifdef __APPLE__
 
