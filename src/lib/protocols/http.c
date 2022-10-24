@@ -631,7 +631,51 @@ static void ndpi_check_numeric_ip(struct ndpi_detection_module_struct *ndpi_stru
 static void ndpi_check_http_url(struct ndpi_detection_module_struct *ndpi_struct,
 				struct ndpi_flow_struct *flow,
 				char *url) {
-  /* Nothing to do */
+  if(strstr(url, "<php>") != NULL /* PHP code in the URL */)
+    ndpi_set_risk(ndpi_struct, flow, NDPI_URL_POSSIBLE_RCE_INJECTION, "PHP code in URL");
+  else if(strncmp(url, "/shell?", 7) == 0)
+    ndpi_set_risk(ndpi_struct, flow, NDPI_URL_POSSIBLE_RCE_INJECTION, "Possible WebShell detected");
+  else if(strncmp(url, "/.", 2) == 0)
+    ndpi_set_risk(ndpi_struct, flow, NDPI_POSSIBLE_EXPLOIT, "URL starting with dot");
+}
+
+/* ************************************************************* */
+
+#define MIN_APACHE_VERSION 2004000 /* 2.4.X  [https://endoflife.date/apache] */
+#define MIN_NGINX_VERSION  1022000 /* 1.22.0 [https://endoflife.date/nginx]  */
+
+static void ndpi_check_http_server(struct ndpi_detection_module_struct *ndpi_struct,
+				   struct ndpi_flow_struct *flow,
+				   const char *server, u_int server_len) {
+  if(server_len > 7) {
+    u_int off;
+  
+    if(strncmp((const char *)server, "ntopng ", 7) == 0) {
+      ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_NTOP, NDPI_PROTOCOL_HTTP, NDPI_CONFIDENCE_DPI);
+      NDPI_CLR_BIT(flow->risk, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT);
+    } else if((strncasecmp(server, "Apache/", off = 7) == 0) /* X.X.X */
+	      || (strncasecmp(server, "nginx/", off = 6) == 0) /* X.X.X */) {
+      u_int i, j, a, b, c;
+      char buf[16] = { '\0' };
+
+      for(i=off, j=0; (i<server_len) && (j<sizeof(buf))
+	    && (isdigit(server[i]) || (server[i] == '.')); i++)
+	buf[j++] = server[i];      
+
+      if(sscanf(buf, "%d.%d.%d", &a, &b, &c) == 3) {
+	u_int32_t version = (a * 1000000) + (b * 1000) + c;
+	char msg[64];
+	
+	if((off == 7) && (version < MIN_APACHE_VERSION)) {
+	  snprintf(msg, sizeof(msg), "Obsolete Apache server %s", buf);
+	  ndpi_set_risk(ndpi_struct, flow, NDPI_HTTP_OBSOLETE_SERVER, msg);
+	} else if((off == 6) && (version < MIN_NGINX_VERSION)) {
+	  snprintf(msg, sizeof(msg), "Obsolete nginx server %s", buf);
+	  ndpi_set_risk(ndpi_struct, flow, NDPI_HTTP_OBSOLETE_SERVER, msg);
+	}
+      }
+    }
+  }
 }
 
 /* ************************************************************* */
@@ -659,7 +703,7 @@ static void check_content_type_and_change_protocol(struct ndpi_detection_module_
 
     flow->http.url = ndpi_malloc(len);
     if(flow->http.url) {
-      u_int offset = 0;
+      u_int offset = 0, host_end = 0;
 
       if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_HTTP_CONNECT) {
 	strncpy(flow->http.url, (char*)packet->http_url_name.ptr,
@@ -668,8 +712,10 @@ static void check_content_type_and_change_protocol(struct ndpi_detection_module_
 	flow->http.url[packet->http_url_name.len] = '\0';
       } else {
 	/* Check if we pass through a proxy (usually there is also the Via: ... header) */
-	if(strncmp((char*)packet->http_url_name.ptr, "http://", 7) != 0)
+	if(strncmp((char*)packet->http_url_name.ptr, "http://", 7) != 0) {
 	  strncpy(flow->http.url, (char*)packet->host_line.ptr, offset = packet->host_line.len);
+	  host_end = packet->host_line.len;
+	}
 
 	if((packet->host_line.len == packet->http_url_name.len)
 	   && (strncmp((char*)packet->host_line.ptr,
@@ -684,7 +730,7 @@ static void check_content_type_and_change_protocol(struct ndpi_detection_module_
 	flow->http.url[offset] = '\0';
       }
 
-      ndpi_check_http_url(ndpi_struct, flow, &flow->http.url[packet->host_line.len]);
+      ndpi_check_http_url(ndpi_struct, flow, &flow->http.url[host_end]);
     }
 
     flow->http.method = ndpi_http_str2method((const char*)packet->http_method.ptr,
@@ -697,13 +743,9 @@ static void check_content_type_and_change_protocol(struct ndpi_detection_module_
     }
   }
 
-  if(packet->server_line.ptr != NULL && (packet->server_line.len > 7)) {
-    if(strncmp((const char *)packet->server_line.ptr, "ntopng ", 7) == 0) {
-      ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_NTOP, NDPI_PROTOCOL_HTTP, NDPI_CONFIDENCE_DPI);
-      NDPI_CLR_BIT(flow->risk, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT);
-    }
-  }
-
+  if(packet->server_line.ptr != NULL)
+    ndpi_check_http_server(ndpi_struct, flow, (const char *)packet->server_line.ptr, packet->server_line.len);
+ 
   if(packet->user_agent_line.ptr != NULL && packet->user_agent_line.len != 0) {
     ret = http_process_user_agent(ndpi_struct, flow, packet->user_agent_line.ptr, packet->user_agent_line.len);
     /* TODO: Is it correct to avoid setting ua, host_name,... if we have a (Netflix) subclassification? */
@@ -1129,6 +1171,19 @@ static void ndpi_check_http_tcp(struct ndpi_detection_module_struct *ndpi_struct
 
 	    snprintf(ec, sizeof(ec), "HTTP Error Code %u", flow->http.response_status_code);
 	    ndpi_set_risk(ndpi_struct, flow, NDPI_ERROR_CODE_DETECTED, ec);
+	  }
+
+	  if(flow->flow_payload) {
+	    char *endl;
+	    
+	    flow->flow_payload[flow->flow_payload_len] = '\0';
+	    if((endl = strrchr(flow->flow_payload, '\r')) == NULL)
+	      endl = strrchr(flow->flow_payload, '\n');
+
+	    if(endl != NULL) {
+	      endl[0] = '\0';
+	      flow->flow_payload_len = endl - flow->flow_payload;
+	    }
 	  }
 	}
 

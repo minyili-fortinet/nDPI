@@ -132,7 +132,8 @@ typedef enum {
   NDPI_UNIDIRECTIONAL_TRAFFIC, /* NOTE: as nDPI can detect a protocol with one packet, make sure
 				  your app will clear this risk if future packets (not sent to nDPI)
 				  are received in the opposite direction */
-  
+
+  NDPI_HTTP_OBSOLETE_SERVER,
   /* Leave this as last member */
   NDPI_MAX_RISK /* must be <= 63 due to (**) */
 } ndpi_risk_enum;
@@ -722,7 +723,6 @@ struct ndpi_lru_cache {
 /* ************************************************** */
 
 struct ndpi_flow_tcp_struct {
-
   /* NDPI_PROTOCOL_MAIL_SMTP */
   /* NDPI_PROTOCOL_MAIL_POP */
   /* NDPI_PROTOCOL_MAIL_IMAP */
@@ -780,7 +780,6 @@ struct ndpi_flow_tcp_struct {
     message_t message[2]; /* Directions */
 
     /* NDPI_PROTOCOL_TLS */
-    u_int8_t certificate_processed:1, fingerprint_set:1, _pad:6;
     u_int8_t app_data_seen[2];
     u_int8_t num_tls_blocks;
     int16_t tls_application_blocks_len[NDPI_MAX_NUM_TLS_APPL_BLOCKS]; /* + = src->dst, - = dst->src */
@@ -897,6 +896,10 @@ struct ndpi_flow_udp_struct {
 
   /* NDPI_PROTOCOL_IMO */
   u_int8_t imo_last_one_byte_pkt, imo_last_byte;
+
+  /* NDPI_PROTOCOL_LINE_CALL */
+  u_int8_t line_pkts[2];
+  u_int8_t line_base_cnt[2];
 };
 
 /* ************************************************** */
@@ -1016,16 +1019,13 @@ typedef struct {
 } ndpi_port_range;
 
 typedef enum {
-  /* Try to have "stable" values (across releases/changes) */
-  NDPI_CONFIDENCE_UNKNOWN           = 0,	/* Unknown classification */
-  NDPI_CONFIDENCE_MATCH_BY_PORT     = 10,	/* Classification obtained looking only at the L4 ports */
-  NDPI_CONFIDENCE_MATCH_BY_IP       = 20,	/* Classification obtained looking only at the L3 addresses */
-  NDPI_CONFIDENCE_USERDEF           = 30,	/* Classification from user definitions */
-  NDPI_CONFIDENCE_NBPF              = 50,	/* PF_RING nBPF (custom protocol) */
-  NDPI_CONFIDENCE_DPI_PARTIAL       = 100,	/* Classification results based on partial/incomplete DPI information */
-  NDPI_CONFIDENCE_DPI_PARTIAL_CACHE = 110,	/* Classification results based on some LRU cache with partial/incomplete DPI information */
-  NDPI_CONFIDENCE_DPI_CACHE         = 200,	/* Classification results based on some LRU cache (i.e. correlation among sessions) */
-  NDPI_CONFIDENCE_DPI               = 210,	/* Deep packet inspection */
+  NDPI_CONFIDENCE_UNKNOWN           = 0,    /* Unknown classification */
+  NDPI_CONFIDENCE_MATCH_BY_PORT,            /* Classification obtained looking only at the L4 ports */
+  NDPI_CONFIDENCE_NBPF,                     /* PF_RING nBPF (custom protocol) */
+  NDPI_CONFIDENCE_DPI_PARTIAL,              /* Classification results based on partial/incomplete DPI information */
+  NDPI_CONFIDENCE_DPI_PARTIAL_CACHE,        /* Classification results based on some LRU cache with partial/incomplete DPI information */
+  NDPI_CONFIDENCE_DPI_CACHE,                /* Classification results based on some LRU cache (i.e. correlation among sessions) */
+  NDPI_CONFIDENCE_DPI,                      /* Deep packet inspection */
 
   /*
     IMPORTANT
@@ -1204,10 +1204,6 @@ typedef struct ndpi_proto {
 /* PLEASE DO NOT REMOVE OR CHANGE THE ORDER OF WHAT IS DELIMITED BY CFFI.NDPI_MODULE_STRUCT FLAG AS IT IS USED FOR
    PYTHON BINDINGS AUTO GENERATION */
 //CFFI.NDPI_MODULE_STRUCT
-typedef enum {
-  ndpi_stun_cache,
-  ndpi_hangout_cache
-} ndpi_lru_cache_type;
 
 typedef struct ndpi_list_struct {
   char *value;
@@ -1354,8 +1350,6 @@ struct ndpi_detection_module_struct {
 
   u_int8_t direction_detect_disable:1, /* disable internal detection of packet direction */ _pad:7;
 
-  void (*ndpi_notify_lru_add_handler_ptr)(ndpi_lru_cache_type cache_type, u_int32_t proto, u_int32_t app_proto);
-
 #ifdef CUSTOM_NDPI_PROTOCOLS
   #include "../../../nDPI-custom/custom_ndpi_typedefs.h"
 #endif
@@ -1380,6 +1374,8 @@ struct ndpi_detection_module_struct {
   u_int8_t num_nbpf_custom_proto;
   nbpf_filter nbpf_custom_proto[MAX_NBPF_CUSTOM_PROTO];
 #endif
+
+  u_int16_t max_payload_track_len;    
 };
 
 #endif /* NDPI_LIB_COMPILATION */
@@ -1505,6 +1501,10 @@ struct ndpi_flow_struct {
     u_int16_t num_processed_pkts;
   } stun;
 
+  struct {
+    u_int8_t certificate_processed:1, _pad:7;
+  } tls_quic; /* Used also by DTLS and POPS/IMAPS/SMTPS/FTPS */
+
   union {
     /* the only fields useful for nDPI and ntopng */
     struct {
@@ -1535,7 +1535,7 @@ struct ndpi_flow_struct {
       char ja3_client[33], ja3_server[33];
       u_int16_t server_cipher;
       u_int8_t sha1_certificate_fingerprint[20];
-      u_int8_t hello_processed:1, subprotocol_detected:1, _pad:6;
+      u_int8_t hello_processed:1, subprotocol_detected:1, fingerprint_set:1, _pad:5;
 
 #ifdef TLS_HANDLE_SIGNATURE_ALGORITMS
       /* Under #ifdef to save memory for those who do not need them */
@@ -1694,6 +1694,10 @@ struct ndpi_flow_struct {
   /* NDPI_PROTOCOL_TINC */
   u_int8_t tinc_state;
 
+  /* Flow payload */
+  u_int16_t flow_payload_len;
+  char *flow_payload;
+  
   /* 
      Leave this field below at the end
      The field below can be used by third
@@ -1707,8 +1711,8 @@ struct ndpi_flow_struct {
 _Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 200,
                "Size of the struct member protocols increased to more than 200 bytes, "
                "please check if this change is necessary.");
-_Static_assert(sizeof(struct ndpi_flow_struct) <= 904,
-               "Size of the flow struct increased to more than 904 bytes, "
+_Static_assert(sizeof(struct ndpi_flow_struct) <= 920,
+               "Size of the flow struct increased to more than 920 bytes, "
                "please check if this change is necessary.");
 #endif
 #endif
@@ -1759,6 +1763,7 @@ typedef enum {
     ndpi_dont_load_icloud_private_relay_list  = (1 << 13),
     ndpi_dont_init_risk_ptree      = (1 << 14),
     ndpi_dont_load_cachefly_list   = (1 << 15),
+    ndpi_track_flow_payload        = (1 << 16),
   } ndpi_prefs;
 
 typedef struct {

@@ -960,7 +960,7 @@ header:
 	      flow_to_process->tls_client_hello_seen = 1;
             }
 	  if (flow_to_process->tls_server_hello_seen == 0 &&
-	      flow_to_process->ndpi_flow->l4.tcp.tls.certificate_processed != 0)
+	      flow_to_process->ndpi_flow->tls_quic.certificate_processed != 0)
             {
 	      uint8_t unknown_tls_version = 0;
 	      char buf_ver[16];
