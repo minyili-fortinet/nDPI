@@ -22,6 +22,7 @@ typedef size_t socklen_t;
 const char *
 inet_ntop (int af, const void *src, char *dst, socklen_t size);
 int inet_pton(int af, const char *src, void *dst);
+uint32_t inet_addr(const char *ip);
 int atoi(const char *);
 long int atol(const char *);
 

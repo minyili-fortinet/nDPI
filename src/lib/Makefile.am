@@ -74,6 +74,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/dropbox.c \
 		     protocols/eaq.c \
 		     protocols/edonkey.c \
+		     protocols/elasticsearch.c \
 		     protocols/ethernet_ip.c \
 		     protocols/fastcgi.c \
 		     protocols/fasttrack.c \
@@ -124,6 +125,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/mpegdash.c \
 		     protocols/mqtt.c \
 		     protocols/mssql_tds.c \
+		     protocols/munin.c \
 		     protocols/mysql.c \
 		     protocols/natpmp.c \
 		     protocols/nats.c \
