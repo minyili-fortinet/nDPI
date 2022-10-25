@@ -5216,8 +5216,11 @@ void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
       if(flow->protos.tls_quic.server_names)
 	ndpi_free(flow->protos.tls_quic.server_names);
 
-      if(flow->protos.tls_quic.alpn)
-	ndpi_free(flow->protos.tls_quic.alpn);
+      if(flow->protos.tls_quic.advertised_alpns)
+	ndpi_free(flow->protos.tls_quic.advertised_alpns);
+
+      if(flow->protos.tls_quic.negotiated_alpn)
+	ndpi_free(flow->protos.tls_quic.negotiated_alpn);
 
       if(flow->protos.tls_quic.tls_supported_versions)
 	ndpi_free(flow->protos.tls_quic.tls_supported_versions);
@@ -5567,7 +5570,8 @@ void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_str,
 
       flow->init_finished = 1;
 
-      if(ndpi_str->input_info &&
+      if(tcph != NULL &&
+         ndpi_str->input_info &&
          ndpi_str->input_info->seen_flow_beginning == NDPI_FLOW_BEGINNING_SEEN) {
         flow->l4.tcp.seen_syn = 1;
         flow->l4.tcp.seen_syn_ack = 1;
