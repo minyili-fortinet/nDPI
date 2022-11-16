@@ -1129,6 +1129,8 @@ extern "C" {
 		     ndpi_serializer *serializer);
 #endif
 
+  char *ndpi_get_ip_proto_name(u_int16_t ip_proto, char *name, unsigned int name_len);
+
   void ndpi_md5(const u_char *data, size_t data_len, u_char hash[16]);
   u_int32_t ndpi_quick_hash(unsigned char *str, u_int str_len);
 
