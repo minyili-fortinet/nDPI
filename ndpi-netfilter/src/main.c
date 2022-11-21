@@ -1674,6 +1674,13 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		    if( flow->packet_counter > max_packet_unk && !flow->extra_packets_func) {
 			COUNTER(ndpi_p_c_end_max);
 		    	detect_complete = 1;
+			if(proto.app_protocol == NDPI_PROTOCOL_UNKNOWN) {
+			    u_int8_t proto_guessed;
+			    proto = ndpi_detection_giveup(n->ndpi_struct, flow, 1, &proto_guessed);
+			    ct_ndpi->proto.app_protocol = proto.app_protocol;
+			    ct_ndpi->proto.master_protocol = proto.master_protocol;
+			    c_proto->proto = pack_proto(proto);
+			}
 		    	if(_DBG_TRACE_DDONE)
 		    	    packet_trace(skb,ct,ct_ndpi," Stop: max packet"," %d, free flow",max_packet_unk);
 		    	set_detect_done(ct_ndpi);
