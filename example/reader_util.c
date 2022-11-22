@@ -1653,7 +1653,7 @@ static struct ndpi_proto packet_processing(struct ndpi_workflow * workflow,
 	inet_ntop(AF_INET, &flow->dst_ip, ip2, sizeof(ip2));
 	LOG(NDPI_LOG_DEBUG,"DPI Packets %s %s:%u => %s:%u len %u\n",
 		proto == IPPROTO_TCP ? "TCP":(proto == IPPROTO_UDP ? "UDP":"OTH"),
-		ip1,sport,ip2,dport,ipsize);
+		ip1,ntohs(flow->src_port),ip2,ntohs(flow->dst_port),ipsize);
     }
 #endif
     malloc_size_stats = 1;
