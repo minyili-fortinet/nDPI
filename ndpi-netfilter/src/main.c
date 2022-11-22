@@ -1676,9 +1676,20 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		    	detect_complete = 1;
 			if(proto.app_protocol == NDPI_PROTOCOL_UNKNOWN) {
 			    u_int8_t proto_guessed;
+			    ndpi_protocol p_old = proto;
 			    proto = ndpi_detection_giveup(n->ndpi_struct, flow, 1, &proto_guessed);
+			    if(_DBG_TRACE_DPI)
+			        if( p_old.app_protocol != proto.app_protocol ||
+				    p_old.master_protocol != proto.master_protocol ||
+				    confidence != flow->confidence)
+				    pr_info(" ndpi_process_packet ndpi_detection_giveup app,master [%u,%u]->[%u,%u] c %u->%u\n",
+						p_old.app_protocol,p_old.master_protocol,
+						proto.app_protocol,proto.master_protocol,
+						confidence,flow->confidence);
+			    }
 			    ct_ndpi->proto.app_protocol = proto.app_protocol;
 			    ct_ndpi->proto.master_protocol = proto.master_protocol;
+			    ct_ndpi->confidence = confidence = flow->confidence;
 			    c_proto->proto = pack_proto(proto);
 			}
 		    	if(_DBG_TRACE_DDONE)
