@@ -2292,8 +2292,8 @@ static void bt_port_gc(unsigned long data) {
 			if( atomic_read(&n->acc_work) > 0 ||
 			    atomic_read(&n->acc_rem)  > 0 )
 				ndpi_delete_acct(n,1);
+			n->acc_gc = jiffies + 5*HZ;
 		    }
-		    n->acc_gc = jiffies + 5*HZ;
 		}
 	    }
 	}
