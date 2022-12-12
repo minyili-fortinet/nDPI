@@ -276,7 +276,7 @@ typedef struct ndpi_flow_info {
   } ssh_tls;
 
   struct {
-    char url[256], request_content_type[64], content_type[64], user_agent[256];
+    char url[256], request_content_type[64], content_type[64], user_agent[256], server[128];
     u_int response_status_code;
   } http;
 
@@ -423,6 +423,10 @@ extern int nDPI_LogLevel;
   }
 #else
 #define LOG(...) {}
+#endif
+
+#ifndef LINKTYPE_LINUX_SLL2
+#define LINKTYPE_LINUX_SLL2 276
 #endif
 
 #endif

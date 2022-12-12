@@ -864,7 +864,10 @@ static struct ndpi_flow_info *get_ndpi_flow_info(struct ndpi_workflow * workflow
       struct ndpi_flow_info *newflow = (struct ndpi_flow_info*)ndpi_malloc(sizeof(struct ndpi_flow_info));
 
       if(newflow == NULL) {
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+	/* Avoid too much logging while fuzzing */
 	LOG(NDPI_LOG_ERROR, "[NDPI] %s(1): not enough memory\n", __FUNCTION__);
+#endif
 	return(NULL);
       } else
         workflow->num_allocated_flows++;
@@ -905,12 +908,11 @@ static struct ndpi_flow_info *get_ndpi_flow_info(struct ndpi_workflow * workflow
       }
 
       if((newflow->ndpi_flow = ndpi_flow_malloc(SIZEOF_FLOW_STRUCT)) == NULL) {
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+	/* Avoid too much logging while fuzzing */
 	LOG(NDPI_LOG_ERROR, "[NDPI] %s(2): not enough memory\n", __FUNCTION__);
-#ifdef DIRECTION_BINS
-	ndpi_free_bin(&newflow->payload_len_bin_src2dst), ndpi_free_bin(&newflow->payload_len_bin_dst2src);
-#else
-	ndpi_free_bin(&newflow->payload_len_bin);
 #endif
+	ndpi_flow_info_free_data(newflow);
 	ndpi_free(newflow);
 	return(NULL);
       } else
@@ -922,11 +924,17 @@ static struct ndpi_flow_info *get_ndpi_flow_info(struct ndpi_workflow * workflow
                                workflow->ndpi_serialization_format) != 0)
       {
         LOG(NDPI_LOG_ERROR, "ndpi serializer init failed\n");
-        exit(-1);
+        ndpi_flow_info_free_data(newflow);
+        ndpi_free(newflow);
+        return(NULL);
       }
     }
 
-      ndpi_tsearch(newflow, &workflow->ndpi_flows_root[idx], ndpi_workflow_node_cmp); /* Add */
+      if(ndpi_tsearch(newflow, &workflow->ndpi_flows_root[idx], ndpi_workflow_node_cmp) == NULL) { /* Add */
+        ndpi_flow_info_free_data(newflow);
+        ndpi_free(newflow);
+        return(NULL);
+      }
       workflow->stats.ndpi_flow_count++;
       if(*proto == IPPROTO_TCP)
         workflow->stats.flow_count[0]++;
@@ -1105,13 +1113,15 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
 
     if(flow->ndpi_flow->protos.bittorrent.hash[0] != '\0') {
       flow->bittorent_hash = ndpi_malloc(sizeof(flow->ndpi_flow->protos.bittorrent.hash) * 2 + 1);
-      for(i=0, j = 0; i < sizeof(flow->ndpi_flow->protos.bittorrent.hash); i++) {
-        sprintf(&flow->bittorent_hash[j], "%02x",
-	        flow->ndpi_flow->protos.bittorrent.hash[i]);
+      if(flow->bittorent_hash) {
+        for(i=0, j = 0; i < sizeof(flow->ndpi_flow->protos.bittorrent.hash); i++) {
+          sprintf(&flow->bittorent_hash[j], "%02x",
+	          flow->ndpi_flow->protos.bittorrent.hash[i]);
 
-        j += 2;
+          j += 2;
+        }
+        flow->bittorent_hash[j] = '\0';
       }
-      flow->bittorent_hash[j] = '\0';
     }
   }
   /* TIVOCONNECT */
@@ -1220,6 +1230,7 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
       ndpi_snprintf(flow->http.url, sizeof(flow->http.url), "%s", flow->ndpi_flow->http.url);
       flow->http.response_status_code = flow->ndpi_flow->http.response_status_code;
       ndpi_snprintf(flow->http.content_type, sizeof(flow->http.content_type), "%s", flow->ndpi_flow->http.content_type ? flow->ndpi_flow->http.content_type : "");
+      ndpi_snprintf(flow->http.server, sizeof(flow->http.server), "%s", flow->ndpi_flow->http.server ? flow->ndpi_flow->http.server : "");
       ndpi_snprintf(flow->http.request_content_type, sizeof(flow->http.request_content_type), "%s", flow->ndpi_flow->http.request_content_type ? flow->ndpi_flow->http.request_content_type : "");
     }
   }
@@ -1836,6 +1847,7 @@ int ndpi_is_datalink_supported(int datalink_type) {
   case DLT_RAW:
   case DLT_NFLOG:
   case DLT_PPI:
+  case LINKTYPE_LINUX_SLL2:
     return 1;
   default:
     return 0;
@@ -2007,6 +2019,12 @@ struct ndpi_proto ndpi_workflow_process_packet(struct ndpi_workflow * workflow,
   case DLT_LINUX_SLL:
     type = (packet[eth_offset+14] << 8) + packet[eth_offset+15];
     ip_offset = 16 + eth_offset;
+    break;
+
+    /* Linux Cooked Capture v2 - 276 */
+  case LINKTYPE_LINUX_SLL2:
+    type = (packet[eth_offset+10] << 8) + packet[eth_offset+11];
+    ip_offset = 20 + eth_offset;
     break;
 
     /* Radiotap link-layer - 127 */

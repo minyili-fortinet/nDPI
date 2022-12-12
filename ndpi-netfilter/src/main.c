@@ -58,6 +58,10 @@
 #include <net/netfilter/nf_nat.h>
 #include <linux/ktime.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
+#define IP_CT_UNTRACKED IP_CT_NUMBER
+#endif
+
 #define BT_ANNOUNCE
 
 #include "ndpi_config.h"
