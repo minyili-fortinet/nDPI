@@ -1627,17 +1627,6 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 				atomic64_inc(&n->protocols_cnt[proto.master_protocol]);
 		}
 
-		if(flow->fail_with_unknown) {
-		    if(_DBG_TRACE_DDONE)
-			packet_trace(skb,ct,ct_ndpi,"fail_with_unknown","%s",
-					flow->extra_packets_func ?
-					  " extra_packets":" free_ct_flow");
-		    COUNTER(ndpi_p_c_end_fail);
-		    detect_complete = 1;
-		    set_detect_done(ct_ndpi);
-		    __ndpi_free_ct_flow(ct_ndpi);
-		    break;
-		}
 		if(ct_ndpi->confidence == NDPI_CONFIDENCE_DPI) {
 		    if(tls) {
 			    detect_complete = tls == 2;
@@ -1645,7 +1634,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		    }
 		    detect_complete  = 1;
 		    if(_DBG_TRACE_DDONE)
-			packet_trace(skb,ct,ct_ndpi,"dpi_completed","tls %d %s",
+			packet_trace(skb,ct,ct_ndpi,"dpi_done completed","tls %d %s",
 		    			tls, flow->extra_packets_func ?
 					  " extra_packets":" free_ct_flow");
 		    if(!flow->extra_packets_func) {
@@ -1655,12 +1644,15 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		    break;
 		}
 
-		if(ct_ndpi->confidence < NDPI_CONFIDENCE_DPI_CACHE) {
+		if(ct_ndpi->confidence < NDPI_CONFIDENCE_DPI_CACHE || flow->fail_with_unknown) {
 		    int max_packet_unk =
 		         (ct_ndpi->l4_proto == IPPROTO_TCP) ? max_packet_unk_tcp:
 		         (ct_ndpi->l4_proto == IPPROTO_UDP) ? max_packet_unk_udp : max_packet_unk_other;
-		    if( flow->packet_counter > max_packet_unk && !flow->extra_packets_func) {
-			COUNTER(ndpi_p_c_end_max);
+		    if( flow->fail_with_unknown || (flow->packet_counter > max_packet_unk && !flow->extra_packets_func)) {
+			if(flow->fail_with_unknown)
+				COUNTER(ndpi_p_c_end_fail);
+			    else
+				COUNTER(ndpi_p_c_end_max);
 		    	detect_complete = 1;
 			if(proto.app_protocol == NDPI_PROTOCOL_UNKNOWN) {
 			    u_int8_t proto_guessed;
@@ -1680,7 +1672,8 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 			    c_proto->proto = pack_proto(proto);
 			}
 		    	if(_DBG_TRACE_DDONE)
-		    	    packet_trace(skb,ct,ct_ndpi," Stop: max packet"," %d, free flow",max_packet_unk);
+		    	    packet_trace(skb,ct,ct_ndpi,"dpi_done ","%s %d, free flow",
+					    flow->fail_with_unknown ? "fail_with_unknown":"max_packet",max_packet_unk);
 		    	set_detect_done(ct_ndpi);
 		    	__ndpi_free_ct_flow(ct_ndpi);
 		    }
