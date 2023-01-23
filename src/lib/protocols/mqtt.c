@@ -90,9 +90,6 @@ void ndpi_search_mqtt (struct ndpi_detection_module_struct *ndpi_struct,
 	int64_t rl;
 
 	NDPI_LOG_DBG(ndpi_struct, "search Mqtt\n");
-	if (flow->detected_protocol_stack[0] != NDPI_PROTOCOL_UNKNOWN) {
-		return;
-	}
 	if (flow->packet_counter > 10) {
 		NDPI_LOG_DBG(ndpi_struct, "Excluding Mqtt .. mandatory header not found!\n");
 		NDPI_ADD_PROTOCOL_TO_BITMASK(flow->excluded_protocol_bitmask, NDPI_PROTOCOL_MQTT);

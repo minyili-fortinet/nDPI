@@ -58,10 +58,7 @@ int  ndpi_bittorrent_gc(struct hash_ip4p_table *ht,int key,time_t now);
 
 void init_diameter_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_afp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_aimini_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_applejuice_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_armagetron_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_ayiya_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_amqp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_bgp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_bittorrent_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -76,16 +73,11 @@ void init_crossfire_dissector(struct ndpi_detection_module_struct *ndpi_struct, 
 void init_dcerpc_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_dhcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_dhcpv6_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_directconnect_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_dns_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_dofus_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_directdownloadlink_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_dropbox_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_eaq_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_edonkey_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_fasttrack_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_fiesta_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_florensia_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ftp_control_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ftp_data_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_gnutella_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -123,7 +115,6 @@ void init_nfs_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int3
 void init_noe_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_non_tcp_udp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ntp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_openft_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_openvpn_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_oracle_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_postgres_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -149,13 +140,11 @@ void init_skype_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_in
 void init_smb_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_snmp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_socrates_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_sopcast_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_socks_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_spotify_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ssh_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_tls_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_starcraft_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_stealthnet_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_steam_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_stun_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_syslog_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -165,7 +154,6 @@ void init_teamviewer_dissector(struct ndpi_detection_module_struct *ndpi_struct,
 void init_telegram_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_telnet_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_tftp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_thunder_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_tvuplayer_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_usenet_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_wsd_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -251,6 +239,8 @@ void init_crynet_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_i
 void init_line_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_munin_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_elasticsearch_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_tuya_lp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_tplink_shp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 /* ndpi_main.c */
 extern u_int32_t ndpi_ip_port_hash_funct(u_int32_t ip, u_int16_t port);

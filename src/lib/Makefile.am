@@ -34,15 +34,12 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/afp.c \
 		     protocols/alicloud.c \
 		     protocols/ajp.c \
-		     protocols/aimini.c \
 		     protocols/among_us.c \
 		     protocols/amazon_video.c \
-		     protocols/applejuice.c \
 		     protocols/apple_push.c \
 		     protocols/armagetron.c \
 		     protocols/avast.c \
 		     protocols/avast_securedns.c \
-		     protocols/ayiya.c \
 		     protocols/amqp.c \
 		     protocols/bgp.c \
 		     protocols/bittorrent.c \
@@ -63,8 +60,6 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/dhcp.c \
 		     protocols/dhcpv6.c \
 		     protocols/diameter.c \
-		     protocols/directconnect.c \
-		     protocols/directdownloadlink.c \
 		     protocols/discord.c \
 		     protocols/dns.c \
 		     protocols/dnscrypt.c \
@@ -77,10 +72,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/elasticsearch.c \
 		     protocols/ethernet_ip.c \
 		     protocols/fastcgi.c \
-		     protocols/fasttrack.c \
-		     protocols/fiesta.c \
 		     protocols/fix.c \
-		     protocols/florensia.c \
 		     protocols/ftp_control.c \
 		     protocols/ftp_data.c \
 		     protocols/genshin_impact.c \
@@ -137,7 +129,6 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/noe.c \
 		     protocols/non_tcp_udp.c \
 		     protocols/ntp.c \
-		     protocols/openft.c \
 		     protocols/openvpn.c \
 		     protocols/ookla.c \
 		     protocols/oracle.c \
@@ -160,7 +151,6 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/s7comm.c \
 		     protocols/sd_rtn.c \
 		     protocols/sflow.c \
-		     protocols/shoutcast.c \
 		     protocols/sip.c \
 		     protocols/skinny.c \
 		     protocols/skype.c \
@@ -169,12 +159,10 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/soap.c \
 		     protocols/socks45.c \
 		     protocols/softether.c \
-		     protocols/sopcast.c \
 		     protocols/spotify.c \
 		     protocols/ssdp.c \
 		     protocols/ssh.c \
 		     protocols/starcraft.c \
-		     protocols/stealthnet.c \
 		     protocols/steam.c \
 		     protocols/stun.c \
 		     protocols/syncthing.c \
@@ -185,9 +173,10 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/telegram.c \
 		     protocols/telnet.c \
 		     protocols/tftp.c \
-		     protocols/thunder.c \
 		     protocols/tls.c \
 		     protocols/threema.c \
+		     protocols/tplink_shp.c \
+		     protocols/tuya_lp.c \
 		     protocols/teredo.c \
 		     protocols/riotgames.c \
 		     protocols/tivoconnect.c \
