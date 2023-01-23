@@ -2213,7 +2213,7 @@ int ac_domain_match_handler(AC_MATCH_t *m, AC_TEXT_t *txt, AC_REP_t *match) {
      * the length of the pattern is longer than that of the previous one.
      * Skip shorter (less precise) templates.
      */
-    if(!(m->match_map & (1 << i)))
+    if(!(m->match_map & (1u << i)))
       continue;
     start = end - pattern->length;
 
@@ -2901,10 +2901,26 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
 
   spin_lock_init(&ndpi_str->host_automa_lock);
   ndpi_str->host_automa.ac_automa = ac_automata_init(ac_domain_match_handler);
+  if(!ndpi_str->host_automa.ac_automa) {
+    ndpi_exit_detection_module(ndpi_str);
+    return(NULL);
+  }
   ndpi_str->host_risk_mask_automa.ac_automa = ac_automata_init(ac_domain_match_handler);
+  if(!ndpi_str->host_risk_mask_automa.ac_automa) {
+    ndpi_exit_detection_module(ndpi_str);
+    return(NULL);
+  }
   ndpi_str->common_alpns_automa.ac_automa = ac_automata_init(ac_domain_match_handler);
+  if(!ndpi_str->common_alpns_automa.ac_automa) {
+    ndpi_exit_detection_module(ndpi_str);
+    return(NULL);
+  }
   load_common_alpns(ndpi_str);
   ndpi_str->tls_cert_subject_automa.ac_automa = ac_automata_init(NULL);
+  if(!ndpi_str->tls_cert_subject_automa.ac_automa) {
+    ndpi_exit_detection_module(ndpi_str);
+    return(NULL);
+  }
   ndpi_str->malicious_ja3_hashmap = NULL; /* Initialized on demand */
   ndpi_str->malicious_sha1_hashmap = NULL; /* Initialized on demand */
   ndpi_str->risky_domain_automa.ac_automa = NULL; /* Initialized on demand */
@@ -2918,7 +2934,15 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
   }
 
   ndpi_str->custom_categories.hostnames.ac_automa = ac_automata_init(ac_domain_match_handler);
+  if(!ndpi_str->custom_categories.hostnames.ac_automa) {
+    ndpi_exit_detection_module(ndpi_str);
+    return(NULL);
+  }
   ndpi_str->custom_categories.hostnames_shadow.ac_automa = ac_automata_init(ac_domain_match_handler);
+  if(!ndpi_str->custom_categories.hostnames_shadow.ac_automa) {
+    ndpi_exit_detection_module(ndpi_str);
+    return(NULL);
+  }
 
   ndpi_str->custom_categories.ipAddresses = ndpi_patricia_new(32 /* IPv4 */);
   ndpi_str->custom_categories.ipAddresses_shadow = ndpi_patricia_new(32 /* IPv4 */);
@@ -4006,6 +4030,9 @@ int ndpi_load_categories_file(struct ndpi_detection_module_struct *ndpi_str,
   FILE *fd;
   int len, num = 0;
 
+  if(!ndpi_str || !path)
+    return(-1);
+
   fd = fopen(path, "r");
 
   if(fd == NULL) {
@@ -4080,6 +4107,9 @@ int ndpi_load_risk_domain_file(struct ndpi_detection_module_struct *ndpi_str, co
   FILE *fd;
   int len, num = 0;
 
+  if(!ndpi_str || !path)
+    return(-1);
+
   fd = fopen(path, "r");
 
   if(fd == NULL) {
@@ -4121,7 +4151,7 @@ int ndpi_load_malicious_ja3_file(struct ndpi_detection_module_struct *ndpi_str, 
   FILE *fd;
   int len, num = 0;
 
-  if(!ndpi_str)
+  if(!ndpi_str || !path)
     return(-1);
   if(ndpi_str->malicious_ja3_hashmap == NULL && ndpi_hash_init(&ndpi_str->malicious_ja3_hashmap) != 0)
     return(-1);
@@ -4184,7 +4214,7 @@ int ndpi_load_malicious_sha1_file(struct ndpi_detection_module_struct *ndpi_str,
   size_t i, len;
   int num = 0;
 
-  if(!ndpi_str)
+  if(!ndpi_str || !path)
     return(-1);
   if(ndpi_str->malicious_sha1_hashmap == NULL && ndpi_hash_init(&ndpi_str->malicious_sha1_hashmap) != 0)
     return(-1);
@@ -4259,6 +4289,9 @@ int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_str, cons
   char *buffer, *old_buffer;
   int chunk_len = 1024, buffer_len = chunk_len, old_buffer_len;
   int i, rc = -1;
+
+  if(!ndpi_str || !path)
+    return(-1);
 
   fd = fopen(path, "r");
 
@@ -6163,6 +6196,7 @@ static void ndpi_add_connection_as_zoom(struct ndpi_detection_module_struct *ndp
 ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_str, struct ndpi_flow_struct *flow,
 				    u_int8_t enable_guess, u_int8_t *protocol_was_guessed) {
   ndpi_protocol ret = NDPI_PROTOCOL_NULL;
+  u_int16_t cached_proto;
 
   /* *** We can't access ndpi_str->packet from this function!! *** */
 
@@ -6172,7 +6206,8 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
     return(ret);
 
   /* Init defaults */
-  ret.master_protocol = flow->detected_protocol_stack[1], ret.app_protocol = flow->detected_protocol_stack[0];
+  ret.master_protocol = flow->detected_protocol_stack[1];
+  ret.app_protocol = flow->detected_protocol_stack[0];
   ret.protocol_by_ip = flow->guessed_protocol_id_by_ip;
 #ifndef __KERNEL__
   ret.category = flow->category;
@@ -6182,60 +6217,46 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
   if(ret.app_protocol != NDPI_PROTOCOL_UNKNOWN)
     return(ret);
 
-  /* TODO: this lookup seems in the wrong place here...
-     Move it somewhere else (?) or setting flow->guessed_protocol_id directly in the mining dissector? */
-  if(ndpi_str->mining_cache) {
-    u_int16_t cached_proto;
-
-    if(ndpi_lru_find_cache(ndpi_str->mining_cache, make_mining_key(flow),
-			   &cached_proto, 0 /* Don't remove it as it can be used for other connections */,
-			   ndpi_get_current_time(flow))) {
-      ndpi_set_detected_protocol(ndpi_str, flow, cached_proto, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
-      ret.master_protocol = flow->detected_protocol_stack[1], ret.app_protocol = flow->detected_protocol_stack[0];
-      ndpi_fill_protocol_category(ndpi_str, flow, &ret);
-      return(ret);
-    }
-  }
-
-  if(flow->guessed_protocol_id == NDPI_PROTOCOL_STUN)
-    goto check_stun_export;
-  else if(enable_guess) {
-    if(flow->stun.num_binding_requests > 0 &&
-       flow->stun.num_processed_pkts > 0) {
-      *protocol_was_guessed = 1;
-      ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_STUN, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL);
-    }
-  }
-
-  if((flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN) &&
-     (flow->guessed_protocol_id == NDPI_PROTOCOL_STUN)) {
-  check_stun_export:
-    *protocol_was_guessed = 1;
+  if((flow->guessed_protocol_id == NDPI_PROTOCOL_STUN) ||
+     (enable_guess &&
+      flow->stun.num_binding_requests > 0 &&
+      flow->stun.num_processed_pkts > 0)) {
     ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_STUN, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL);
+    ret.app_protocol = flow->detected_protocol_stack[0];
   }
 
-  ret.master_protocol = flow->detected_protocol_stack[1], ret.app_protocol = flow->detected_protocol_stack[0];
+  /* Check some caches */
 
-  if((ret.master_protocol == NDPI_PROTOCOL_UNKNOWN)
-     && (ret.app_protocol == NDPI_PROTOCOL_UNKNOWN)) {
-    /* Check some caches */
-    if(ndpi_search_into_bittorrent_cache(ndpi_str, flow,
-					 flow->c_address.v4, flow->c_port,
-					 flow->s_address.v4, flow->s_port)) {
-      /* This looks like BitTorrent */
-      ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_BITTORRENT, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
-      ret.app_protocol = NDPI_PROTOCOL_BITTORRENT;
-    } else if((flow->l4_proto == IPPROTO_UDP) && /* Zoom/UDP used for video */
-	      ((ntohs(flow->s_port) == 8801 && ndpi_search_into_zoom_cache(ndpi_str, flow, 1)) ||
-	       (ntohs(flow->c_port) == 8801 && ndpi_search_into_zoom_cache(ndpi_str, flow, 0)))) {
-      /* This looks like Zoom */
-      ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_ZOOM, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
-      ret.app_protocol = NDPI_PROTOCOL_ZOOM;
-    } else if(stun_search_into_zoom_cache(ndpi_str, flow)) {
-      /* This looks like Zoom */
-      ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_ZOOM, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
-      ret.app_protocol = flow->detected_protocol_stack[0];
-    }
+  /* Does it looks like BitTorrent? */
+  if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
+     ndpi_search_into_bittorrent_cache(ndpi_str, flow,
+                                       flow->c_address.v4, flow->c_port,
+                                       flow->s_address.v4, flow->s_port)) {
+    ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_BITTORRENT, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
+    ret.app_protocol = flow->detected_protocol_stack[0];
+  }
+  /* Does it looks like some Mining protocols? */
+  if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
+     ndpi_str->mining_cache &&
+     ndpi_lru_find_cache(ndpi_str->mining_cache, make_mining_key(flow),
+			 &cached_proto, 0 /* Don't remove it as it can be used for other connections */,
+			 ndpi_get_current_time(flow))) {
+    ndpi_set_detected_protocol(ndpi_str, flow, cached_proto, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
+    ret.app_protocol = flow->detected_protocol_stack[0];
+  }
+  /* Does it looks like Zoom? */
+  if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
+     flow->l4_proto == IPPROTO_UDP && /* Zoom/UDP used for video */
+     ((ntohs(flow->s_port) == 8801 && ndpi_search_into_zoom_cache(ndpi_str, flow, 1)) ||
+      (ntohs(flow->c_port) == 8801 && ndpi_search_into_zoom_cache(ndpi_str, flow, 0)))) {
+    ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_ZOOM, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
+    ret.app_protocol = flow->detected_protocol_stack[0];
+  }
+  /* Does it looks like Zoom (via STUN)? */
+  if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
+     stun_search_into_zoom_cache(ndpi_str, flow)) {
+    ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_ZOOM, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
+    ret.app_protocol = flow->detected_protocol_stack[0];
   }
 
   /* Classification by-port is the last resort */
@@ -8161,7 +8182,8 @@ int ndpi_get_protocol_id(struct ndpi_detection_module_struct *ndpi_str, char *pr
   int i;
 
   for(i = 0; i < (int) ndpi_str->ndpi_num_supported_protocols; i++)
-    if(strcasecmp(proto, ndpi_str->proto_defaults[i].protoName) == 0)
+    if(ndpi_str->proto_defaults[i].protoName &&
+       strcasecmp(proto, ndpi_str->proto_defaults[i].protoName) == 0)
       return(i);
 
   return(-1);
