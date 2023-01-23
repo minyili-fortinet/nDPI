@@ -454,6 +454,7 @@ struct kmem_cache *ct_info_cache = NULL;
 struct kmem_cache *bt_port_cache = NULL;
 
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
+#if 0
 static char *dbl_lvl_txt[5] = {
 	"ERR",
 	"TRACE",
@@ -461,17 +462,19 @@ static char *dbl_lvl_txt[5] = {
 	"DEBUG2",
 	NULL
 };
+#endif
 /* debug functions */
 static void debug_printf(u_int32_t protocol, void *id_struct, ndpi_log_level_t log_level,
 	const char *file_name, const char *func_name, unsigned line_number, const char * format, ...)
 {
 	struct ndpi_net *n = id_struct ? ((struct ndpi_detection_module_struct *)id_struct)->user_data : NULL;
-	if(!n || protocol >= NDPI_NUM_BITS)
-		pr_info("ndpi_debug n=%d, p=%u, l=%s\n",n != NULL,protocol,
-				log_level < 5 ? dbl_lvl_txt[log_level]:"???");
-	if(!n || protocol >= NDPI_NUM_BITS) return;
+//	if(!n || protocol >= NDPI_NUM_BITS)
+//		pr_info("ndpi_debug n=%d, p=%u, l=%s\n",n != NULL,protocol,
+//				log_level < 5 ? dbl_lvl_txt[log_level]:"???");
+//	if(!n || protocol >= NDPI_NUM_BITS) return;
 
-	if(log_level+1 <= ( ndpi_lib_trace < n->debug_level[protocol] ?
+	if( !n || protocol >= NDPI_NUM_BITS || 
+		log_level+1 <= ( ndpi_lib_trace < n->debug_level[protocol] ?
 				ndpi_lib_trace : n->debug_level[protocol]))  {
 		char buf[256];
 		const char *short_fn;
@@ -489,16 +492,16 @@ static void debug_printf(u_int32_t protocol, void *id_struct, ndpi_log_level_t l
 
 		switch(log_level) {
 		case NDPI_LOG_ERROR:
-                	pr_err("E: P=%d %s:%d:%s %s",protocol, short_fn, line_number, func_name, buf);
+                	pr_err("E: P=%d %s:%d %s",protocol, short_fn, line_number, /*func_name,*/ buf);
 			break;
 		case NDPI_LOG_TRACE:
-                	pr_info("T: P=%d %s:%d:%s %s",protocol, short_fn, line_number, func_name, buf);
+                	pr_info("T: P=%d %s:%d %s",protocol, short_fn, line_number, /*func_name,*/ buf);
 			break;
 		case NDPI_LOG_DEBUG:
-                	pr_info("D: P=%d %s:%d:%s %s",protocol, short_fn, line_number, func_name, buf);
+                	pr_info("D: P=%d %s:%d %s",protocol, short_fn, line_number, /*func_name,*/ buf);
 			break;
 		case NDPI_LOG_DEBUG_EXTRA:
-                	pr_info("D2: P=%d %s:%d:%s %s",protocol, short_fn, line_number, func_name, buf);
+                	pr_info("D2: P=%d %s:%d %s",protocol, short_fn, line_number, /*func_name,*/ buf);
 			break;
 		default:
 			;
@@ -2866,7 +2869,8 @@ static int __net_init ndpi_net_init(struct net *net)
                 return -ENOMEM;
 	}
 	ndpi_stun_cache_enable = ndpi_stun_cache_opt;
-
+	ndpi_debug_print_init = debug_printf;
+	ndpi_debug_level_init = ndpi_lib_trace;
 	/* init global detection structure */
 	n->ndpi_struct = ndpi_init_detection_module(ndpi_no_prefs);
 	if (n->ndpi_struct == NULL) {
@@ -2875,10 +2879,9 @@ static int __net_init ndpi_net_init(struct net *net)
 	}
 	n->flow_h = NULL;
 	n->ndpi_struct->direction_detect_disable = 1;
-	/* disable all protocols */
-	NDPI_BITMASK_RESET(n->protocols_bitmask);
+	/* enable all protocols */
+	NDPI_BITMASK_SET_ALL(n->protocols_bitmask);
 	ndpi_set_protocol_detection_bitmask2(n->ndpi_struct, &n->protocols_bitmask);
-
 	n->ndpi_struct->user_data = n;
 	for (i = 0; i < NDPI_NUM_BITS; i++) {
                 atomic64_set (&n->protocols_cnt[i], 0);
@@ -3008,8 +3011,7 @@ static int __net_init ndpi_net_init(struct net *net)
 			i2 = ndpi_match_string_subprotocol(n->ndpi_struct,
 								hm->string_to_match,sml,&s_ret);
 			if(i2 == NDPI_PROTOCOL_UNKNOWN || i != i2) {
-				pr_err("xt_ndpi: Warning! Hostdef '%s' %s! proto_id %u != %u, p:%u. Skipping.\n",
-						i != i2 ? "missmatch":"unknown",
+				pr_err("xt_ndpi: Warning! Hostdef missmatch '%s' proto_id %u, subproto %u, p:%u. Skipping.\n",
 						hm->string_to_match,i,i2,s_ret.protocol_id
 						);
 				continue;

@@ -141,6 +141,9 @@ static void (*_ndpi_flow_free)(void *ptr);
 static void *(*_ndpi_malloc)(size_t size);
 static void (*_ndpi_free)(void *ptr);
 
+ndpi_debug_function_ptr ndpi_debug_print_init = NULL;
+ndpi_log_level_t ndpi_debug_level_init = NDPI_LOG_ERROR;
+
 static u_int32_t _ticks_per_second = 1000;
 struct ndpi_detection_module_struct xxx0;
 /* ****************************************** */
@@ -881,7 +884,7 @@ int ndpi_init_protocol_match(struct ndpi_detection_module_struct *ndpi_str,
   if(ndpi_str->proto_defaults[match->protocol_id].protoName == NULL) {
     ndpi_str->proto_defaults[match->protocol_id].protoName = ndpi_strdup(match->proto_name);
     if(!ndpi_str->proto_defaults[match->protocol_id].protoName)
-      return 0;
+      return 1;
     ndpi_str->proto_defaults[match->protocol_id].isAppProtocol = 1;
     ndpi_str->proto_defaults[match->protocol_id].protoId = match->protocol_id;
     ndpi_str->proto_defaults[match->protocol_id].protoCategory = match->protocol_category;
@@ -899,9 +902,9 @@ int ndpi_init_protocol_match(struct ndpi_detection_module_struct *ndpi_str,
   }
 
   if(!is_proto_enabled(ndpi_str, match->protocol_id)) {
-    NDPI_LOG_DBG(ndpi_str, "[NDPI] Skip protocol match for %s/protoId=%d: disabled\n",
+    NDPI_LOG_ERR(ndpi_str, "[NDPI] Skip protocol match for %s/protoId=%d: disabled\n",
 		 match->string_to_match, match->protocol_id);
-    return 0;
+    return 1;
   }
 
   return ndpi_add_host_url_subprotocol(ndpi_str, match->string_to_match,
@@ -976,7 +979,9 @@ static void init_string_based_protocols(struct ndpi_detection_module_struct *ndp
   int i;
 
   for(i = 0; host_match[i].string_to_match != NULL; i++)
-    ndpi_init_protocol_match(ndpi_str, &host_match[i]);
+	if(ndpi_init_protocol_match(ndpi_str, &host_match[i]))
+	    NDPI_LOG_ERR(ndpi_str, "[NDPI] Skip protocol match for %s/protoId=%d: disabled\n",
+		 host_match[i].string_to_match, host_match[i].protocol_id);
 
   /* ************************ */
 
@@ -2775,12 +2780,15 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
 
   memset(ndpi_str, 0, sizeof(struct ndpi_detection_module_struct));
 
-#ifndef __KERNEL__
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
-  set_ndpi_debug_function(ndpi_str, (ndpi_debug_function_ptr) ndpi_debug_printf);
   NDPI_BITMASK_RESET(ndpi_str->debug_bitmask);
+  #ifndef __KERNEL__
+  set_ndpi_debug_function(ndpi_str, (ndpi_debug_function_ptr) ndpi_debug_printf);
+  #else
+  set_ndpi_debug_function(ndpi_str, ndpi_debug_print_init);
+  #endif
 #endif /* NDPI_ENABLE_DEBUG_MESSAGES */
-#endif
+  ndpi_str->ndpi_log_level =  ndpi_debug_level_init;
 
   if(prefs & ndpi_enable_ja3_plus)
     ndpi_str->enable_ja3_plus = 1;
@@ -4419,7 +4427,7 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   struct ndpi_call_function_struct *all_cb = NULL;
   u_int32_t a = 0;
 
-  if(ndpi_str->callback_buffer) return 0;
+  // if(ndpi_str->callback_buffer) return 0;
 
   ndpi_str->callback_buffer = ndpi_calloc(NDPI_MAX_SUPPORTED_PROTOCOLS+1,sizeof(struct ndpi_call_function_struct));
   if(!ndpi_str->callback_buffer) return 1;

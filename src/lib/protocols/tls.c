@@ -381,11 +381,14 @@ static void checkTLSSubprotocol(struct ndpi_detection_module_struct *ndpi_struct
       if(ndpi_lru_find_cache(ndpi_struct->tls_cert_cache, key,
 			     &cached_proto, 0 /* Don't remove it as it can be used for other connections */,
 			     ndpi_get_current_time(flow))) {
-	ndpi_protocol ret = { __get_master(ndpi_struct, flow), cached_proto, NDPI_PROTOCOL_UNKNOWN /* unused */, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
 
 	ndpi_set_detected_protocol(ndpi_struct, flow, cached_proto, __get_master(ndpi_struct, flow), NDPI_CONFIDENCE_DPI_CACHE);
-#ifndef __KERNEL__
+#ifndef __KERNEL__ 
+	{
+	ndpi_protocol ret = { __get_master(ndpi_struct, flow), cached_proto, NDPI_PROTOCOL_UNKNOWN /* unused */,
+		NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL };
 	flow->category = ndpi_get_proto_category(ndpi_struct, ret);
+	}
 #endif
 	ndpi_check_subprotocol_risk(ndpi_struct, flow, cached_proto);
       }
