@@ -132,8 +132,10 @@ typedef enum {
   NDPI_UNIDIRECTIONAL_TRAFFIC, /* NOTE: as nDPI can detect a protocol with one packet, make sure
 				  your app will clear this risk if future packets (not sent to nDPI)
 				  are received in the opposite direction */
-
   NDPI_HTTP_OBSOLETE_SERVER,
+  NDPI_PERIODIC_FLOW, /* Set in case a flow repeats at a specific pace [used by apps on top of nDPI] */
+  NDPI_MINOR_ISSUES, /* Generic packet issues (e.g. DNS with 0 TTL) */
+  
   /* Leave this as last member */
   NDPI_MAX_RISK /* must be <= 63 due to (**) */
 } ndpi_risk_enum;
@@ -1513,7 +1515,7 @@ struct ndpi_flow_struct {
     /* the only fields useful for nDPI and ntopng */
     struct {
       u_int8_t num_queries, num_answers, reply_code, is_query;
-      u_int16_t query_type, query_class, rsp_type;
+      u_int16_t query_type, query_class, rsp_type, edns0_udp_payload_size;
       ndpi_ip_addr_t rsp_addr; /* The first address in a DNS response packet (A and AAAA) */
       char ptr_domain_name[64 /* large enough but smaller than { } tls */];
     } dns;
