@@ -136,7 +136,7 @@ static u_int8_t isZoom(u_int16_t sport, u_int16_t dport,
 	break;
 	
       case 15: /* Audio */
-	*is_rtp = 0;
+	*is_rtp = 1;
 	*payload_offset = 27;
 	break;
 	
@@ -285,8 +285,8 @@ static void ndpi_search_rtp(struct ndpi_detection_module_struct *ndpi_struct, st
 /* *************************************************************** */
 
 void init_rtp_dissector(struct ndpi_detection_module_struct *ndpi_struct,
-			u_int32_t *id, NDPI_PROTOCOL_BITMASK *detection_bitmask) {
-  ndpi_set_bitmask_protocol_detection("RTP", ndpi_struct, detection_bitmask, *id,
+			u_int32_t *id) {
+  ndpi_set_bitmask_protocol_detection("RTP", ndpi_struct, *id,
 				      NDPI_PROTOCOL_RTP,
 				      ndpi_search_rtp,
 				      NDPI_SELECTION_BITMASK_PROTOCOL_V4_V6_UDP_WITH_PAYLOAD,

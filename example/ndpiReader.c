@@ -96,6 +96,7 @@ u_int8_t enable_protocol_guess = 1, enable_payload_analyzer = 0, num_bin_cluster
 u_int8_t verbose = 0, enable_flow_stats = 0;
 int nDPI_LogLevel = 0;
 char *_debug_protocols = NULL;
+char *_disabled_protocols = NULL;
 static u_int8_t stats_flag = 0;
 ndpi_init_prefs init_prefs = ndpi_no_prefs;
 u_int8_t human_readeable_string_len = 5;
@@ -253,6 +254,7 @@ static int dpdk_port_id = 0, dpdk_run_capture = 1;
 void test_lib(); /* Forward */
 
 extern void ndpi_report_payload_stats();
+extern int parse_proto_name_list(char *str, NDPI_PROTOCOL_BITMASK *bitmask, int inverted_logic);
 
 /* ********************************** */
 
@@ -450,7 +452,7 @@ static void help(u_int long_help) {
          "          [-p <protos>][-l <loops> [-q][-d][-h][-H][-D][-e <len>][-E][-t][-v <level>]\n"
          "          [-n <threads>][-w <file>][-c <file>][-C <file>][-j <file>][-x <file>]\n"
          "          [-r <file>][-j <file>][-S <file>][-T <num>][-U <num>] [-x <domain>][-z]\n"
-         "          [-a <mode>]\n\n"
+         "          [-a <mode>][-B proto_list]\n\n"
          "Usage:\n"
          "  -i <file.pcap|device>     | Specify a pcap file/playlist to read packets from or a\n"
          "                            | device for live capture (comma-separated list)\n"
@@ -505,6 +507,7 @@ static void help(u_int long_help) {
          "  -u all|proto|num[,...]    | Enable logging only for such protocol(s)\n"
          "                            | If this flag is present multiple times (directly, or via '-V'),\n"
          "                            | only the last instance will be considered\n"
+         "  -B all|proto|num[,...]    | Disable such protocol(s). By defaul all protocols are enabled\n"
          "  -T <num>                  | Max number of TCP processed packets before giving up [default: %u]\n"
          "  -U <num>                  | Max number of UDP processed packets before giving up [default: %u]\n"
          "  -D                        | Enable DoH traffic analysis based on content (no DPI)\n"
@@ -815,7 +818,7 @@ static void parseOptions(int argc, char **argv) {
   }
 #endif
 
-  while((opt = getopt_long(argc, argv, "a:Ab:e:Ec:C:dDf:g:i:Ij:k:K:S:hHp:pP:l:r:s:tu:v:V:n:rp:x:w:zq0123:456:7:89:m:MT:U:",
+  while((opt = getopt_long(argc, argv, "a:Ab:B:e:Ec:C:dDf:g:i:Ij:k:K:S:hHp:pP:l:r:s:tu:v:V:n:rp:x:w:zq0123:456:7:89:m:MT:U:",
                            longopts, &option_idx)) != EOF) {
 #ifdef DEBUG_TRACE
     if(trace) fprintf(trace, " #### Handling option -%c [%s] #### \n", opt, optarg ? optarg : "");
@@ -940,6 +943,11 @@ static void parseOptions(int argc, char **argv) {
     case 'u':
       ndpi_free(_debug_protocols);
       _debug_protocols = ndpi_strdup(optarg);
+      break;
+
+    case 'B':
+      ndpi_free(_disabled_protocols);
+      _disabled_protocols = ndpi_strdup(optarg);
       break;
 
     case 'h':
@@ -2410,7 +2418,7 @@ static void debug_printf(u_int32_t protocol, void *id_struct,
  * @brief Setup for detection begin
  */
 static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
-  NDPI_PROTOCOL_BITMASK all;
+  NDPI_PROTOCOL_BITMASK enabled_bitmask;
   struct ndpi_workflow_prefs prefs;
 
   memset(&prefs, 0, sizeof(prefs));
@@ -2429,11 +2437,16 @@ static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
                                            on_protocol_discovered,
                                            (void *)(uintptr_t)thread_id);
 
-  // enable all protocols
-  NDPI_BITMASK_SET_ALL(all);
-  ndpi_set_protocol_detection_bitmask2(ndpi_thread_info[thread_id].workflow->ndpi_struct, &all);
+  /* Protocols to enable/disable. Default: everything is enabled */
+  NDPI_BITMASK_SET_ALL(enabled_bitmask);
+  if(_disabled_protocols != NULL) {
+    if(parse_proto_name_list(_disabled_protocols, &enabled_bitmask, 1))
+      exit(-1);
+  }
+
+  ndpi_set_protocol_detection_bitmask2(ndpi_thread_info[thread_id].workflow->ndpi_struct, &enabled_bitmask);
 #ifdef NDPI_PROTOCOL_BITTORRENT
-     ndpi_bittorrent_init(ndpi_thread_info[thread_id].workflow->ndpi_struct,9*1024,2100,0);
+  ndpi_bittorrent_init(ndpi_thread_info[thread_id].workflow->ndpi_struct,9*1024,2100,0);
 #endif
 
   // clear memory for results
@@ -3589,6 +3602,10 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 	       (long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_MSTEAMS].n_insert,
 	       (long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_MSTEAMS].n_search,
 	       (long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_MSTEAMS].n_found);
+	printf("\tLRU cache stun_zoom:  %llu/%llu/%llu (insert/search/found)\n",
+	       (long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_STUN_ZOOM].n_insert,
+	       (long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_STUN_ZOOM].n_search,
+	       (long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_STUN_ZOOM].n_found);
 
 	printf("\tAutoma host:          %llu/%llu (search/found)\n",
 	       (long long unsigned int)cumulative_stats.automa_stats[NDPI_AUTOMA_HOST].n_search,
@@ -3681,6 +3698,10 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 		(long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_MSTEAMS].n_insert,
 		(long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_MSTEAMS].n_search,
 		(long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_MSTEAMS].n_found);
+	fprintf(results_file, "LRU cache stun_zoom:  %llu/%llu/%llu (insert/search/found)\n",
+		(long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_STUN_ZOOM].n_insert,
+		(long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_STUN_ZOOM].n_search,
+		(long long unsigned int)cumulative_stats.lru_stats[NDPI_LRUCACHE_STUN_ZOOM].n_found);
 
 	fprintf(results_file, "Automa host:          %llu/%llu (search/found)\n",
 		(long long unsigned int)cumulative_stats.automa_stats[NDPI_AUTOMA_HOST].n_search,
@@ -5189,6 +5210,7 @@ void zscoreUnitTest() {
       ndpi_free_bin(&malloc_bins);
     if(csv_fp)        fclose(csv_fp);
     ndpi_free(_debug_protocols);
+    ndpi_free(_disabled_protocols);
 
 #ifdef DEBUG_TRACE
     if(trace) fclose(trace);

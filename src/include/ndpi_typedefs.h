@@ -703,6 +703,7 @@ typedef enum {
   NDPI_LRUCACHE_TLS_CERT,
   NDPI_LRUCACHE_MINING,
   NDPI_LRUCACHE_MSTEAMS,
+  NDPI_LRUCACHE_STUN_ZOOM,
 
   NDPI_LRUCACHE_MAX	/* Last one! */
 } lru_cache_type;
@@ -1330,6 +1331,8 @@ struct ndpi_detection_module_struct {
   /* NDPI_PROTOCOL_STUN and subprotocols */
   struct ndpi_lru_cache *stun_cache;
   u_int32_t stun_cache_num_entries;
+  struct ndpi_lru_cache *stun_zoom_cache;
+  u_int32_t stun_zoom_cache_num_entries;
 
   /* NDPI_PROTOCOL_TLS and subprotocols */
   struct ndpi_lru_cache *tls_cert_cache;
@@ -1523,7 +1526,8 @@ struct ndpi_flow_struct {
     struct {
       u_int8_t num_queries, num_answers, reply_code, is_query;
       u_int16_t query_type, query_class, rsp_type;
-      ndpi_ip_addr_t rsp_addr; /* The first address in a DNS response packet */
+      ndpi_ip_addr_t rsp_addr; /* The first address in a DNS response packet (A and AAAA) */
+      char ptr_domain_name[64 /* large enough but smaller than { } tls */];
     } dns;
 
     struct {
