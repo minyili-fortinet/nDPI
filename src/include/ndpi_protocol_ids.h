@@ -52,7 +52,7 @@ typedef enum {
   NDPI_PROTOCOL_MS_OUTLOOK            = 21, /* Hotmail / Microsoft Outlook / Exchange */
   NDPI_PROTOCOL_FREE_22               = 22, /* FREE */
   NDPI_PROTOCOL_MAIL_POPS             = 23,
-  NDPI_PROTOCOL_FREE_24               = 24, /* FREE */
+  NDPI_PROTOCOL_TAILSCALE             = 24,
   NDPI_PROTOCOL_FREE_25               = 25, /* FREE */
   NDPI_PROTOCOL_NTOP                  = 26,
   NDPI_PROTOCOL_COAP                  = 27,
@@ -94,7 +94,7 @@ typedef enum {
   NDPI_PROTOCOL_OCSP                  = 63,
   NDPI_PROTOCOL_VXLAN                 = 64,
   NDPI_PROTOCOL_IRC                   = 65,
-  NDPI_PROTOCOL_FREE_66               = 66, /* FREE */
+  NDPI_PROTOCOL_MERAKI_CLOUD          = 66,
   NDPI_PROTOCOL_JABBER                = 67,
   NDPI_PROTOCOL_NATS                  = 68,
   NDPI_PROTOCOL_AMONG_US              = 69,

@@ -1405,7 +1405,8 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
   char *detect_type = NULL;
   char *bt_proto = NULL;
 
-  NDPI_LOG_DBG(ndpi_struct, "search Bittorrent\n");
+  NDPI_LOG_DBG(ndpi_struct, "Search bittorrent\n");
+
   /* This is broadcast */
 
   if(packet->iph) {

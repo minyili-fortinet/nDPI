@@ -109,6 +109,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/maplestory.c \
 		     protocols/megaco.c \
 		     protocols/memcached.c \
+		     protocols/merakicloud.c \
 		     protocols/mining.c \
 		     protocols/mgcp.c \
 		     protocols/modbus.c \
@@ -167,6 +168,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/stun.c \
 		     protocols/syncthing.c \
 		     protocols/syslog.c \
+		     protocols/tailscale.c \
 		     protocols/tcp_udp.c \
 		     protocols/teamspeak.c \
 		     protocols/teamviewer.c \

@@ -1237,10 +1237,6 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Free22", NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
-  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_POTENTIALLY_DANGEROUS, NDPI_PROTOCOL_FREE_24,
-			  "Free24", NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT,
-			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
-			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_POTENTIALLY_DANGEROUS, NDPI_PROTOCOL_FREE_25,
 			  "Free25", NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
@@ -1421,10 +1417,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "IRC", NDPI_PROTOCOL_CATEGORY_CHAT,
 			  ndpi_build_default_ports(ports_a, 194, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 194, 0, 0, 0, 0) /* UDP */);
-  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_FREE_66,
-			  "Free66", NDPI_PROTOCOL_CATEGORY_NETWORK,
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_MERAKI_CLOUD,
+			  "MerakiCloud", NDPI_PROTOCOL_CATEGORY_NETWORK,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
-			  ndpi_build_default_ports(ports_b, 5072, 0, 0, 0, 0) /* UDP */);
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_JABBER,
 			  "Jabber", NDPI_PROTOCOL_CATEGORY_WEB,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
@@ -2181,6 +2177,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
                           "TPLINK_SHP", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
                           ndpi_build_default_ports(ports_a, 9999, 0, 0, 0, 0) /* TCP */,
                           ndpi_build_default_ports(ports_b, 9999, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_TAILSCALE,
+			  "Tailscale", NDPI_PROTOCOL_CATEGORY_VPN,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 41641, 0, 0, 0, 0) /* UDP */);
 
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
@@ -2201,7 +2201,8 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 
 #define MATCH_DEBUG_INFO(fmt, ...) if(txt->option & AC_FEATURE_DEBUG) printf(fmt, ##__VA_ARGS__)
 
-static int ac_domain_match_handler(AC_MATCH_t *m, AC_TEXT_t *txt, AC_REP_t *match) {
+/* No static because it is used by fuzzer, too */
+int ac_domain_match_handler(AC_MATCH_t *m, AC_TEXT_t *txt, AC_REP_t *match) {
   AC_PATTERN_t *pattern = m->patterns;
   int i,start,end = m->position;
 
@@ -4909,6 +4910,12 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* TPLINK_SHP */
   init_tplink_shp_dissector(ndpi_str, &a);
 
+  /* Meraki Cloud */
+  init_merakicloud_dissector(ndpi_str, &a);
+
+  /* Tailscale */
+  init_tailscale_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -6140,7 +6147,6 @@ static void ndpi_add_connection_as_zoom(struct ndpi_detection_module_struct *ndp
 ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_str, struct ndpi_flow_struct *flow,
 				    u_int8_t enable_guess, u_int8_t *protocol_was_guessed) {
   ndpi_protocol ret = NDPI_PROTOCOL_NULL;
-  u_int16_t guessed_protocol_id = NDPI_PROTOCOL_UNKNOWN;
 
   /* *** We can't access ndpi_str->packet from this function!! *** */
 
@@ -6176,38 +6182,11 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
 
   if(flow->guessed_protocol_id == NDPI_PROTOCOL_STUN)
     goto check_stun_export;
-  else if((flow->guessed_protocol_id == NDPI_PROTOCOL_HANGOUT_DUO) ||
-          (flow->guessed_protocol_id == NDPI_PROTOCOL_FACEBOOK_VOIP) ||
-          (flow->guessed_protocol_id == NDPI_PROTOCOL_SIGNAL_VOIP) ||
-          (flow->guessed_protocol_id == NDPI_PROTOCOL_WHATSAPP_CALL)) {
-    *protocol_was_guessed = 1;
-    ndpi_set_detected_protocol(ndpi_str, flow, flow->guessed_protocol_id, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL);
-  } else if(enable_guess) {
-
-    guessed_protocol_id = flow->guessed_protocol_id;
-
-    /* Ignore guessed protocol if they have been discarded */
-    if((guessed_protocol_id != NDPI_PROTOCOL_UNKNOWN)
-       && (flow->l4_proto == IPPROTO_UDP) &&
-       NDPI_ISSET(&flow->excluded_protocol_bitmask, guessed_protocol_id) &&
-       is_udp_not_guessable_protocol(guessed_protocol_id))
-      flow->guessed_protocol_id = guessed_protocol_id = NDPI_PROTOCOL_UNKNOWN;
-
-    if(guessed_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
-      *protocol_was_guessed = 1;
-      ndpi_set_detected_protocol(ndpi_str, flow, guessed_protocol_id, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_MATCH_BY_PORT);
-    } else if(flow->stun.num_binding_requests > 0 &&
-              flow->stun.num_processed_pkts > 0) {
+  else if(enable_guess) {
+    if(flow->stun.num_binding_requests > 0 &&
+       flow->stun.num_processed_pkts > 0) {
       *protocol_was_guessed = 1;
       ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_STUN, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL);
-    }
-  }
-
-  if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN && enable_guess) {
-    if(flow->guessed_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
-      *protocol_was_guessed = 1;
-      flow->detected_protocol_stack[1] = flow->guessed_protocol_id;
-      flow->confidence = NDPI_CONFIDENCE_MATCH_BY_PORT;
     }
   }
 
@@ -6220,23 +6199,9 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
 
   ret.master_protocol = flow->detected_protocol_stack[1], ret.app_protocol = flow->detected_protocol_stack[0];
 
-  if(ret.master_protocol == NDPI_PROTOCOL_STUN) {
-    if(ret.app_protocol == NDPI_PROTOCOL_FACEBOOK)
-      ret.app_protocol = NDPI_PROTOCOL_FACEBOOK_VOIP;
-    else if(ret.app_protocol == NDPI_PROTOCOL_GOOGLE) {
-      /*
-	As Google has recently introduced Duo,
-	we need to distinguish between it and hangout
-	thing that should be handled by the STUN dissector
-      */
-      ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_HANGOUT_DUO, NDPI_PROTOCOL_STUN, NDPI_CONFIDENCE_DPI_PARTIAL);
-      ret.app_protocol = NDPI_PROTOCOL_HANGOUT_DUO;
-    }
-  }
-
   if((ret.master_protocol == NDPI_PROTOCOL_UNKNOWN)
      && (ret.app_protocol == NDPI_PROTOCOL_UNKNOWN)) {
-    /* Last resort */
+    /* Check some caches */
     if(ndpi_search_into_bittorrent_cache(ndpi_str, flow,
 					 flow->c_address.v4, flow->c_port,
 					 flow->s_address.v4, flow->s_port)) {
@@ -6252,6 +6217,22 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
     } else if(stun_search_into_zoom_cache(ndpi_str, flow)) {
       /* This looks like Zoom */
       ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_ZOOM, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
+      ret.app_protocol = flow->detected_protocol_stack[0];
+    }
+  }
+
+  /* Classification by-port is the last resort */
+  if(enable_guess && ret.app_protocol == NDPI_PROTOCOL_UNKNOWN) {
+
+    /* Ignore guessed protocol if they have been discarded */
+    if(flow->guessed_protocol_id != NDPI_PROTOCOL_UNKNOWN &&
+       flow->l4_proto == IPPROTO_UDP &&
+       NDPI_ISSET(&flow->excluded_protocol_bitmask, flow->guessed_protocol_id) &&
+       is_udp_not_guessable_protocol(flow->guessed_protocol_id))
+      flow->guessed_protocol_id = NDPI_PROTOCOL_UNKNOWN;
+
+    if(flow->guessed_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
+      ndpi_set_detected_protocol(ndpi_str, flow, flow->guessed_protocol_id, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_MATCH_BY_PORT);
       ret.app_protocol = flow->detected_protocol_stack[0];
     }
   }

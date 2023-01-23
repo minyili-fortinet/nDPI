@@ -1789,6 +1789,8 @@ ndpi_protocol_match host_match[] =
    { "siriusxm.ca",                      "SiriusXMRadio", NDPI_PROTOCOL_SIRIUSXMRADIO, NDPI_PROTOCOL_CATEGORY_MUSIC, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "siriusxm.com",                     "SiriusXMRadio", NDPI_PROTOCOL_SIRIUSXMRADIO, NDPI_PROTOCOL_CATEGORY_MUSIC, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_DEFAULT_LEVEL },
    
+   { "tailscale.com",                    "Tailscale", NDPI_PROTOCOL_TAILSCALE, NDPI_PROTOCOL_CATEGORY_VPN, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_content_match_host_match.c.inc"
 #endif
@@ -1824,6 +1826,7 @@ static ndpi_tls_cert_name_match tls_certificate_match [] = {
    specified above
 */
 
+#ifndef __KERNEL__
 #ifndef __KERNEL__
 #ifndef __KERNEL__
 static ndpi_category_match category_match[] = {
@@ -1936,6 +1939,7 @@ static ndpi_category_match category_match[] = {
 
    { NULL, 0 }
 };
+#endif
 #endif
 #endif
 

@@ -1923,6 +1923,8 @@ enum ndpi_bin_family {
    ndpi_bin_family16,
    ndpi_bin_family32,
    ndpi_bin_family64,
+
+   kMaxValue = ndpi_bin_family64, /* To ease fuzzing */
 };
 
 struct ndpi_bin {
