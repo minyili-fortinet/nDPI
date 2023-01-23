@@ -2483,11 +2483,11 @@ static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
     ndpi_load_malicious_sha1_file(ndpi_thread_info[thread_id].workflow->ndpi_struct, _maliciousSHA1Path);
 
 //  set_ndpi_debug_function(ndpi_thread_info[thread_id].workflow->ndpi_struct, debug_printf);
-  /* Enable/disable/configure LRU caches here */
-#ifndef __KERNEL__
+  /* Enable/disable/configure LRU caches size here */
   ndpi_set_lru_cache_size(ndpi_thread_info[thread_id].workflow->ndpi_struct,
 			  NDPI_LRUCACHE_BITTORRENT, 32768);
-#endif
+  /* Enable/disable LRU caches TTL here */
+
   ndpi_finalize_initialization(ndpi_thread_info[thread_id].workflow->ndpi_struct);
 
   if(enable_doh_dot_detection)

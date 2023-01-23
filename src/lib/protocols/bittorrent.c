@@ -1003,19 +1003,20 @@ static void ndpi_add_connection_as_bittorrent(
 
     key1 = ndpi_ip_port_hash_funct(flow->c_address.v4, flow->c_port), key2 = ndpi_ip_port_hash_funct(flow->s_address.v4, flow->s_port);
     
-    ndpi_lru_add_to_cache(ndpi_struct->bittorrent_cache, key1, NDPI_PROTOCOL_BITTORRENT);
-    ndpi_lru_add_to_cache(ndpi_struct->bittorrent_cache, key2, NDPI_PROTOCOL_BITTORRENT);
+    ndpi_lru_add_to_cache(ndpi_struct->bittorrent_cache, key1, NDPI_PROTOCOL_BITTORRENT, ndpi_get_current_time(flow));
+    ndpi_lru_add_to_cache(ndpi_struct->bittorrent_cache, key2, NDPI_PROTOCOL_BITTORRENT, ndpi_get_current_time(flow));
 
     /* Now add hosts as twins */
     ndpi_lru_add_to_cache(ndpi_struct->bittorrent_cache,
 			  flow->c_address.v4 + flow->s_address.v4,
-			  NDPI_PROTOCOL_BITTORRENT);
+			  NDPI_PROTOCOL_BITTORRENT,
+			  ndpi_get_current_time(flow));
     
     /* Also add +2 ports of the sender in order to catch additional sockets open by the same client */
     for(i=0; i<2; i++) {
       key1 = ndpi_ip_port_hash_funct(flow->c_address.v4, htons(ntohs(flow->c_port)+1+i));
 
-      ndpi_lru_add_to_cache(ndpi_struct->bittorrent_cache, key1, NDPI_PROTOCOL_BITTORRENT);
+      ndpi_lru_add_to_cache(ndpi_struct->bittorrent_cache, key1, NDPI_PROTOCOL_BITTORRENT, ndpi_get_current_time(flow));
     }
     
 #ifdef BITTORRENT_CACHE_DEBUG
@@ -1463,13 +1464,13 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
 #endif
 	
 	if(ndpi_lru_find_cache(ndpi_struct->bittorrent_cache, key,
-			       &cached_proto, 0 /* Don't remove it as it can be used for other connections */))
+			       &cached_proto, 0, ndpi_get_current_time(flow)))
 	  found = 1;
 	else {
 	  key = packet->udp ? (packet->iph->daddr + packet->udp->dest) : (packet->iph->daddr + packet->tcp->dest);
 
 	  found = ndpi_lru_find_cache(ndpi_struct->bittorrent_cache, key,
-				      &cached_proto, 0 /* Don't remove it as it can be used for other connections */);
+				&cached_proto, 0, ndpi_get_current_time(flow));
 	}
 
 	if(found)
@@ -1561,7 +1562,6 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
 
 	}
       }
-
       if(match_utp_query_reply((uint32_t *)packet->payload,&flow->bittorrent_seq,
 			       packet->payload_packet_len,&utp_type)) {
 	      if(utp_type == 0xffff) {

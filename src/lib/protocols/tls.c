@@ -379,23 +379,15 @@ static void checkTLSSubprotocol(struct ndpi_detection_module_struct *ndpi_struct
       key = make_tls_cert_key(packet, is_from_client);
 
       if(ndpi_lru_find_cache(ndpi_struct->tls_cert_cache, key,
-			     &cached_proto, 0 /* Don't remove it as it can be used for other connections */)) {
-//	ndpi_protocol ret = { __get_master(ndpi_struct, flow), cached_proto, NDPI_PROTOCOL_UNKNOWN /* unused */,
-//#ifndef __KERNEL__
-//		NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL
-//#endif
-//		};
+			     &cached_proto, 0 /* Don't remove it as it can be used for other connections */,
+			     ndpi_get_current_time(flow))) {
+	ndpi_protocol ret = { __get_master(ndpi_struct, flow), cached_proto, NDPI_PROTOCOL_UNKNOWN /* unused */, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
 
-	flow->detected_protocol_stack[0] = cached_proto,
-	flow->detected_protocol_stack[1] = NDPI_PROTOCOL_TLS;
 	ndpi_set_detected_protocol(ndpi_struct, flow, cached_proto, __get_master(ndpi_struct, flow), NDPI_CONFIDENCE_DPI_CACHE);
 #ifndef __KERNEL__
-	{
-	  ndpi_protocol ret = { __get_master(ndpi_struct, flow), cached_proto, NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
-	  flow->category = ndpi_get_proto_category(ndpi_struct, ret);
-	  ndpi_check_subprotocol_risk(ndpi_struct, flow, cached_proto);
-	}
+	flow->category = ndpi_get_proto_category(ndpi_struct, ret);
 #endif
+	ndpi_check_subprotocol_risk(ndpi_struct, flow, cached_proto);
       }
     }
   }
@@ -792,7 +784,7 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 	if(ndpi_struct->tls_cert_cache) {
 	  u_int32_t key = make_tls_cert_key(packet, 0 /* from the server */);
 
-	  ndpi_lru_add_to_cache(ndpi_struct->tls_cert_cache, key, proto_id);
+	  ndpi_lru_add_to_cache(ndpi_struct->tls_cert_cache, key, proto_id, ndpi_get_current_time(flow));
 	}
       }
     }
