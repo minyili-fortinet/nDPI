@@ -781,8 +781,6 @@ struct ndpi_flow_tcp_struct {
   u_int32_t telnet_stage:2;			// 0 - 2
 
   struct {
-    message_t message[2]; /* Directions */
-
     /* NDPI_PROTOCOL_TLS */
     u_int8_t app_data_seen[2];
     u_int8_t num_tls_blocks;
@@ -1408,6 +1406,14 @@ struct ndpi_risk_information {
   char *info;  
 };
 
+enum ndpi_rtp_stream_type {
+  rtp_unknown = 0,
+  rtp_audio,
+  rtp_video,  
+  rtp_audio_video,
+  rtp_screen_share
+};
+
 struct ndpi_flow_struct {
   u_int16_t detected_protocol_stack[NDPI_PROTOCOL_SIZE];
 
@@ -1508,6 +1514,7 @@ struct ndpi_flow_struct {
   } stun;
 
   struct {
+    message_t message[2]; /* Directions */
     u_int8_t certificate_processed:1, _pad:7;
   } tls_quic; /* Used also by DTLS and POPS/IMAPS/SMTPS/FTPS */
 
@@ -1519,6 +1526,10 @@ struct ndpi_flow_struct {
       ndpi_ip_addr_t rsp_addr; /* The first address in a DNS response packet */
     } dns;
 
+    struct {
+      enum ndpi_rtp_stream_type stream_type;
+    } rtp;
+    
     struct {
       u_int8_t request_code;
       u_int8_t version;

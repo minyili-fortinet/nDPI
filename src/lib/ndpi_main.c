@@ -5238,12 +5238,10 @@ void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
 	ndpi_free(flow->protos.tls_quic.encrypted_sni.esni);
     }
 
-    if(flow->l4_proto == IPPROTO_TCP) {
-      if(flow->l4.tcp.tls.message[0].buffer)
-	ndpi_free(flow->l4.tcp.tls.message[0].buffer);
-      if(flow->l4.tcp.tls.message[1].buffer)
-	ndpi_free(flow->l4.tcp.tls.message[1].buffer);
-    }
+    if(flow->tls_quic.message[0].buffer)
+      ndpi_free(flow->tls_quic.message[0].buffer);
+    if(flow->tls_quic.message[1].buffer)
+      ndpi_free(flow->tls_quic.message[1].buffer);
 
     if(flow->l4_proto == IPPROTO_UDP) {
       if(flow->l4.udp.quic_reasm_buf)
@@ -9343,6 +9341,9 @@ char *ndpi_user_agent_set(struct ndpi_flow_struct *flow,
 			  const u_int8_t *value, size_t value_len) {
   if(flow->http.user_agent != NULL) {
     /* Already set: ignore double set */
+    return NULL;
+  }
+  if(value_len == 0) {
     return NULL;
   }
 

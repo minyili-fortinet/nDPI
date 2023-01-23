@@ -1157,7 +1157,9 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
     inet_ntop(AF_INET, &flow->ndpi_flow->protos.natpmp.external_address.ipv4, &flow->natpmp.ip[0], sizeof(flow->natpmp.ip));
   }
   /* DISCORD */
-  else if(is_ndpi_proto(flow, NDPI_PROTOCOL_DISCORD) && !is_ndpi_proto(flow, NDPI_PROTOCOL_TLS) &&
+  else if(is_ndpi_proto(flow, NDPI_PROTOCOL_DISCORD) &&
+          !is_ndpi_proto(flow, NDPI_PROTOCOL_TLS) &&
+          !is_ndpi_proto(flow, NDPI_PROTOCOL_DTLS) &&
           flow->ndpi_flow->protos.discord.client_ip[0] != '\0') {
     flow->info_type = INFO_GENERIC;
     ndpi_snprintf(flow->info, sizeof(flow->info), "Client IP: %s",
@@ -1234,8 +1236,12 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
       ndpi_snprintf(flow->http.request_content_type, sizeof(flow->http.request_content_type), "%s", flow->ndpi_flow->http.request_content_type ? flow->ndpi_flow->http.request_content_type : "");
     }
   }
+  /* RTP */
+  else if(is_ndpi_proto(flow, NDPI_PROTOCOL_RTP)) {
+    flow->info_type = INFO_RTP;
+    flow->rtp.stream_type = flow->ndpi_flow->protos.rtp.stream_type;
   /* COLLECTD */
-  else if(is_ndpi_proto(flow, NDPI_PROTOCOL_COLLECTD)) {
+  } else if(is_ndpi_proto(flow, NDPI_PROTOCOL_COLLECTD)) {
     flow->info_type = INFO_GENERIC;
     if(flow->ndpi_flow->protos.collectd.client_username[0] != '\0')
       ndpi_snprintf(flow->info, sizeof(flow->info), "Username: %s",
