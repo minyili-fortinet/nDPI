@@ -401,6 +401,7 @@ unsigned long
 	       ndpi_pudf=0,ndpi_pudr=0,
 	       ndpi_puo=0;
 
+#ifdef NDPI_ENABLE_DEBUG_MESSAGES
 struct dbg_ipt_names {
 	uint32_t mask;
 	const char *name;
@@ -437,6 +438,7 @@ static struct dbg_ipt_names dbg_ipt_names [] = {
 	{1 << DBG_TRACE_MATCH_CMD,"match_cmd"},
 	{1 << DBG_TRACE_NETNS,"netns"},
 }; // 27 < 32
+#endif
 
 static int net_ns_id=0;
 static int ndpi_net_id;
@@ -557,6 +559,11 @@ uint32_t dbg_ipt_opt_get(const char *lbuf) {
 	return 0;
 }
 #else
+
+static void debug_printf(u_int32_t protocol, void *id_struct, ndpi_log_level_t log_level,
+	const char *file_name, const char *func_name, unsigned line_number, const char * format, ...) {
+}
+
 uint32_t dbg_ipt_opt_get(const char *lbuf) {
 	return 0;
 }
@@ -2870,7 +2877,9 @@ static int __net_init ndpi_net_init(struct net *net)
 	}
 	ndpi_stun_cache_enable = ndpi_stun_cache_opt;
 	ndpi_debug_print_init = debug_printf;
+#ifdef NDPI_ENABLE_DEBUG_MESSAGES
 	ndpi_debug_level_init = ndpi_lib_trace;
+#endif
 	/* init global detection structure */
 	n->ndpi_struct = ndpi_init_detection_module(ndpi_no_prefs);
 	if (n->ndpi_struct == NULL) {

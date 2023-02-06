@@ -116,6 +116,7 @@ int mbedtls_aesni_has_support( unsigned int what )
 
   return( ( c & what ) != 0 );
 #endif
+  return 0; // fix gcc warning
 }
 
 /*
