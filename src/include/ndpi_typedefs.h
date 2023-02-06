@@ -133,9 +133,10 @@ typedef enum {
 				  your app will clear this risk if future packets (not sent to nDPI)
 				  are received in the opposite direction */
   NDPI_HTTP_OBSOLETE_SERVER,
-  NDPI_PERIODIC_FLOW, /* Set in case a flow repeats at a specific pace [used by apps on top of nDPI] */
-  NDPI_MINOR_ISSUES, /* Generic packet issues (e.g. DNS with 0 TTL) */
-  
+  NDPI_PERIODIC_FLOW,          /* Set in case a flow repeats at a specific pace [used by apps on top of nDPI] */
+  NDPI_MINOR_ISSUES,           /* Generic packet issues (e.g. DNS with 0 TTL) */
+  NDPI_TCP_ISSUES,             /* TCP issues such as connection failed, probing or scan */
+
   /* Leave this as last member */
   NDPI_MAX_RISK /* must be <= 63 due to (**) */
 } ndpi_risk_enum;
@@ -796,10 +797,9 @@ struct ndpi_flow_tcp_struct {
   u_int32_t postgres_stage:3;
 
   /* Part of the TCP header. */
-  u_int32_t seen_syn:1;
-  u_int32_t seen_syn_ack:1;
-  u_int32_t seen_ack:1;
-
+  u_int32_t seen_syn:1, seen_syn_ack:1, seen_ack:1, __notused:29;
+  u_int8_t cli2srv_tcp_flags, srv2cli_tcp_flags;
+  
   /* NDPI_PROTOCOL_ICECAST */
   u_int32_t icecast_stage:1;
 
@@ -1660,7 +1660,8 @@ struct ndpi_flow_struct {
   /* Only packets with L5 data (ie no TCP SYN, pure ACKs, ...) */
   u_int16_t packet_counter;		      // can be 0 - 65000
   u_int16_t packet_direction_counter[2];
-
+  u_int16_t all_packets_counter; /* All packets even those without payload */
+  
   /* Every packets */
   u_int16_t packet_direction_complete_counter[2];      // can be 0 - 65000
 
@@ -1720,11 +1721,11 @@ struct ndpi_flow_struct {
 
 #if !defined(NDPI_CFFI_PREPROCESSING) && defined(__linux__)
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 208,
-               "Size of the struct member protocols increased to more than 208 bytes, "
+_Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 210,
+               "Size of the struct member protocols increased to more than 210 bytes, "
                "please check if this change is necessary.");
-_Static_assert(sizeof(struct ndpi_flow_struct) <= 936,
-               "Size of the flow struct increased to more than 928 bytes, "
+_Static_assert(sizeof(struct ndpi_flow_struct) <= 944,
+               "Size of the flow struct increased to more than 944 bytes, "
                "please check if this change is necessary.");
 #endif
 #endif

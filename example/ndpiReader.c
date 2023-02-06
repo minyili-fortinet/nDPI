@@ -657,6 +657,7 @@ int cmpFlows(const void *_a, const void *_b) {
   if(htons(fa->src_port) < htons(fb->src_port)) return(-1); else { if(htons(fa->src_port) > htons(fb->src_port)) return(1); }
   if(htonl(fa->dst_ip)   < htonl(fb->dst_ip)  ) return(-1); else { if(htonl(fa->dst_ip)   > htonl(fb->dst_ip)  ) return(1); }
   if(htons(fa->dst_port) < htons(fb->dst_port)) return(-1); else { if(htons(fa->dst_port) > htons(fb->dst_port)) return(1); }
+  if(fa->vlan_id < fb->vlan_id) return(-1); else { if(fa->vlan_id > fb->vlan_id) return(1); }
   return(0);
 }
 
@@ -2121,7 +2122,7 @@ static void updatePortStats(struct port_stats **stats, u_int32_t port,
 /* *********************************************** */
 
 /* @brief heuristic choice for receiver stats */
-static int acceptable(u_int32_t num_pkts){
+static int acceptable(u_int32_t num_pkts) {
   return num_pkts > 5;
 }
 
@@ -2179,7 +2180,7 @@ static void mergeTables(struct receiver **primary, struct receiver **secondary) 
 
   HASH_ITER(hh, *primary, r, tmp) {
     HASH_FIND_INT(*secondary, (int *)&(r->addr), s);
-    if(s == NULL){
+    if(s == NULL) {
       s = (struct receiver *)ndpi_malloc(sizeof(struct receiver));
       if(!s) return;
 
@@ -2210,7 +2211,7 @@ static void deleteReceivers(struct receiver *rcvrs) {
 /* *********************************************** */
 /* implementation of: https://jeroen.massar.ch/presentations/files/FloCon2010-TopK.pdf
  *
- * if(table1.size < max1 || acceptable){
+ * if(table1.size < max1 || acceptable) {
  *    create new element and add to the table1
  *    if(table1.size > max2) {
  *      cut table1 back to max1
@@ -2232,7 +2233,7 @@ static void updateReceivers(struct receiver **rcvrs, u_int32_t dst_addr,
   HASH_FIND_INT(*rcvrs, (int *)&dst_addr, r);
   if(r == NULL) {
     if(((size = HASH_COUNT(*rcvrs)) < MAX_TABLE_SIZE_1)
-       || ((a = acceptable(num_pkts)) != 0)){
+       || ((a = acceptable(num_pkts)) != 0)) {
       r = (struct receiver *)ndpi_malloc(sizeof(struct receiver));
       if(!r) return;
 
@@ -2242,13 +2243,13 @@ static void updateReceivers(struct receiver **rcvrs, u_int32_t dst_addr,
 
       HASH_ADD_INT(*rcvrs, addr, r);
 
-      if((size = HASH_COUNT(*rcvrs)) > MAX_TABLE_SIZE_2){
+      if((size = HASH_COUNT(*rcvrs)) > MAX_TABLE_SIZE_2) {
 
         HASH_SORT(*rcvrs, receivers_sort_asc);
         *rcvrs = cutBackTo(rcvrs, size, MAX_TABLE_SIZE_1);
         mergeTables(rcvrs, topRcvrs);
 
-        if((size = HASH_COUNT(*topRcvrs)) > MAX_TABLE_SIZE_1){
+        if((size = HASH_COUNT(*topRcvrs)) > MAX_TABLE_SIZE_1) {
           HASH_SORT(*topRcvrs, receivers_sort_asc);
           *topRcvrs = cutBackTo(topRcvrs, size, MAX_TABLE_SIZE_1);
         }
@@ -2363,17 +2364,6 @@ static void node_idle_scan_walker(const void *node, ndpi_VISIT which, int depth,
 
 /* *********************************************** */
 
-/**
- * @brief On Protocol Discover - demo callback
- */
-static void on_protocol_discovered(struct ndpi_workflow * workflow,
-                                   struct ndpi_flow_info * flow,
-                                   void * udata) {
-  ;
-}
-
-/* *********************************************** */
-
 #if 1
 /**
  * @brief Print debug
@@ -2431,11 +2421,6 @@ static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
   memset(&ndpi_thread_info[thread_id], 0, sizeof(ndpi_thread_info[thread_id]));
   ndpi_thread_info[thread_id].workflow = ndpi_workflow_init(&prefs, pcap_handle, 1,
                                                             serialization_format);
-
-  /* Preferences */
-  ndpi_workflow_set_flow_detected_callback(ndpi_thread_info[thread_id].workflow,
-                                           on_protocol_discovered,
-                                           (void *)(uintptr_t)thread_id);
 
   /* Protocols to enable/disable. Default: everything is enabled */
   NDPI_BITMASK_SET_ALL(enabled_bitmask);
@@ -2696,7 +2681,7 @@ static void printRiskStats() {
 /* *********************************************** */
 
 /*function to use in HASH_SORT function in verbose == 4 to order in creasing order to delete host with the leatest occurency*/
-static int hash_stats_sort_to_order(void *_a, void *_b){
+static int hash_stats_sort_to_order(void *_a, void *_b) {
 	struct hash_stats *a = (struct hash_stats*)_a;
 	struct hash_stats *b = (struct hash_stats*)_b;
 	
@@ -2706,7 +2691,7 @@ static int hash_stats_sort_to_order(void *_a, void *_b){
 /* *********************************************** */
 
 /*function to use in HASH_SORT function in verbose == 4 to print in decreasing order*/
-static int hash_stats_sort_to_print(void *_a, void *_b){
+static int hash_stats_sort_to_print(void *_a, void *_b) {
 	struct hash_stats *a = (struct hash_stats*)_a;
 	struct hash_stats *b = (struct hash_stats*)_b;
 	
@@ -2758,12 +2743,12 @@ static void printFlowsStats() {
         ndpi_ja3_fingerprints_host *hostByJA3Found = NULL;
 
         //check if this is a ssh-ssl flow
-        if(all_flows[i].flow->ssh_tls.ja3_client[0] != '\0'){
+        if(all_flows[i].flow->ssh_tls.ja3_client[0] != '\0') {
           //looking if the host is already in the hash table
           HASH_FIND_INT(ja3ByHostsHashT, &(all_flows[i].flow->src_ip), ja3ByHostFound);
 
           //host ip -> ja3
-          if(ja3ByHostFound == NULL){
+          if(ja3ByHostFound == NULL) {
             //adding the new host
             ndpi_host_ja3_fingerprints *newHost = ndpi_malloc(sizeof(ndpi_host_ja3_fingerprints));
             newHost->host_client_info_hasht = NULL;
@@ -2787,7 +2772,7 @@ static void printFlowsStats() {
             HASH_FIND_STR(ja3ByHostFound->host_client_info_hasht,
                           all_flows[i].flow->ssh_tls.ja3_client, infoFound);
 
-            if(infoFound == NULL){
+            if(infoFound == NULL) {
               ndpi_ja3_info *newJA3 = ndpi_malloc(sizeof(ndpi_ja3_info));
               newJA3->ja3 = all_flows[i].flow->ssh_tls.ja3_client;
               newJA3->unsafe_cipher = all_flows[i].flow->ssh_tls.client_unsafe_cipher;
@@ -2798,7 +2783,7 @@ static void printFlowsStats() {
 
           //ja3 -> host ip
           HASH_FIND_STR(hostByJA3C_ht, all_flows[i].flow->ssh_tls.ja3_client, hostByJA3Found);
-          if(hostByJA3Found == NULL){
+          if(hostByJA3Found == NULL) {
             ndpi_ip_dns *newHost = ndpi_malloc(sizeof(ndpi_ip_dns));
 
             newHost->ip = all_flows[i].flow->src_ip;
@@ -2816,7 +2801,7 @@ static void printFlowsStats() {
           } else {
             ndpi_ip_dns *innerElement = NULL;
             HASH_FIND_INT(hostByJA3Found->ipToDNS_ht, &(all_flows[i].flow->src_ip), innerElement);
-            if(innerElement == NULL){
+            if(innerElement == NULL) {
               ndpi_ip_dns *newInnerElement = ndpi_malloc(sizeof(ndpi_ip_dns));
               newInnerElement->ip = all_flows[i].flow->src_ip;
               newInnerElement->ip_string = all_flows[i].flow->src_name;
@@ -2826,10 +2811,10 @@ static void printFlowsStats() {
           }
         }
 
-        if(all_flows[i].flow->ssh_tls.ja3_server[0] != '\0'){
+        if(all_flows[i].flow->ssh_tls.ja3_server[0] != '\0') {
           //looking if the host is already in the hash table
           HASH_FIND_INT(ja3ByHostsHashT, &(all_flows[i].flow->dst_ip), ja3ByHostFound);
-          if(ja3ByHostFound == NULL){
+          if(ja3ByHostFound == NULL) {
             //adding the new host in the hash table
             ndpi_host_ja3_fingerprints *newHost = ndpi_malloc(sizeof(ndpi_host_ja3_fingerprints));
             newHost->host_client_info_hasht = NULL;
@@ -2851,7 +2836,7 @@ static void printFlowsStats() {
             ndpi_ja3_info *infoFound = NULL;
             HASH_FIND_STR(ja3ByHostFound->host_server_info_hasht,
                           all_flows[i].flow->ssh_tls.ja3_server, infoFound);
-            if(infoFound == NULL){
+            if(infoFound == NULL) {
               ndpi_ja3_info *newJA3 = ndpi_malloc(sizeof(ndpi_ja3_info));
               newJA3->ja3 = all_flows[i].flow->ssh_tls.ja3_server;
               newJA3->unsafe_cipher = all_flows[i].flow->ssh_tls.server_unsafe_cipher;
@@ -2861,7 +2846,7 @@ static void printFlowsStats() {
           }
 
           HASH_FIND_STR(hostByJA3S_ht, all_flows[i].flow->ssh_tls.ja3_server, hostByJA3Found);
-          if(hostByJA3Found == NULL){
+          if(hostByJA3Found == NULL) {
             ndpi_ip_dns *newHost = ndpi_malloc(sizeof(ndpi_ip_dns));
 
             newHost->ip = all_flows[i].flow->dst_ip;
@@ -2880,7 +2865,7 @@ static void printFlowsStats() {
             ndpi_ip_dns *innerElement = NULL;
 
             HASH_FIND_INT(hostByJA3Found->ipToDNS_ht, &(all_flows[i].flow->dst_ip), innerElement);
-            if(innerElement == NULL){
+            if(innerElement == NULL) {
               ndpi_ip_dns *newInnerElement = ndpi_malloc(sizeof(ndpi_ip_dns));
               newInnerElement->ip = all_flows[i].flow->dst_ip;
               newInnerElement->ip_string = all_flows[i].flow->dst_name;
@@ -3069,7 +3054,7 @@ static void printFlowsStats() {
       }
     }
 
-    if (verbose == 4){
+    if (verbose == 4) {
 		//how long the table could be
 		unsigned int len_table_max = 1000;
 	      	//number of element to delete when the table is full
@@ -3079,9 +3064,9 @@ static void printFlowsStats() {
 		struct hash_stats *tmp = NULL;
 		int len_max = 0;    
 		      
-	      	for (i = 0; i<num_flows; i++){
+	      	for (i = 0; i<num_flows; i++) {
 			
-		if(all_flows[i].flow->host_server_name[0] != '\0'){
+		if(all_flows[i].flow->host_server_name[0] != '\0') {
 		
 			int len = strlen(all_flows[i].flow->host_server_name);
 			len_max = ndpi_max(len,len_max);
@@ -3089,15 +3074,15 @@ static void printFlowsStats() {
 			struct hash_stats *hostFound;
 			HASH_FIND_STR(hostsHashT, all_flows[i].flow->host_server_name, hostFound);
 
-			if(hostFound == NULL){
+			if(hostFound == NULL) {
 				struct hash_stats *newHost = (struct hash_stats*)ndpi_malloc(sizeof(hash_stats));
 			      	newHost->domain_name = all_flows[i].flow->host_server_name;
 				newHost->occurency = 1;
 				if (HASH_COUNT(hostsHashT) == len_table_max) {
 				  int i=0;
-				  while (i<=toDelete){
+				  while (i<=toDelete) {
 					
-				    HASH_ITER(hh, hostsHashT, host_iter, tmp){
+				    HASH_ITER(hh, hostsHashT, host_iter, tmp) {
 				      HASH_DEL(hostsHashT,host_iter);
 				      free(host_iter);
 				      i++;		
@@ -3113,7 +3098,7 @@ static void printFlowsStats() {
 			
 		}
 		
-		if(all_flows[i].flow->ssh_tls.server_info[0] != '\0'){
+		if(all_flows[i].flow->ssh_tls.server_info[0] != '\0') {
 		
 			int len = strlen(all_flows[i].flow->host_server_name);
 			len_max = ndpi_max(len,len_max);
@@ -3121,16 +3106,16 @@ static void printFlowsStats() {
 			struct hash_stats *hostFound;
 		  	HASH_FIND_STR(hostsHashT, all_flows[i].flow->ssh_tls.server_info, hostFound);
 
-		  	if(hostFound == NULL){
+		  	if(hostFound == NULL) {
 		    		struct hash_stats *newHost = (struct hash_stats*)ndpi_malloc(sizeof(hash_stats));
 	      	    		newHost->domain_name = all_flows[i].flow->ssh_tls.server_info;
 		    		newHost->occurency = 1;
 	    
 	    			if ((HASH_COUNT(hostsHashT)) == len_table_max) {
 				  int i=0;
-				  while (i<toDelete){
+				  while (i<toDelete) {
 		
-				    HASH_ITER(hh, hostsHashT, host_iter, tmp){
+				    HASH_ITER(hh, hostsHashT, host_iter, tmp) {
 			 	     HASH_DEL(hostsHashT,host_iter);
 			  	    ndpi_free(host_iter);
 			   	   i++;		
@@ -3156,7 +3141,7 @@ static void printFlowsStats() {
       	
 	//print the element of the hash table
    	int j;
-	HASH_ITER(hh, hostsHashT, host_iter, tmp){
+	HASH_ITER(hh, hostsHashT, host_iter, tmp) {
 		
 		printf("\t%s", host_iter->domain_name);
 		//to print the occurency in aligned column	    	
@@ -3168,7 +3153,7 @@ static void printFlowsStats() {
 	printf("%s", "\n\n");
 
 	//freeing the hash table
-	HASH_ITER(hh, hostsHashT, host_iter, tmp){
+	HASH_ITER(hh, hostsHashT, host_iter, tmp) {
 	   HASH_DEL(hostsHashT, host_iter);
 	   ndpi_free(host_iter);
 	}
@@ -3988,9 +3973,10 @@ static void ndpi_process_packet(u_char *args,
   /* allocate an exact size buffer to check overflows */
   uint8_t *packet_checked = ndpi_malloc(header->caplen);
 
-  if(packet_checked == NULL){
+  if(packet_checked == NULL) {
     return ;
   }
+  
   memcpy(packet_checked, packet, header->caplen);
   p = ndpi_workflow_process_packet(ndpi_thread_info[thread_id].workflow, header, packet_checked, &flow_risk);
 
@@ -4098,7 +4084,7 @@ static void ndpi_process_packet(u_char *args,
     Leave the free as last statement to avoid crashes when ndpi_detection_giveup()
     is called above by printResults()
   */
-  if(packet_checked){
+  if(packet_checked) {
     ndpi_free(packet_checked);
     packet_checked = NULL;
   }

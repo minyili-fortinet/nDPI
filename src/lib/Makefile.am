@@ -69,7 +69,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/dropbox.c \
 		     protocols/eaq.c \
 		     protocols/edonkey.c \
-		     protocols/elasticsearch.c \
+		     protocols/elastic_search.c \
 		     protocols/ethernet_ip.c \
 		     protocols/fastcgi.c \
 		     protocols/fix.c \

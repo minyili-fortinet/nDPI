@@ -1376,13 +1376,6 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
   }
 
   if(flow->detection_completed && (!flow->check_extra_packets)) {
-    if(is_ndpi_proto(flow, NDPI_PROTOCOL_UNKNOWN)) {
-      if(workflow->__flow_giveup_callback != NULL)
-	workflow->__flow_giveup_callback(workflow, flow, workflow->__flow_giveup_udata);
-    } else {
-      if(workflow->__flow_detected_callback != NULL)
-	workflow->__flow_detected_callback(workflow, flow, workflow->__flow_detected_udata);
-    }
    
     flow->flow_payload = flow->ndpi_flow->flow_payload, flow->flow_payload_len = flow->ndpi_flow->flow_payload_len;
     flow->ndpi_flow->flow_payload = NULL; /* We'll free the memory */
@@ -1482,7 +1475,7 @@ static struct ndpi_proto packet_processing(struct ndpi_workflow * workflow,
     flow = get_ndpi_flow_info(workflow, IPVERSION, vlan_id,
 			      tunnel_type, iph, NULL,
 			      ip_offset, ipsize,
-			      ntohs(iph->tot_len) - (iph->ihl * 4),
+			      ntohs(iph->tot_len) ? (ntohs(iph->tot_len) - (iph->ihl * 4)) : ipsize - (iph->ihl * 4) /* TSO */,
 			      iph->ihl * 4,
 			      &tcph, &udph, &sport, &dport,
 			      &proto,
@@ -1658,7 +1651,7 @@ static struct ndpi_proto packet_processing(struct ndpi_workflow * workflow,
 	flow->has_human_readeable_strings = 0;
     }
   } else { // flow is NULL
-    workflow->stats.total_discarded_bytes++;
+    workflow->stats.total_discarded_bytes += header->len;
     return(nproto);
   }
   if(!flow->detection_completed) {
@@ -2386,7 +2379,8 @@ struct ndpi_proto ndpi_workflow_process_packet(struct ndpi_workflow * workflow,
 
 	    offset += msg_len;
 
-	    if(offset + 32 < h_caplen) {
+	    if((offset + 32 < h_caplen) &&
+	       (packet[offset + 1] == 0x08)) {
 	      /* IEEE 802.11 Data */
 	      offset += 24;
 	      /* LLC header is 8 bytes */

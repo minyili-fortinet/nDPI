@@ -1,7 +1,7 @@
 /*
  * collectd.c
  *
- * Copyright (C) 2022 - ntop.org
+ * Copyright (C) 2022-23 - ntop.org
  *
  * nDPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -127,8 +127,8 @@ static int ndpi_int_collectd_dissect_username(struct ndpi_flow_struct * const fl
   return 0;
 }
 
-void ndpi_search_collectd(struct ndpi_detection_module_struct *ndpi_struct,
-                          struct ndpi_flow_struct *flow)
+static void ndpi_search_collectd(struct ndpi_detection_module_struct *ndpi_struct,
+                                 struct ndpi_flow_struct *flow)
 {
   struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int16_t num_blocks;

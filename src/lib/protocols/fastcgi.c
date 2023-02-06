@@ -1,7 +1,7 @@
 /*
  * fastcgi.c
  *
- * Copyright (C) 2022 - ntop.org
+ * Copyright (C) 2022-23 - ntop.org
  *
  * nDPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -154,8 +154,8 @@ static int fcgi_parse_params(struct ndpi_flow_struct * const flow,
   return 0;
 }
 
-void ndpi_search_fastcgi(struct ndpi_detection_module_struct *ndpi_struct,
-                         struct ndpi_flow_struct *flow)
+static void ndpi_search_fastcgi(struct ndpi_detection_module_struct *ndpi_struct,
+                                struct ndpi_flow_struct *flow)
 {
   struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   struct FCGI_Header const * fcgi_hdr;
