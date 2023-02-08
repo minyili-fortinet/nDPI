@@ -1804,12 +1804,12 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		if(!result) break;
 	}
 	if(info->clevel) {
-		switch(info->clevel) {
-		     case 1: result &= info->clevel < confidence;
+		switch(info->clevel_op) {
+		     case 1: result &= info->clevel-1 < confidence;
 			 break;
-		     case 2: result &= info->clevel > confidence;
+		     case 2: result &= info->clevel-1 > confidence;
 			 break;
-		     default: result &= info->clevel == confidence;
+		     default: result &= info->clevel-1 == confidence;
 		}
 		if(_DBG_TRACE_MATCH)
 		    pr_info(" ndpi_match confidence: %s : %s\n",
@@ -1833,7 +1833,7 @@ struct xt_ndpi_mtinfo *info = par->matchinfo;
 /*
  *  invert:1,error:1,m_proto:1,p_proto:1,have_master:1,
  *  host:1,re:1,empty:1,proto:1,inprogress:1,ja3s:1,ja3c:1,tlsfp:1,tlsv:1,
- *  untracked:1,clevel:3,clevel_op:2;
+ *  untracked:1,clevel:4,clevel_op:2;
  */
 	if(_DBG_TRACE_MATCH_CMD) {
 		char cbuf[512];
