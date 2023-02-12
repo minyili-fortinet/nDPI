@@ -390,9 +390,16 @@ char *ndpi_get_proto_by_id(struct ndpi_detection_module_struct *ndpi_str, u_int 
 u_int16_t ndpi_get_proto_by_name(struct ndpi_detection_module_struct *ndpi_str, const char *name) {
   u_int16_t i, num = ndpi_get_num_supported_protocols(ndpi_str);
 
-  for(i = 0; i < num; i++)
+  for(i = 0; i < num; i++) {
+#ifdef __KERNEL__
+    if(!ndpi_get_proto_by_id(ndpi_str, i)) {
+	    pr_err("%s: #%d empty!\n",__func__,i);
+	    continue;
+    }
+#endif
     if(strcasecmp(ndpi_get_proto_by_id(ndpi_str, i), name) == 0)
       return(i);
+  }
 
   return(NDPI_PROTOCOL_UNKNOWN);
 }
@@ -1000,6 +1007,12 @@ static void init_string_based_protocols(struct ndpi_detection_module_struct *ndp
 		 host_match[i].string_to_match, host_match[i].protocol_id);
 
   /* ************************ */
+  if(ndpi_str->tls_cert_subject_automa.ac_automa != NULL) {
+    ac_automata_release((AC_AUTOMATA_t *) ndpi_str->tls_cert_subject_automa.ac_automa,1);
+    ndpi_str->tls_cert_subject_automa.ac_automa = ac_automata_init(NULL);
+    ac_automata_feature(ndpi_str->tls_cert_subject_automa.ac_automa,AC_FEATURE_LC);
+    ac_automata_name(ndpi_str->tls_cert_subject_automa.ac_automa,"tls_cert",AC_FEATURE_DEBUG);
+  }
 
   for(i = 0; tls_certificate_match[i].string_to_match != NULL; i++) {
 
@@ -1020,6 +1033,7 @@ static void init_string_based_protocols(struct ndpi_detection_module_struct *ndp
 				    tls_certificate_match[i].string_to_match,
                                     tls_certificate_match[i].protocol_id);
   }
+  ac_automata_finalize((AC_AUTOMATA_t *) ndpi_str->tls_cert_subject_automa.ac_automa);
 
   /* ************************ */
 
@@ -1130,6 +1144,14 @@ static int ndpi_validate_protocol_initialization(struct ndpi_detection_module_st
 */
 static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndpi_str) {
   ndpi_port_range ports_a[MAX_DEFAULT_PORTS], ports_b[MAX_DEFAULT_PORTS];
+  int i;
+
+  for (i = 0; i < (NDPI_MAX_SUPPORTED_PROTOCOLS + NDPI_MAX_NUM_CUSTOM_PROTOCOLS); i++) {
+      if(ndpi_str->proto_defaults[i].protoName)
+        ndpi_free(ndpi_str->proto_defaults[i].protoName);
+      if(ndpi_str->proto_defaults[i].subprotocols != NULL)
+        ndpi_free(ndpi_str->proto_defaults[i].subprotocols);
+  }
 
   /* Reset all settings */
   memset(ndpi_str->proto_defaults, 0, sizeof(ndpi_str->proto_defaults));
@@ -2779,7 +2801,6 @@ static const char *categories[] = {
   "Allowed_Site",
   "Antimalware",
 };
-#endif
 
 #if !defined(NDPI_CFFI_PREPROCESSING) && defined(__linux__)
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
@@ -2787,6 +2808,7 @@ _Static_assert(sizeof(categories) / sizeof(char *) == NDPI_PROTOCOL_NUM_CATEGORI
                "Invalid categories length. Do you need to update 'categories' array or 'ndpi_protocol_category_t'?");
 #endif
 #endif
+#endif /* kernel */
 
 /* ******************************************************************** */
 
@@ -3460,10 +3482,8 @@ void ndpi_exit_detection_module(struct ndpi_detection_module_struct *ndpi_str) {
       cache_free((cache_t)(ndpi_str->tinc_cache));
     ndpi_bittorrent_done(ndpi_str);
 
-#ifndef __KERNEL__
     if(ndpi_str->ookla_cache)
       ndpi_lru_free_cache(ndpi_str->ookla_cache);
-#endif
 
     if(ndpi_str->bittorrent_cache)
       ndpi_lru_free_cache(ndpi_str->bittorrent_cache);
@@ -4433,7 +4453,8 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   struct ndpi_call_function_struct *all_cb = NULL;
   u_int32_t a = 0;
 
-  // if(ndpi_str->callback_buffer) return 0;
+  if(ndpi_str->callback_buffer)
+    ndpi_free(ndpi_str->callback_buffer);
 
   ndpi_str->callback_buffer = ndpi_calloc(NDPI_MAX_SUPPORTED_PROTOCOLS+1,sizeof(struct ndpi_call_function_struct));
   if(!ndpi_str->callback_buffer) return 1;
@@ -5006,6 +5027,8 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
 		       sizeof(struct ndpi_call_function_struct));
   if(!all_cb) return 1;
 
+  if(ndpi_str->callback_buffer_tcp_payload)
+	  ndpi_free(ndpi_str->callback_buffer_tcp_payload);
   ndpi_str->callback_buffer_tcp_payload = all_cb;
   all_cb += ndpi_str->callback_buffer_size_tcp_payload;
   ndpi_str->callback_buffer_tcp_no_payload = all_cb;
@@ -5398,7 +5421,7 @@ int ndpi_set_protocol_detection_bitmask2(struct ndpi_detection_module_struct *nd
 
   ndpi_init_protocol_defaults(ndpi_str);
 
-  ndpi_enabled_callbacks_init(ndpi_str,dbm,0);
+//  ndpi_enabled_callbacks_init(ndpi_str,dbm,0);
 
   if(ndpi_callback_init(ndpi_str)) {
     NDPI_LOG_ERR(ndpi_str, "[NDPI] Error allocating callbacks\n");

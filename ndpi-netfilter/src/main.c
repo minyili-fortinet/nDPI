@@ -57,6 +57,7 @@
 #include <net/netfilter/nf_conntrack_extend.h>
 #include <net/netfilter/nf_nat.h>
 #include <linux/ktime.h>
+#include <linux/rcupdate.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 #define IP_CT_UNTRACKED IP_CT_NUMBER
@@ -100,6 +101,21 @@ static char ann_name[]="announce";
 static char proto_name[]="proto";
 static char debug_name[]="debug";
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,19,0)
+#ifndef USE_LIVEPATCH
+#define USE_LIVEPATCH
+
+#if IS_ENABLED(CONFIG_LIVEPATCH)
+#include <linux/livepatch.h>
+#include <linux/rculist_nulls.h>
+
+typedef void (*ndpi_conntrack_destroy_ptr) (struct nf_conntrack *);
+ndpi_conntrack_destroy_ptr __rcu nf_conntrack_destroy_cb;
+#else
+#error "CONFIG_LIVEPATCH not enabled"
+#endif
+#endif
+#endif
 
 #define PROC_REMOVE(pde,net) proc_remove(pde)
 
@@ -2888,6 +2904,8 @@ static int __net_init ndpi_net_init(struct net *net)
 	}
 	n->flow_h = NULL;
 	n->ndpi_struct->direction_detect_disable = 1;
+	n->ndpi_struct->stun_cache_num_entries = ndpi_stun_cache_enable ? 1024:0;
+	n->ndpi_struct->ookla_cache_num_entries = 0;
 	/* enable all protocols */
 	NDPI_BITMASK_SET_ALL(n->protocols_bitmask);
 	ndpi_set_protocol_detection_bitmask2(n->ndpi_struct, &n->protocols_bitmask);
@@ -3106,6 +3124,7 @@ static int __net_init ndpi_net_init(struct net *net)
 	return -ENOMEM;
 }
 
+#ifndef USE_LIVEPATCH
 static struct nf_ct_ext_type ndpi_extend = {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,8,0)
        .seq_print = seq_print_ndpi,
@@ -3115,6 +3134,38 @@ static struct nf_ct_ext_type ndpi_extend = {
        .align  = __alignof__(uint32_t),
        .id     = 0,
 };
+#else
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,17,0)
+#error "not implemented"
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(5,18,13)
+#include "livepatch/v5.18.1.c"
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0)
+#include "livepatch/v5.18.13.c"
+#else
+#include "livepatch/v6.0.c"
+#endif
+
+static struct klp_func ndpi_funcs[] = {
+	{
+		.old_name = "nf_ct_destroy",
+		.new_func = ndpi_nf_ct_destroy,
+	}, { }
+};
+
+static struct klp_object ndpi_objs[] = {
+	{
+		.name = "nf_conntrack",
+		.funcs = ndpi_funcs,
+	}, { }
+};
+
+static struct klp_patch ndpi_patch = {
+	.mod = THIS_MODULE,
+	.objs = ndpi_objs,
+};
+
+#endif
 
 static struct pernet_operations ndpi_net_ops = {
         .init   = ndpi_net_init,
@@ -3153,6 +3204,9 @@ static int __init ndpi_mt_init(void)
 	}
 	nf_ct_ext_id_ndpi = ndpi_extend.id;
 #else
+#ifdef USE_LIVEPATCH
+	nf_ct_ext_id_ndpi = NF_CT_EXT_LABELS;
+#else
 	ndpi_extend.id = nf_ct_ext_id_ndpi = NF_CT_EXT_LABELS;
 	nf_ct_extend_unregister(&ndpi_extend);
 	ret = nf_ct_extend_register(&ndpi_extend);
@@ -3160,6 +3214,7 @@ static int __init ndpi_mt_init(void)
 		pr_err("xt_ndpi: can't nf_ct_extend_register.\n");
 		return -EBUSY;
 	}
+#endif
 #endif
 
 	ret = register_pernet_subsys(&ndpi_net_ops);
@@ -3253,8 +3308,12 @@ static int __init ndpi_mt_init(void)
 		NDPI_NUM_BITS,
 		NDPI_LAST_IMPLEMENTED_PROTOCOL);
 	pr_info("xt_ndpi: flow acctounting %s\n",ndpi_enable_flow ? "ON":"OFF");
-
+#ifdef USE_LIVEPATCH
+	rcu_assign_pointer(nf_conntrack_destroy_cb,nf_ndpi_free_flow);
+	return klp_enable_patch(&ndpi_patch);
+#else
 	return 0;
+#endif
 
 free_flow:
        	kmem_cache_destroy (osdpi_flow_cache);
@@ -3267,7 +3326,9 @@ unreg_match:
 unreg_pernet:
 	unregister_pernet_subsys(&ndpi_net_ops);
 unreg_ext:
+#ifndef USE_LIVEPATCH
 	nf_ct_extend_unregister(&ndpi_extend);
+#endif
        	return ret;
 }
 
@@ -3277,7 +3338,11 @@ static void __exit ndpi_mt_exit(void)
 	xt_unregister_target(&ndpi_tg_reg);
 	xt_unregister_match(&ndpi_mt_reg);
 	unregister_pernet_subsys(&ndpi_net_ops);
+#ifndef USE_LIVEPATCH
 	nf_ct_extend_unregister(&ndpi_extend);
+#else
+	rcu_assign_pointer(nf_conntrack_destroy_cb,NULL);
+#endif
         kmem_cache_destroy (bt_port_cache);
         kmem_cache_destroy (osdpi_id_cache);
         kmem_cache_destroy (osdpi_flow_cache);
@@ -3287,3 +3352,5 @@ static void __exit ndpi_mt_exit(void)
 
 module_init(ndpi_mt_init);
 module_exit(ndpi_mt_exit);
+MODULE_INFO(livepatch, "Y");
+
