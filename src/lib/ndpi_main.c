@@ -607,9 +607,6 @@ void ndpi_set_proto_defaults(struct ndpi_detection_module_struct *ndpi_str,
     return;
   }
 
-  if(ndpi_str->proto_defaults[protoId].protoName)
-    ndpi_free(ndpi_str->proto_defaults[protoId].protoName);
-
   ndpi_str->proto_defaults[protoId].isClearTextProto = is_cleartext;
   /*
     is_appprotocol=1 means that this is only an application protocol layered
@@ -1146,15 +1143,15 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
   ndpi_port_range ports_a[MAX_DEFAULT_PORTS], ports_b[MAX_DEFAULT_PORTS];
   int i;
 
-  for (i = 0; i < (NDPI_MAX_SUPPORTED_PROTOCOLS + NDPI_MAX_NUM_CUSTOM_PROTOCOLS); i++) {
+  for (i = 0; i < (NDPI_MAX_SUPPORTED_PROTOCOLS); i++) {
       if(ndpi_str->proto_defaults[i].protoName)
         ndpi_free(ndpi_str->proto_defaults[i].protoName);
       if(ndpi_str->proto_defaults[i].subprotocols != NULL)
         ndpi_free(ndpi_str->proto_defaults[i].subprotocols);
   }
 
-  /* Reset all settings */
-  memset(ndpi_str->proto_defaults, 0, sizeof(ndpi_str->proto_defaults));
+  /* Reset all settings for supported protocols */
+  memset(&ndpi_str->proto_defaults[0], 0, sizeof(ndpi_str->proto_defaults[0])*NDPI_MAX_SUPPORTED_PROTOCOLS);
 
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_UNRATED, NDPI_PROTOCOL_UNKNOWN,
 			  "Unknown", NDPI_PROTOCOL_CATEGORY_UNSPECIFIED,
