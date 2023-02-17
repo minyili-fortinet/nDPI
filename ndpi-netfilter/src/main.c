@@ -104,7 +104,10 @@ static char debug_name[]="debug";
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5,19,0)
 #ifndef USE_LIVEPATCH
 #define USE_LIVEPATCH
+#endif
+#endif
 
+#ifdef USE_LIVEPATCH
 #if IS_ENABLED(CONFIG_LIVEPATCH)
 #include <linux/livepatch.h>
 #include <linux/rculist_nulls.h>
@@ -113,7 +116,6 @@ typedef void (*ndpi_conntrack_destroy_ptr) (struct nf_conntrack *);
 ndpi_conntrack_destroy_ptr __rcu nf_conntrack_destroy_cb;
 #else
 #error "CONFIG_LIVEPATCH not enabled"
-#endif
 #endif
 #endif
 
@@ -3352,5 +3354,6 @@ static void __exit ndpi_mt_exit(void)
 
 module_init(ndpi_mt_init);
 module_exit(ndpi_mt_exit);
+#ifdef USE_LIVEPATCH
 MODULE_INFO(livepatch, "Y");
-
+#endif
