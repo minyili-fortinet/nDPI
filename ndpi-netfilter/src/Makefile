@@ -1,4 +1,3 @@
-
 NDPI_SRC := ../../src
 NDPI_PRO := ${NDPI_SRC}/lib/protocols
 
@@ -47,9 +46,11 @@ modules:
 
 modules_install:
 	make -C ${KERNEL_DIR} M=$$PWD $@;
-	depmod -a;
+	if [ "${WITHOUT_DEPMOD}" != "true" ]; then depmod -a; fi
+
 clean:
 	make -C ${KERNEL_DIR} M=$$PWD $@;
 	rm -rf modules.order
+
 distclean:
 	find ../../src/lib/ ../libre/ -type f \( -name \*.o -o -name \*.cmd \) | xargs -r rm
