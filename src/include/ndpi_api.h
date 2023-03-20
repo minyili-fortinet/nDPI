@@ -913,7 +913,7 @@ extern "C" {
    * @par     The automata initialized with ndpi_init_automa();
    * @par     The (sub)string to search (malloc'ed memory)
    * @par     The number associated with this string
-   * @return  0 in case of no error, or -1 if an error occurred.
+   * @return  0 in case of no error, or -2 if the string has been already addeed, or -1 if an error occurred.
    *
    */
   int ndpi_add_string_value_to_automa(void *_automa, char *str, u_int32_t num);
@@ -1745,6 +1745,10 @@ extern "C" {
 
   /* ******************************* */
 
+  u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
+
+  /* ******************************* */
+
   int ndpi_des_init(struct ndpi_des_struct *des, double alpha, double beta, float significance);
   int ndpi_des_add_value(struct ndpi_des_struct *des, const double _value, double *forecast, double *confidence_band);
   void ndpi_des_fitting(double *values, u_int32_t num_values, float *ret_alpha, float *ret_beta);
@@ -1770,7 +1774,7 @@ extern "C" {
   void ndpi_serialize_confidence(ndpi_serializer *serializer, ndpi_confidence_t confidence);
   void ndpi_serialize_proto(struct ndpi_detection_module_struct *ndpi_struct,
                             ndpi_serializer *serializer,
-                            ndpi_risk_enum risk,
+                            ndpi_risk risk,
                             ndpi_confidence_t confidence,
                             ndpi_protocol l7_protocol);
 #endif /* KERNEL */

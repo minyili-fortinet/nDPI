@@ -100,7 +100,7 @@ extern "C" {
 					      struct ndpi_flow_struct *flow);
 
   extern u_int16_t ndpi_check_for_email_address(struct ndpi_detection_module_struct *ndpi_struct,
-						struct ndpi_flow_struct *flow, u_int16_t counter);
+						u_int16_t counter);
 
   extern void ndpi_int_change_category(struct ndpi_detection_module_struct *ndpi_struct,
 				       struct ndpi_flow_struct *flow,
@@ -108,8 +108,6 @@ extern "C" {
 
   extern void ndpi_set_proto_subprotocols(struct ndpi_detection_module_struct *ndpi_mod,
 				      int protoId, ...);
-
-  extern void ndpi_int_reset_protocol(struct ndpi_flow_struct *flow);
 
   extern int ndpi_packet_src_ip_eql(const struct ndpi_packet_struct *packet, const ndpi_ip_addr_t * ip);
   extern int ndpi_packet_dst_ip_eql(const struct ndpi_packet_struct *packet, const ndpi_ip_addr_t * ip);
@@ -129,6 +127,8 @@ extern "C" {
 					  u_int8_t *user_defined_proto);
 
   extern u_int8_t ndpi_is_proto(ndpi_protocol proto, u_int16_t p);
+
+  extern void ndpi_search_tcp_or_udp(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
 
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
   void ndpi_debug_get_last_log_function_line(struct ndpi_detection_module_struct *ndpi_struct,

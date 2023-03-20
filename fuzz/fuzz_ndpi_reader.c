@@ -15,7 +15,7 @@ int nDPI_LogLevel = 0;
 char *_debug_protocols = NULL;
 u_int32_t current_ndpi_memory = 0, max_ndpi_memory = 0;
 u_int8_t enable_protocol_guess = 1, enable_payload_analyzer = 0;
-u_int8_t enable_flow_stats = 0;
+u_int8_t enable_flow_stats = 1;
 u_int8_t human_readeable_string_len = 5;
 u_int8_t max_num_udp_dissected_pkts = 16 /* 8 is enough for most protocols, Signal requires more */, max_num_tcp_dissected_pkts = 80 /* due to telnet */;
 ndpi_init_prefs init_prefs = ndpi_track_flow_payload | ndpi_enable_ja3_plus;
@@ -23,6 +23,10 @@ int enable_malloc_bins = 0;
 int malloc_size_stats = 0;
 int max_malloc_bins = 0;
 struct ndpi_bin malloc_bins; /* unused */
+
+#ifdef CRYPT_FORCE_NO_AESNI
+extern int force_no_aesni;
+#endif
 
 FILE *bufferToFile(const uint8_t *Data, size_t Size) {
   FILE *fd;
@@ -83,6 +87,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     memset(workflow->stats.protocol_flows, 0,
 	   sizeof(workflow->stats.protocol_flows));
     ndpi_finalize_initialization(workflow->ndpi_struct);
+
+#ifdef CRYPT_FORCE_NO_AESNI
+    force_no_aesni = 1;
+#endif
   }
 
 #ifdef ENABLE_MEM_ALLOC_FAILURES
