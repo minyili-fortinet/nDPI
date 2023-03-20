@@ -178,7 +178,7 @@ static ndpi_risk_info ndpi_known_risks[] = {
   { NDPI_TLS_CERTIFICATE_EXPIRED,               NDPI_RISK_HIGH,   CLIENT_LOW_RISK_PERCENTAGE,  NDPI_SERVER_ACCOUNTABLE },
   { NDPI_TLS_CERTIFICATE_MISMATCH,              NDPI_RISK_HIGH,   CLIENT_FAIR_RISK_PERCENTAGE, NDPI_SERVER_ACCOUNTABLE },
   { NDPI_HTTP_SUSPICIOUS_USER_AGENT,            NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
-  { NDPI_HTTP_NUMERIC_IP_HOST,                  NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
+  { NDPI_NUMERIC_IP_HOST,                       NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_HTTP_SUSPICIOUS_URL,                   NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_HTTP_SUSPICIOUS_HEADER,                NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_TLS_NOT_CARRYING_HTTPS,                NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
@@ -399,20 +399,23 @@ char *ndpi_get_proto_by_id(struct ndpi_detection_module_struct *ndpi_str, u_int 
 /* *********************************************************************************** */
 
 u_int16_t ndpi_get_proto_by_name(struct ndpi_detection_module_struct *ndpi_str, const char *name) {
-  u_int16_t i, num = ndpi_get_num_supported_protocols(ndpi_str);
-  char *p;
+  u_int16_t i, num;
+  const char *p;
 
   if(!ndpi_str || !name)
     return(NDPI_PROTOCOL_UNKNOWN);
 
+  num = ndpi_get_num_supported_protocols(ndpi_str);
+
   for(i = 0; i < num; i++) {
+    p = ndpi_get_proto_by_id(ndpi_str, i);
 #ifdef __KERNEL__
-    if(!ndpi_get_proto_by_id(ndpi_str, i)) {
+    if(!p) {
 	    pr_err("%s: #%d empty!\n",__func__,i);
 	    continue;
     }
 #endif
-    if(strcasecmp(ndpi_get_proto_by_id(ndpi_str, i), name) == 0)
+    if(strcasecmp(p, name) == 0)
       return(i);
   }
 
@@ -2295,12 +2298,15 @@ int ndpi_get_patricia_stats(struct ndpi_detection_module_struct *ndpi_struct,
   case NDPI_PTREE_RISK_MASK:
     ndpi_patricia_get_stats((ndpi_patricia_tree_t *)ndpi_struct->ip_risk_mask_ptree, stats);
     return 0;
+    
   case NDPI_PTREE_RISK:
     ndpi_patricia_get_stats((ndpi_patricia_tree_t *)ndpi_struct->ip_risk_ptree, stats);
     return 0;
+    
   case NDPI_PTREE_PROTOCOLS:
     ndpi_patricia_get_stats((ndpi_patricia_tree_t *)ndpi_struct->protocols_ptree, stats);
     return 0;
+    
   default:
     return -1;
   }
@@ -2456,7 +2462,7 @@ u_int16_t ndpi_network_port_ptree_match(struct ndpi_detection_module_struct *ndp
   if(node) {
     int i;
 
-    for(i=0; i<2; i++) {
+    for(i=0; i<UV16_MAX_USER_VALUES; i++) {
       if((node->value.u.uv16[i].additional_user_value == 0)
 	 || (node->value.u.uv16[i].additional_user_value == port))
 	return(node->value.u.uv16[i].user_value);
@@ -2546,7 +2552,7 @@ int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
       if((node = add_to_ptree(ndpi_str->protocols_ptree, AF_INET, &pin, cidr ? atoi(cidr) : 32 /* bits */)) != NULL) {
 	u_int i, found = 0;
 
-	for(i=0; i<2; i++) {
+	for(i=0; i<UV16_MAX_USER_VALUES; i++) {
 	  if(node->value.u.uv16[i].user_value == 0) {
 	    node->value.u.uv16[i].user_value = protocol_id, node->value.u.uv16[i].additional_user_value =  0 /* port */;
 	    found = 1;
@@ -2577,11 +2583,12 @@ static void ndpi_init_ptree_ipv4(struct ndpi_detection_module_struct *ndpi_str,
 
     pin.s_addr = htonl(host_list[i].network);
     if((node = add_to_ptree(ptree, AF_INET, &pin, host_list[i].cidr /* bits */)) != NULL) {
-      /* Two main cases:
-         1) ip -> protocol: uv32.user_value = protocol; uv32.additional_user_value = 0;
-         2) ip -> risk: uv32.user_value = risk; uv32.additional_user_value = 0;
+      /*
+	Two main cases:
+	1) ip -> protocol: uv16[0].user_value = protocol; uv16[0].additional_user_value = 0;
+	2) ip -> risk: uv16[0].user_value = risk; uv16[0].additional_user_value = 0;
       */
-      node->value.u.uv32.user_value = host_list[i].value, node->value.u.uv32.additional_user_value = 0;
+      node->value.u.uv16[0].user_value = host_list[i].value, node->value.u.uv16[0].additional_user_value = 0;
     }
   }
 }
@@ -2626,7 +2633,7 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
   if((node = add_to_ptree(ndpi_str->protocols_ptree, AF_INET, &pin, bits)) != NULL) {
     int i;
 
-    for(i=0; i<2; i++) {
+    for(i=0; i<UV16_MAX_USER_VALUES; i++) {
       if(node->value.u.uv16[i].user_value == 0) {
 	node->value.u.uv16[i].user_value = protocol_id, node->value.u.uv16[i].additional_user_value = htons(port);
 	return(0);
@@ -3102,13 +3109,15 @@ static void ndpi_add_domain_risk_exceptions(struct ndpi_detection_module_struct 
   const ndpi_risk risks_to_mask[] = {
     NDPI_SUSPICIOUS_DGA_DOMAIN,
     NDPI_BINARY_APPLICATION_TRANSFER,
-    NDPI_HTTP_NUMERIC_IP_HOST,
+    NDPI_NUMERIC_IP_HOST,
     NDPI_MALICIOUS_JA3,
     NDPI_NO_RISK /* End */
   };
   u_int i;
   ndpi_risk mask = ((ndpi_risk)-1);
 
+  if(!ndpi_str) return;
+  
   for(i=0; risks_to_mask[i] != NDPI_NO_RISK; i++)
     mask &= ~(1ULL << risks_to_mask[i]);
 
@@ -8108,6 +8117,40 @@ char *ndpi_protocol2name(struct ndpi_detection_module_struct *ndpi_str,
 
 /* ****************************************************** */
 
+const char *ndpi_confidence_get_name(ndpi_confidence_t confidence)
+{
+  switch(confidence) {
+  case NDPI_CONFIDENCE_UNKNOWN:
+    return "Unknown";
+
+  case NDPI_CONFIDENCE_MATCH_BY_PORT:
+    return "Match by port";
+
+  case NDPI_CONFIDENCE_DPI_PARTIAL:
+    return "DPI (partial)";
+
+  case NDPI_CONFIDENCE_DPI_PARTIAL_CACHE:
+    return "DPI (partial cache)";
+
+  case NDPI_CONFIDENCE_DPI_CACHE:
+    return "DPI (cache)";
+
+  case NDPI_CONFIDENCE_DPI:
+    return "DPI";
+
+  case NDPI_CONFIDENCE_NBPF:
+    return "nBPF";
+
+  case NDPI_CONFIDENCE_MATCH_BY_IP:
+    return "Match by IP";
+
+  case NDPI_CONFIDENCE_USERDEF:
+    return "User defined";
+
+  default:
+    return NULL;
+  }
+}
 
 #ifndef __KERNEL__
 /* ****************************************************** */
@@ -8159,43 +8202,6 @@ void ndpi_category_set_name(struct ndpi_detection_module_struct *ndpi_str,
 
   default:
     break;
-  }
-}
-
-/* ****************************************************** */
-
-const char *ndpi_confidence_get_name(ndpi_confidence_t confidence)
-{
-  switch(confidence) {
-  case NDPI_CONFIDENCE_UNKNOWN:
-    return "Unknown";
-
-  case NDPI_CONFIDENCE_MATCH_BY_PORT:
-    return "Match by port";
-
-  case NDPI_CONFIDENCE_DPI_PARTIAL:
-    return "DPI (partial)";
-
-  case NDPI_CONFIDENCE_DPI_PARTIAL_CACHE:
-    return "DPI (partial cache)";
-
-  case NDPI_CONFIDENCE_DPI_CACHE:
-    return "DPI (cache)";
-
-  case NDPI_CONFIDENCE_DPI:
-    return "DPI";
-
-  case NDPI_CONFIDENCE_NBPF:
-    return "nBPF";
-
-  case NDPI_CONFIDENCE_MATCH_BY_IP:
-    return "Match by IP";
-
-  case NDPI_CONFIDENCE_USERDEF:
-    return "User defined";
-
-  default:
-    return NULL;
   }
 }
 
@@ -8279,6 +8285,9 @@ ndpi_protocol_category_t ndpi_get_proto_category(struct ndpi_detection_module_st
 
 char *ndpi_get_proto_name(struct ndpi_detection_module_struct *ndpi_str,
 			  u_int16_t proto_id) {
+
+  if(!ndpi_str) return("Unknown");
+  
   if((proto_id >= ndpi_str->ndpi_num_supported_protocols)
      || (!ndpi_is_valid_protoId(proto_id))
      || (ndpi_str->proto_defaults[proto_id].protoName == NULL))
@@ -8291,6 +8300,9 @@ char *ndpi_get_proto_name(struct ndpi_detection_module_struct *ndpi_str,
 
 ndpi_protocol_breed_t ndpi_get_proto_breed(struct ndpi_detection_module_struct *ndpi_str,
 					   u_int16_t proto_id) {
+
+  if(!ndpi_str) return(NDPI_PROTOCOL_UNRATED);
+  
   if((proto_id >= ndpi_str->ndpi_num_supported_protocols) ||
      (!ndpi_is_valid_protoId(proto_id)) ||
      (ndpi_str->proto_defaults[proto_id].protoName == NULL))
@@ -8330,6 +8342,8 @@ char *ndpi_get_proto_breed_name(struct ndpi_detection_module_struct *ndpi_str,
 int ndpi_get_protocol_id(struct ndpi_detection_module_struct *ndpi_str, char *proto) {
   int i;
 
+  if(!ndpi_str) return(-1);
+  
   for(i = 0; i < (int) ndpi_str->ndpi_num_supported_protocols; i++)
     if(ndpi_str->proto_defaults[i].protoName &&
        strcasecmp(proto, ndpi_str->proto_defaults[i].protoName) == 0)
@@ -8344,6 +8358,8 @@ int ndpi_get_category_id(struct ndpi_detection_module_struct *ndpi_str, char *ca
 #ifndef __KERNEL__
   int i;
 
+  if(!ndpi_str) return(-1);
+  
   for(i = 0; i < NDPI_PROTOCOL_NUM_CATEGORIES; i++) {
     const char *name = ndpi_category_get_name(ndpi_str, i);
 
@@ -8361,6 +8377,8 @@ int ndpi_get_category_id(struct ndpi_detection_module_struct *ndpi_str, char *ca
 void ndpi_dump_protocols(struct ndpi_detection_module_struct *ndpi_str) {
   int i;
 
+  if(!ndpi_str) return;
+  
   for(i = 0; i < (int) ndpi_str->ndpi_num_supported_protocols; i++)
     printf("%3d %-22s %-10s %-8s %-12s %s\n",
 	   i, ndpi_str->proto_defaults[i].protoName,
@@ -8517,6 +8535,8 @@ int ndpi_match_string_subprotocol(struct ndpi_detection_module_struct *ndpi_str,
   ndpi_automa *automa = &ndpi_str->host_automa;
   int rc;
 
+  if(!ndpi_str) return(NDPI_PROTOCOL_UNKNOWN);
+  
   if((automa->ac_automa == NULL) || (string_to_match_len == 0))
     return(NDPI_PROTOCOL_UNKNOWN);
 
@@ -8559,6 +8579,8 @@ static u_int16_t ndpi_automa_match_string_subprotocol(struct ndpi_detection_modu
 						      ndpi_protocol_match_result *ret_match) {
   int matching_protocol_id;
 
+  if(!ndpi_str) return(NDPI_PROTOCOL_UNKNOWN);
+  
   matching_protocol_id =
     ndpi_match_string_subprotocol(ndpi_str, string_to_match, string_to_match_len, ret_match);
 
@@ -8614,6 +8636,9 @@ static u_int16_t ndpi_automa_match_string_subprotocol(struct ndpi_detection_modu
 
 void ndpi_check_subprotocol_risk(struct ndpi_detection_module_struct *ndpi_str,
 				 struct ndpi_flow_struct *flow, u_int16_t subprotocol_id) {
+
+  if(!ndpi_str) return;
+  
   switch(subprotocol_id) {
   case NDPI_PROTOCOL_ANYDESK:
     ndpi_set_risk(ndpi_str, flow, NDPI_DESKTOP_OR_FILE_SHARING_SESSION, "Found AnyDesk"); /* Remote assistance */
@@ -8631,6 +8656,8 @@ u_int16_t ndpi_match_host_subprotocol(struct ndpi_detection_module_struct *ndpi_
   u_int16_t rc;
   ndpi_protocol_category_t id;
 
+  if(!ndpi_str) return(-1);
+  
   memset(ret_match, 0, sizeof(*ret_match));
 
   rc = ndpi_automa_match_string_subprotocol(ndpi_str, flow,
@@ -8681,6 +8708,8 @@ int ndpi_match_hostname_protocol(struct ndpi_detection_module_struct *ndpi_struc
   u_int16_t subproto, what_len;
   char *what;
 
+  if(!ndpi_struct) return(0);
+  
   if((name_len > 2) && (name[0] == '*') && (name[1] == '.'))
     what = &name[1], what_len = name_len - 1;
   else
@@ -8704,14 +8733,17 @@ int ndpi_match_hostname_protocol(struct ndpi_detection_module_struct *ndpi_struc
 
 static inline int ndpi_match_xgram(unsigned int *map,unsigned int l,const char *str) {
   unsigned int i,c;
+  
   for(i=0,c=0; *str && i < l; i++) {
     unsigned char a = (unsigned char)(*str++);
     if(a < 'a' || a > 'z') return 0;
     c *= XGRAMS_C;
     c += a-'a';
   }
+  
   return (map[c >> 5] & (1u << (c & 0x1f))) != 0;
 }
+
 int ndpi_match_bigram(const char *str) {
   return ndpi_match_xgram(bigrams_bitmap, 2, str);
 }
@@ -8725,7 +8757,6 @@ int ndpi_match_impossible_bigram(const char *str) {
 int ndpi_match_trigram(const char *str) {
   return ndpi_match_xgram(trigrams_bitmap, 3, str);
 }
-
 
 /* ****************************************************** */
 

@@ -1426,6 +1426,7 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
 #if 0
     fprintf(out, "[Num calls: %d]", flow->num_dissector_calls);
 #endif
+    fprintf(out, "[DPI packets: %d]", flow->dpi_packets);
 
     if(flow->detected_protocol.category != 0)
       fprintf(out, "[cat: %s/%u]",
@@ -3639,12 +3640,20 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 	fprintf(results_file, "DPI Packets (other):\t%llu\t(%.2f pkts/flow)\n",
 		(long long unsigned int)cumulative_stats.dpi_packet_count[2],
 		cumulative_stats.dpi_packet_count[2] / (float)cumulative_stats.flow_count[2]);
-
+      {
+          static ndpi_confidence_t configence_order[NDPI_CONFIDENCE_MAX] = {
+                  NDPI_CONFIDENCE_UNKNOWN,NDPI_CONFIDENCE_MATCH_BY_PORT,
+                  NDPI_CONFIDENCE_NBPF,
+                  NDPI_CONFIDENCE_DPI_PARTIAL,NDPI_CONFIDENCE_DPI_PARTIAL_CACHE,
+                  NDPI_CONFIDENCE_DPI_CACHE,NDPI_CONFIDENCE_DPI,
+                  NDPI_CONFIDENCE_MATCH_BY_IP,NDPI_CONFIDENCE_USERDEF };
       for(i = 0; i < sizeof(cumulative_stats.flow_confidence)/sizeof(cumulative_stats.flow_confidence[0]); i++) {
-	if(cumulative_stats.flow_confidence[i] != 0)
+        ndpi_confidence_t c = configence_order[i];
+	if(cumulative_stats.flow_confidence[c] != 0)
 	  fprintf(results_file, "Confidence %-17s: %llu (flows)\n",
-		  ndpi_confidence_get_name(i),
-		  (long long unsigned int)cumulative_stats.flow_confidence[i]);
+		  ndpi_confidence_get_name(c),
+		  (long long unsigned int)cumulative_stats.flow_confidence[c]);
+      }
       }
 
       if(dump_internal_stats) {
