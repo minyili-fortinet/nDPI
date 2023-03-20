@@ -6142,17 +6142,18 @@ static void ndpi_reconcile_protocols(struct ndpi_detection_module_struct *ndpi_s
     case NDPI_PROTOCOL_MS_OUTLOOK:
     case NDPI_PROTOCOL_SKYPE_TEAMS:
       ndpi_int_change_protocol(ndpi_str, flow,
-			       flow->guessed_protocol_id_by_ip, NDPI_PROTOCOL_UNKNOWN,
+			       flow->guessed_protocol_id_by_ip, flow->detected_protocol_stack[1],
 			       NDPI_CONFIDENCE_DPI_PARTIAL);
       break;
     }
-
+    break;
+      
     /* Generic container for google subprotocols */
   case NDPI_PROTOCOL_GOOGLE:
     switch(flow->guessed_protocol_id_by_ip) {
     case NDPI_PROTOCOL_GOOGLE_CLOUD:
       ndpi_int_change_protocol(ndpi_str, flow,
-			       flow->guessed_protocol_id_by_ip, NDPI_PROTOCOL_UNKNOWN,
+			       flow->guessed_protocol_id_by_ip, flow->detected_protocol_stack[1],
 			       NDPI_CONFIDENCE_DPI_PARTIAL);
       
       break;
@@ -7733,6 +7734,7 @@ void ndpi_set_detected_protocol(struct ndpi_detection_module_struct *ndpi_str, s
   ndpi_protocol ret;
   
   ndpi_int_change_protocol(ndpi_str, flow, upper_detected_protocol, lower_detected_protocol, confidence);
+  ret.master_protocol = flow->detected_protocol_stack[1], ret.app_protocol = flow->detected_protocol_stack[0];
   ndpi_reconcile_protocols(ndpi_str, flow, &ret);
 }
 
