@@ -596,6 +596,9 @@ static char *ct_info(const struct nf_conn * ct,char *buf,size_t buf_size,int dir
 
 static void *malloc_wrapper(size_t size)
 {
+	if(in_atomic() || irqs_disabled() || in_interrupt())
+		return kmalloc(size,GFP_ATOMIC);
+	
 	if(size > 32*1024) {
 		/*
 		 * Workarround for 32bit systems
@@ -609,7 +612,7 @@ static void *malloc_wrapper(size_t size)
 		return vmalloc(size);
 #endif
 	}
-	return kmalloc(size,(in_atomic() || irqs_disabled()) ? GFP_ATOMIC : GFP_KERNEL);
+	return kmalloc(size,GFP_KERNEL);
 }
 
 static void free_wrapper(void *freeable)
