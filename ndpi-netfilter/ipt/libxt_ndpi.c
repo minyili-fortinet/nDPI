@@ -99,7 +99,7 @@ enum ndpi_opt_index {
 #define FLAGS_UNTRACKED 0x1000
 #define FLAGS_CLEVEL 0x2000
 #define FLAGS_HPROTO 0x4000
-#define FLAGS_RISK 0x4000
+#define FLAGS_RISK 0x8000
 
 
 static void ndpi_mt_init(struct xt_entry_match *match)
