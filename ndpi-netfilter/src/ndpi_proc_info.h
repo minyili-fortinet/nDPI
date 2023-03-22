@@ -34,3 +34,14 @@ int ndebug_proc_close(struct inode *inode, struct file *file);
 ssize_t ndebug_proc_write(struct file *file, const char __user *buffer,
                      size_t length, loff_t *loff);
 
+int risk_names(struct ndpi_net *n, char *lbuf,size_t count);
+
+int nrisk_proc_open(struct inode *inode, struct file *file);
+
+ssize_t nrisk_proc_read(struct file *file, char __user *buf,
+                     size_t count, loff_t *ppos);
+
+ssize_t nrisk_proc_write(struct file *file, const char __user *buffer,
+		                     size_t length, loff_t *loff);
+
+int nrisk_proc_close(struct inode *inode, struct file *file);

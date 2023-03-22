@@ -100,6 +100,7 @@ static char ann_name[]="announce";
 
 static char proto_name[]="proto";
 static char debug_name[]="debug";
+static char risk_name[]="risks";
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5,19,0)
 #ifndef USE_LIVEPATCH
@@ -347,7 +348,7 @@ module_param_named(ndpi_enable_flow, ndpi_enable_flow, ulong, 0400);
 MODULE_PARM_DESC(ndpi_enable_flow,"Enable netflow info");
 
 module_param_string(ndpi_flow_opt, ndpi_flow_opt, NDPI_FLOW_OPT_MAX , 0600);
-MODULE_PARM_DESC(ndpi_enable_flow,"Enable flow info option. 'S' - JA3S, 'C' - JA3C, 'F' - tls fingerprint sha1");
+MODULE_PARM_DESC(ndpi_enable_flow,"Enable flow info option. 'S' - JA3S, 'C' - JA3C, 'F' - tls fingerprint sha1, 'L' - level, 'R' - risks");
 
 module_param_named(ndpi_stun_cache,ndpi_stun_cache_opt,ulong,0600);
 MODULE_PARM_DESC(ndpi_stun_cache,"STUN cache control (0-1). Disabled by default.");
@@ -1092,6 +1093,7 @@ ndpi_process_packet(struct ndpi_net *n, struct nf_conn * ct, struct nf_ct_ext_nd
 	    }
 	}
 	preempt_enable();
+	ct_ndpi->risk = flow->risk & n->risk_mask;
 
 	return proto->app_protocol != NDPI_PROTOCOL_UNKNOWN ? proto->app_protocol:proto->master_protocol;
 }
@@ -1381,6 +1383,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	const struct sk_buff *skb_use = NULL;
 	struct nf_ct_ext_ndpi *ct_ndpi = NULL;
 	struct ndpi_cb *c_proto;
+	ndpi_risk risk = 0;
 	ndpi_protocol_bitmask_struct_t excluded_proto;
 	uint8_t l4_proto=0,ct_dir=0,detect_complete=1,untracked=1,confidence=0,tls=0;
 	bool result=false, host_matched = false, is_ipv6=false,
@@ -1535,6 +1538,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 			COUNTER(ndpi_p_c_last_ct_not);
 		    break;
 		}
+		risk = ct_ndpi->risk;
 		confidence = ct_ndpi->confidence;
 		proto.app_protocol = ct_ndpi->proto.app_protocol;
 		proto.master_protocol = ct_ndpi->proto.master_protocol;
@@ -1608,7 +1612,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 			kfree_skb(linearized_skb);
 
 		if(_DBG_TRACE_DPI && ct_ndpi->flow)
-		   pr_info(" ndpi_process_packet dpi: g_pr:%d g_host_pr:%d m:%d a:%d cl:%s; ct: m:%d a:%d cl:%s pcnt %d [%d,%d]%s%s\n",
+		   pr_info(" ndpi_process_packet dpi: g_pr:%d g_host_pr:%d m:%d a:%d cl:%s; ct: m:%d a:%d cl:%s r:%llx pcnt %d [%d,%d]%s%s\n",
 			ct_ndpi->flow->guessed_protocol_id,
 			ct_ndpi->flow->guessed_protocol_id_by_ip,
 			proto.master_protocol,
@@ -1617,6 +1621,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 			ct_ndpi->proto.master_protocol,
 			ct_ndpi->proto.app_protocol,
 			ndpi_confidence_get_name(ct_ndpi->confidence),
+			(uint64_t)ct_ndpi->risk,
 			ct_ndpi->flow->packet_counter,
 			ct_ndpi->flow->packet_direction_counter[0],
 			ct_ndpi->flow->packet_direction_counter[1],
@@ -1642,6 +1647,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		ct_ndpi->proto.app_protocol = proto.app_protocol;
 		ct_ndpi->proto.master_protocol = proto.master_protocol;
 		c_proto->proto = pack_proto(proto);
+		risk = ct_ndpi->risk;
 
 		ndpi_host_info(ct_ndpi);
 
@@ -1709,6 +1715,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	} else { // ct_ndpi->flow == NULL
 		proto.app_protocol = ct_ndpi->proto.app_protocol;
 		proto.master_protocol = ct_ndpi->proto.master_protocol;
+		risk = ct_ndpi->risk;
 		confidence = ct_ndpi->confidence;
 		c_proto->proto = pack_proto(proto);
 		check_tls_done(ct_ndpi,&detect_complete,&tls);
@@ -1832,6 +1839,12 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		if(_DBG_TRACE_MATCH)
 		    pr_info(" ndpi_match confidence: %s : %s\n",
 				    result ? "yes":"no",ndpi_confidence_get_name(confidence));
+		if(!result) break;
+	}
+	if(info->risk) {
+		result &= (info->risk & risk)  != 0;
+		if(_DBG_TRACE_MATCH)
+		    pr_info(" ndpi_match risk: %s\n",result ? "yes":"no");
 		if(!result) break;
 	}
     } while(0);
@@ -2739,6 +2752,7 @@ int np,nh,err=0;
 #endif
 PROC_OPS(nproto_proc_fops, ninfo_proc_open,nproto_proc_read,nproto_proc_write,noop_llseek,nproto_proc_close);
 PROC_OPS(ndebug_proc_fops, ninfo_proc_open,ndebug_proc_read,ndebug_proc_write,noop_llseek,ndebug_proc_close);
+PROC_OPS(nrisk_proc_fops, nrisk_proc_open,nrisk_proc_read,nrisk_proc_write,noop_llseek,nrisk_proc_close);
 PROC_OPS(ninfo_proc_fops, ninfo_proc_open,ninfo_proc_read,ninfo_proc_write,noop_llseek,ninfo_proc_close);
 PROC_OPS(nflow_proc_fops, nflow_proc_open,nflow_proc_read,nflow_proc_write,nflow_proc_llseek,nflow_proc_close);
 
@@ -2832,6 +2846,10 @@ static void __net_exit ndpi_net_exit(struct net *net)
 
 	ndpi_exit_detection_module(n->ndpi_struct);
 
+// FIXME
+	if(n->risk_names)
+		kfree(n->risk_names);
+
 	if(n->pde) {
 		if(n->pe_ipdef)
 			remove_proc_entry(ipdef_name, n->pde);
@@ -2841,6 +2859,8 @@ static void __net_exit ndpi_net_exit(struct net *net)
 			remove_proc_entry(info_name, n->pde);
 		if(n->pe_debug)
 			remove_proc_entry(debug_name, n->pde);
+		if(n->pe_risk)
+			remove_proc_entry(risk_name, n->pde);
 		if(n->pe_proto)
 			remove_proc_entry(proto_name, n->pde);
 		if(n->pe_flow)
@@ -2880,6 +2900,8 @@ static int __net_init ndpi_net_init(struct net *net)
 	n->w_buff[W_BUF_IP] = NULL;
 	n->w_buff[W_BUF_HOST] = NULL;
 	n->w_buff[W_BUF_PROTO] = NULL;
+	n->w_buff[W_BUF_DEBUG] = NULL;
+	n->w_buff[W_BUF_RISK] = NULL;
 
 	n->host_ac = NULL;
 	n->hosts = str_hosts_alloc();
@@ -2941,6 +2963,10 @@ static int __net_init ndpi_net_init(struct net *net)
 			bt_hash_tmo,bt_log_size);
 
 	ndpi_finalize_initialization(n->ndpi_struct);
+
+	n->risk_names_len = risk_names(n,NULL,0);
+	n->risk_mask = ~(0ULL);
+
 	n->n_hash = -1;
 
 	/* Create proc files */
@@ -2989,6 +3015,12 @@ static int __net_init ndpi_net_init(struct net *net)
 					 n->pde, &ndebug_proc_fops, n);
 		if(!n->pe_debug) {
 			pr_err("xt_ndpi: cant create net/%s/%s\n",dir_name,debug_name);
+			break;
+		}
+		n->pe_risk = proc_create_data(risk_name, S_IRUGO,
+					 n->pde, &nrisk_proc_fops, n);
+		if(!n->pe_risk) {
+			pr_err("xt_ndpi: cant create net/%s/%s\n",dir_name,risk_name);
 			break;
 		}
 #ifdef BT_ANNOUNCE
@@ -3111,6 +3143,8 @@ static int __net_init ndpi_net_init(struct net *net)
 	if(n->pe_ann)
 		remove_proc_entry(ann_name, n->pde);
 #endif
+	if(n->pe_risk)
+		remove_proc_entry(debug_name,n->pde);
 	if(n->pe_debug)
 		remove_proc_entry(debug_name,n->pde);
 	if(n->pe_proto)
@@ -3121,6 +3155,8 @@ static int __net_init ndpi_net_init(struct net *net)
 		remove_proc_entry(flow_name,n->pde);
 
 	PROC_REMOVE(n->pde,net);
+	if(n->risk_names)
+		kfree(n->risk_names);
 	ndpi_exit_detection_module(n->ndpi_struct);
 
 	return -ENOMEM;

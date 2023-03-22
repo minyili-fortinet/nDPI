@@ -898,3 +898,36 @@ int parse_ndpi_debug(struct ndpi_net *n,char *cmd) {
 	return *v ? 0:1;
 }
 
+int parse_ndpi_risk(struct ndpi_net *n,char *cmd) {
+	char *v;
+	int risk;
+	v = cmd;
+	if(!*v) return 0;
+/*
+ * num e|d
+ */
+	while(v && *v != ' ' && *v != '\t') v++;
+	if(*v) {
+		*v = '\0';
+		if(kstrtoint(cmd,10,&risk)) return 1;
+		if(risk < (int)NDPI_NO_RISK || risk >= (int)NDPI_MAX_RISK ) {
+			pr_err("NDPI: bad risk number %s\n",cmd);
+			return 1;
+		}
+		*v = ' ';
+		while(*v && (*v == ' ' || *v == '\t')) v++;
+		if(*v) {
+			if(*v == 'd')
+				n->risk_mask &= ~(1ULL << risk);
+			  else 
+			    if(*v == 'a')
+				n->risk_mask |= (1ULL << risk);
+			      else 
+				return 1;
+			return v[1] ? 1:0;
+		}
+	}
+	pr_err("NDPI: bad cmd %s\n",cmd);
+	return 1;
+}
+
