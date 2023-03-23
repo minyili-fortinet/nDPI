@@ -14,6 +14,7 @@
 #include "ndpi_strcol.h"
 #include "ndpi_main_netfilter.h"
 #include "ndpi_proc_parsers.h"
+#include "ndpi_proc_info.h"
 
 /*
  * Syntax: 
@@ -900,6 +901,7 @@ int parse_ndpi_debug(struct ndpi_net *n,char *cmd) {
 
 int parse_ndpi_risk(struct ndpi_net *n,char *cmd) {
 	char *v;
+	uint64_t risk_mask_old = n->risk_mask;
 	int risk;
 	v = cmd;
 	if(!*v) return 0;
@@ -916,6 +918,7 @@ int parse_ndpi_risk(struct ndpi_net *n,char *cmd) {
 		}
 		*v = ' ';
 		while(*v && (*v == ' ' || *v == '\t')) v++;
+		if(v[1]) return 1;
 		if(*v) {
 			if(*v == 'd')
 				n->risk_mask &= ~(1ULL << risk);
@@ -924,7 +927,10 @@ int parse_ndpi_risk(struct ndpi_net *n,char *cmd) {
 				n->risk_mask |= (1ULL << risk);
 			      else 
 				return 1;
-			return v[1] ? 1:0;
+
+			if(n->risk_mask != risk_mask_old && n->risk_names)
+				risk_names(n, n->risk_names, n->risk_names_len+1);
+			return 0;
 		}
 	}
 	pr_err("NDPI: bad cmd %s\n",cmd);

@@ -328,7 +328,7 @@ int risk_names(struct ndpi_net *n, char *lbuf,size_t count) {
 		const char *ra = ndpi_risk2str(r);
 		if(ra[0] >= '0' && ra[0] <= '9') continue; // unknown risk
 		i = snprintf(rbuf,sizeof(rbuf)-1,"%d %c %s\n",
-				(int)r, n->risk_mask & (1ULL << r) ? 'n':'y',
+				(int)r, n->risk_mask & (1ULL << r) ? 'a':'d',
 				ra);
 		if(lbuf && l + i > count) return -1;
 		if(lbuf)
