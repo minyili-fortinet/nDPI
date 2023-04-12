@@ -128,6 +128,7 @@
     <ClCompile Include="..\src\lib\ndpi_community_id.c" />
     <ClCompile Include="..\src\lib\ndpi_geoip.c" />
     <ClCompile Include="..\src\lib\ndpi_main.c" />
+    <ClCompile Include="..\src\lib\ndpi_memory.c" />
     <ClCompile Include="..\src\lib\ndpi_serializer.c" />
     <ClCompile Include="..\src\lib\ndpi_utils.c" />
     <ClCompile Include="..\src\lib\protocols\activision.c" />
@@ -140,6 +141,7 @@
     <ClCompile Include="..\src\lib\protocols\apple_push.c" />
     <ClCompile Include="..\src\lib\protocols\avast.c" />
     <ClCompile Include="..\src\lib\protocols\avast_securedns.c" />
+    <ClCompile Include="..\src\lib\protocols\bacnet.c" />
     <ClCompile Include="..\src\lib\protocols\bjnp.c" />
     <ClCompile Include="..\src\lib\protocols\capwap.c" />
     <ClCompile Include="..\src\lib\protocols\cassandra.c" />
@@ -281,6 +283,7 @@
     <ClCompile Include="..\src\lib\protocols\skype.c" />
     <ClCompile Include="..\src\lib\protocols\smb.c" />
     <ClCompile Include="..\src\lib\protocols\socks45.c" />
+    <ClCompile Include="..\src\lib\protocols\source_engine.c" />
     <ClCompile Include="..\src\lib\protocols\spotify.c" />
     <ClCompile Include="..\src\lib\protocols\ssdp.c" />
     <ClCompile Include="..\src\lib\protocols\ssh.c" />

@@ -41,6 +41,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/avast.c \
 		     protocols/avast_securedns.c \
 		     protocols/amqp.c \
+		     protocols/bacnet.c \
 		     protocols/bgp.c \
 		     protocols/bittorrent.c \
 		     protocols/bjnp.c \
@@ -160,6 +161,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/soap.c \
 		     protocols/socks45.c \
 		     protocols/softether.c \
+		     protocols/source_engine.c \
 		     protocols/spotify.c \
 		     protocols/ssdp.c \
 		     protocols/ssh.c \

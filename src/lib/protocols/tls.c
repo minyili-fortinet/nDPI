@@ -33,6 +33,8 @@ extern int processClientServerHello(struct ndpi_detection_module_struct *ndpi_st
 extern int http_process_user_agent(struct ndpi_detection_module_struct *ndpi_struct,
                                    struct ndpi_flow_struct *flow,
                                    const u_int8_t *ua_ptr, u_int16_t ua_ptr_len);
+extern int ookla_search_into_cache(struct ndpi_detection_module_struct* ndpi_struct,
+                                   struct ndpi_flow_struct* flow);
 /* QUIC/GQUIC stuff */
 extern int quic_len(const uint8_t *buf, uint64_t *value);
 extern int quic_len_buffer_still_required(uint8_t value);
@@ -286,7 +288,7 @@ static int extractRDNSequence(struct ndpi_packet_struct *packet,
 			      char *rdnSeqBuf, u_int *rdnSeqBuf_offset,
 			      u_int rdnSeqBuf_len,
 			      const char *label) {
-  u_int8_t str_len = packet->payload[offset+4], is_printable = 1;
+  u_int8_t str_len, is_printable = 1;
   char *str;
   u_int len;
 
@@ -297,6 +299,10 @@ static int extractRDNSequence(struct ndpi_packet_struct *packet,
 #endif
     return -1;
   }
+  if((offset+4) >= packet->payload_packet_len)
+    return(-1);
+
+  str_len = packet->payload[offset+4];
 
   // packet is truncated... further inspection is not needed
   if((offset+4+str_len) >= packet->payload_packet_len)
@@ -400,11 +406,12 @@ static void checkTLSSubprotocol(struct ndpi_detection_module_struct *ndpi_struct
 /* **************************************** */
 
 /* See https://blog.catchpoint.com/2017/05/12/dissecting-tls-using-wireshark/ */
-static void processCertificateElements(struct ndpi_detection_module_struct *ndpi_struct,
-				       struct ndpi_flow_struct *flow,
-				       u_int16_t p_offset, u_int16_t certificate_len) {
+void processCertificateElements(struct ndpi_detection_module_struct *ndpi_struct,
+				struct ndpi_flow_struct *flow,
+				u_int16_t p_offset, u_int16_t certificate_len) {
   struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
-  u_int16_t num_found = 0, i;
+  u_int16_t num_found = 0;
+  int32_t i;
   char buffer[64] = { '\0' }, rdnSeqBuf[2048];
   u_int rdn_len = 0;
 
@@ -471,7 +478,6 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 #endif
     } else if((packet->payload[i] == 0x30) && (packet->payload[i+1] == 0x1e) && (packet->payload[i+2] == 0x17)) {
       /* Certificate Validity */
-      u_int8_t len = packet->payload[i+3];
       u_int offset = i+4;
 
       if(num_found == 0) {
@@ -494,9 +500,11 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 	rdn_len = 0; /* Reset buffer */
       }
 
-      if((offset+len) < packet->payload_packet_len) {
+      if(i + 3 < certificate_len &&
+	 (offset+packet->payload[i+3]) < packet->payload_packet_len) {
 #ifndef __KERNEL__
 	char utcDate[32];
+        u_int8_t len = packet->payload[i+3];
 
 #ifdef DEBUG_TLS
 	u_int j;
@@ -615,7 +623,7 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
       i += 3 /* skip the initial patten 55 1D 11 */;
 
       /* skip the first type, 0x04 == BIT STRING, and jump to it's length */
-      if(packet->payload[i] == 0x04) i++; else i += 4; /* 4 bytes, with the last byte set to 04 */
+      if(i < packet->payload_packet_len && packet->payload[i] == 0x04) i++; else i += 4; /* 4 bytes, with the last byte set to 04 */
 
       if(i < packet->payload_packet_len) {
 	i += (packet->payload[i] & 0x80) ? (packet->payload[i] & 0x7F) : 0; /* skip BIT STRING length */
@@ -714,7 +722,7 @@ static void processCertificateElements(struct ndpi_detection_module_struct *ndpi
 		    if(flow->protos.tls_quic.server_names == NULL)
 		      flow->protos.tls_quic.server_names = ndpi_strdup(dNSName),
 			flow->protos.tls_quic.server_names_len = strlen(dNSName);
-		    else {
+		    else if((u_int16_t)(flow->protos.tls_quic.server_names_len + dNSName_len + 1) > flow->protos.tls_quic.server_names_len) {
 		      u_int16_t newstr_len = flow->protos.tls_quic.server_names_len + dNSName_len + 1;
 		      char *newstr = (char*)ndpi_realloc(flow->protos.tls_quic.server_names,
 							 flow->protos.tls_quic.server_names_len+1, newstr_len+1);
@@ -1206,8 +1214,27 @@ static int ndpi_search_tls_tcp(struct ndpi_detection_module_struct *ndpi_struct,
 #ifdef DEBUG_TLS_BLOCKS
     printf("*** [TLS Block] No more blocks\n");
 #endif
-    flow->extra_packets_func = NULL;
-    return(0); /* That's all */
+    /* An ookla flow? */
+    if((ndpi_struct->aggressiveness_ookla & NDPI_AGGRESSIVENESS_OOKLA_TLS) && /* Feature enabled */
+       (!something_went_wrong &&
+        flow->tls_quic.certificate_processed == 1 &&
+        flow->protos.tls_quic.hello_processed == 1) && /* TLS handshake found without errors */
+       flow->detected_protocol_stack[0] == NDPI_PROTOCOL_TLS && /* No IMAPS/FTPS/... */
+       flow->detected_protocol_stack[1] == NDPI_PROTOCOL_UNKNOWN && /* No sub-classification */
+       ntohs(flow->s_port) == 8080 && /* Ookla port */
+       ookla_search_into_cache(ndpi_struct, flow)) {
+      NDPI_LOG_INFO(ndpi_struct, "found ookla (cache over TLS)\n");
+      /* Even if a LRU cache is involved, NDPI_CONFIDENCE_DPI_AGGRESSIVE seems more
+         suited than NDPI_CONFIDENCE_DPI_CACHE */
+      ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_OOKLA, NDPI_PROTOCOL_TLS, NDPI_CONFIDENCE_DPI_AGGRESSIVE);
+      /* TLS over port 8080 usually triggers that risk; clear it */
+      ndpi_unset_risk(ndpi_struct, flow, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT);
+      flow->extra_packets_func = NULL;
+      return(0); /* That's all */
+    } else {
+      flow->extra_packets_func = NULL;
+      return(0); /* That's all */
+    }
   } else
     return(1);
 }

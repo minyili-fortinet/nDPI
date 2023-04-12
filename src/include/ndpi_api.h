@@ -1000,6 +1000,11 @@ extern "C" {
 				     ndpi_detection_preference pref,
 				     int value);
 
+  u_int16_t ndpi_map_user_proto_id_to_ndpi_id(struct ndpi_detection_module_struct *ndpi_str,
+					      u_int16_t user_proto_id);
+  u_int16_t ndpi_map_ndpi_id_to_user_proto_id(struct ndpi_detection_module_struct *ndpi_str,
+					      u_int16_t ndpi_proto_id);
+
   /* Tells to called on what l4 protocol given application protocol can be found */
   ndpi_l4_proto_info ndpi_get_l4_proto_info(struct ndpi_detection_module_struct *ndpi_struct, u_int16_t ndpi_proto_id);
   const char* ndpi_get_l4_proto_name(ndpi_l4_proto_info proto);
@@ -1047,6 +1052,11 @@ extern "C" {
 				 u_int16_t proto, int value);
   int ndpi_get_opportunistic_tls(struct ndpi_detection_module_struct *ndpi_struct,
 				 u_int16_t proto);
+
+  int ndpi_set_protocol_aggressiveness(struct ndpi_detection_module_struct *ndpi_struct,
+                                       u_int16_t proto, u_int32_t value);
+  u_int32_t ndpi_get_protocol_aggressiveness(struct ndpi_detection_module_struct *ndpi_struct,
+                                             u_int16_t proto);
 
   /**
    * Find a protocol id associated with a string automata
@@ -1114,7 +1124,7 @@ extern "C" {
 				  const u_int8_t *src, u_int src_len);
   u_char* ndpi_base64_decode(const u_char *src, size_t len, size_t *out_len);
   char* ndpi_base64_encode(unsigned char const* bytes_to_encode, size_t in_len); /* NOTE: caller MUST free the returned pointer */
-  void ndpi_string_sha1_hash(const uint8_t *message, size_t len, u_char *hash /* 20-bytes */);
+  void ndpi_string_sha1_hash(const u_int8_t *message, size_t len, u_char *hash /* 20-bytes */);
 
   int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
 			   const char *path, u_int16_t protocol_id);
@@ -1736,13 +1746,15 @@ extern "C" {
 		    double alpha, double beta, double gamma, float significance);
   void ndpi_hw_free(struct ndpi_hw_struct *hw);
   int  ndpi_hw_add_value(struct ndpi_hw_struct *hw, const u_int64_t value, double *forecast,  double *confidence_band);
-
+  void ndpi_hw_reset(struct ndpi_hw_struct *hw);
+  
   /* ******************************* */
 
   int ndpi_ses_init(struct ndpi_ses_struct *ses, double alpha, float significance);
   int ndpi_ses_add_value(struct ndpi_ses_struct *ses, const double _value, double *forecast, double *confidence_band);
   void ndpi_ses_fitting(double *values, u_int32_t num_values, float *ret_alpha);
-
+  void ndpi_ses_reset(struct ndpi_ses_struct *ses);
+  
   /* ******************************* */
 
   u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
@@ -1752,7 +1764,8 @@ extern "C" {
   int ndpi_des_init(struct ndpi_des_struct *des, double alpha, double beta, float significance);
   int ndpi_des_add_value(struct ndpi_des_struct *des, const double _value, double *forecast, double *confidence_band);
   void ndpi_des_fitting(double *values, u_int32_t num_values, float *ret_alpha, float *ret_beta);
-
+  void ndpi_des_reset(struct ndpi_des_struct *des);
+  
   /* ******************************* */
 
   int   ndpi_jitter_init(struct ndpi_jitter_struct *hw, u_int16_t num_periods);
@@ -1936,7 +1949,7 @@ extern "C" {
 
   ndpi_bitmap_iterator* ndpi_bitmap_iterator_alloc(ndpi_bitmap* b);
   void ndpi_bitmap_iterator_free(ndpi_bitmap* b);
-  bool ndpi_bitmap_iterator_next(ndpi_bitmap_iterator* i, uint32_t *value);
+  bool ndpi_bitmap_iterator_next(ndpi_bitmap_iterator* i, u_int32_t *value);
 
   /* ******************************* */
 

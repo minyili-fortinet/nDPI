@@ -1658,6 +1658,10 @@ const char* ndpi_tunnel2str(ndpi_packet_tunnel tt) {
   case ndpi_vxlan_tunnel:
     return("VXLAN");
     break;
+
+  case ndpi_gre_tunnel:
+    return("GRE");
+    break;
   }
 
   return("");
