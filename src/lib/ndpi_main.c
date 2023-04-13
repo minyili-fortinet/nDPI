@@ -8879,6 +8879,20 @@ u_int16_t ndpi_match_host_subprotocol(struct ndpi_detection_module_struct *ndpi_
       ndpi_set_risk(ndpi_str, flow, NDPI_RISKY_DOMAIN, str);
     }
   }
+#else
+  {
+      static const char pref_str[]="RISK_DOMAIN_";
+      char risk_domain_str[sizeof(pref_str) + 64 + 1];
+      u_int32_t val;
+      size_t len = sizeof(pref_str)-1,len2 = ndpi_min(string_to_match_len, 64-1);
+
+      strcpy(risk_domain_str,pref_str);
+      strncpy(&risk_domain_str[len],string_to_match,len2);
+      len += len2;
+      risk_domain_str[len] = '\0';
+      if(ndpi_match_string_value(ndpi_str->host_automa.ac_automa, risk_domain_str, len, &val) != -1)
+	      ndpi_set_risk(ndpi_str, flow, NDPI_RISKY_DOMAIN, &risk_domain_str[len]);
+  }
 #endif
 
   /* Add punycode check */

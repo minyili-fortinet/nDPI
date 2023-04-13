@@ -479,6 +479,7 @@ void processCertificateElements(struct ndpi_detection_module_struct *ndpi_struct
     } else if((packet->payload[i] == 0x30) && (packet->payload[i+1] == 0x1e) && (packet->payload[i+2] == 0x17)) {
       /* Certificate Validity */
       u_int offset = i+4;
+      u_int8_t len = packet->payload[i+3];
 
       if(num_found == 0) {
 	num_found++;
@@ -501,10 +502,9 @@ void processCertificateElements(struct ndpi_detection_module_struct *ndpi_struct
       }
 
       if(i + 3 < certificate_len &&
-	 (offset+packet->payload[i+3]) < packet->payload_packet_len) {
+	 (offset+len) < packet->payload_packet_len) {
 #ifndef __KERNEL__
 	char utcDate[32];
-        u_int8_t len = packet->payload[i+3];
 
 #ifdef DEBUG_TLS
 	u_int j;
@@ -856,6 +856,10 @@ int processCertificate(struct ndpi_detection_module_struct *ndpi_struct,
 
   /* Now let's process each individual certificates */
   while(certificates_offset < certificates_length) {
+    const size_t sha1_siz = sizeof(flow->protos.tls_quic.sha1_certificate_fingerprint);
+    uint8_t sha1_tmp[sizeof(flow->protos.tls_quic.sha1_certificate_fingerprint)];
+    uint8_t *sha1;
+
     u_int32_t certificate_len = (packet->payload[certificates_offset] << 16) + (packet->payload[certificates_offset+1] << 8) + packet->payload[certificates_offset+2];
 
     /* Invalid lenght */
@@ -880,7 +884,12 @@ int processCertificate(struct ndpi_detection_module_struct *ndpi_struct,
 	   packet->payload[certificates_offset+2]);
 #endif
 
-    if(num_certificates_found++ == 0) /* Dissect only the first certificate that is the one we care */ {
+//    if(num_certificates_found++ == 0) /* Dissect only the first certificate that is the one we care */ {
+      num_certificates_found++;
+
+      sha1 = num_certificates_found == 1 ? flow->protos.tls_quic.sha1_certificate_fingerprint : sha1_tmp;
+
+      {
       /* For SHA-1 we take into account only the first certificate and not all of them */
 
       SHA1Init(&srv_cert_fingerprint_ctx);
@@ -899,15 +908,14 @@ int processCertificate(struct ndpi_detection_module_struct *ndpi_struct,
       SHA1Update(&srv_cert_fingerprint_ctx,
 		 &packet->payload[certificates_offset],
 		 certificate_len);
+      SHA1Final(sha1, &srv_cert_fingerprint_ctx);
 
-      SHA1Final(flow->protos.tls_quic.sha1_certificate_fingerprint, &srv_cert_fingerprint_ctx);
-
-      flow->protos.tls_quic.fingerprint_set = 1;
+      if(num_certificates_found == 1)
+        flow->protos.tls_quic.fingerprint_set = 1;
 
       {
-      uint8_t * sha1 = flow->protos.tls_quic.sha1_certificate_fingerprint;
-      const size_t sha1_siz = sizeof(flow->protos.tls_quic.sha1_certificate_fingerprint);
-      char sha1_str[20 /* sha1_siz */ * 2 + 1];
+      int rc1;
+      char sha1_str[ 20 /* sha1_siz */ * 2 + 1];
       static const char hexalnum[] = "0123456789ABCDEF";
       size_t i;
       for (i = 0; i < sha1_siz; ++i) {
@@ -922,15 +930,31 @@ int processCertificate(struct ndpi_detection_module_struct *ndpi_struct,
       printf("[TLS] SHA-1: %s\n", sha1_str);
 #endif
 #ifndef __KERNEL__
-      if(ndpi_struct->malicious_sha1_hashmap != NULL) {
-        u_int16_t rc1 = ndpi_hash_find_entry(ndpi_struct->malicious_sha1_hashmap, sha1_str, sha1_siz * 2, NULL);
+      if(ndpi_struct->malicious_sha1_hashmap != NULL)
+        rc1 = ndpi_hash_find_entry(ndpi_struct->malicious_sha1_hashmap,
+			sha1_str, sha1_siz * 2, NULL) != 0;
+#else
+      {
+	static const char pref_str[]="RISK_SHA1CERT_";
+        char risk_sha1_str[sizeof(pref_str) + 20 /* sha1_siz */ * 2 + 1];
+        u_int32_t val;
+	int rc1;
+	size_t len = sizeof(pref_str)-1;
 
-        if(rc1 == 0)
-          ndpi_set_risk(ndpi_struct, flow, NDPI_MALICIOUS_SHA1_CERTIFICATE, sha1_str);
+	strcpy(risk_sha1_str,pref_str);
+	strncpy(&risk_sha1_str[len],sha1_str,sha1_siz*2);
+	len += sha1_siz*2;
+	risk_sha1_str[len] = '\0';
+
+        rc1 = ndpi_match_string_value(ndpi_struct->host_automa.ac_automa,
+			risk_sha1_str, len, &val) == -1;
       }
 #endif
+      if(rc1 == 0)
+        ndpi_set_risk(ndpi_struct, flow, NDPI_MALICIOUS_SHA1_CERTIFICATE, sha1_str);
 
-      processCertificateElements(ndpi_struct, flow, certificates_offset, certificate_len);
+      if(num_certificates_found == 1)
+        processCertificateElements(ndpi_struct, flow, certificates_offset, certificate_len);
       }
     }
 
@@ -2674,16 +2698,29 @@ static int _processClientServerHello(struct ndpi_detection_module_struct *ndpi_s
 	      printf("[JA3] Client: %s \n", flow->protos.tls_quic.ja3_client);
 #endif
 #ifndef __KERNEL__
-	      if(ndpi_struct->malicious_ja3_hashmap != NULL) {
-	        u_int16_t rc1 = ndpi_hash_find_entry(ndpi_struct->malicious_ja3_hashmap,
+	      if(ndpi_struct->malicious_ja3_hashmap != NULL)
+	         rc = ndpi_hash_find_entry(ndpi_struct->malicious_ja3_hashmap,
 	                                             flow->protos.tls_quic.ja3_client,
 	                                             NDPI_ARRAY_LENGTH(flow->protos.tls_quic.ja3_client) - 1,
-	                                             NULL);
+	                                             NULL) != 0;
+#else
+	      {
+		static const char pref_str[]="RISK_JA3_";
+		char risk_ja3_str[sizeof(pref_str) + sizeof(flow->protos.tls_quic.ja3_client) + 1];
+		u_int32_t val;
+		size_t len = sizeof(pref_str)-1,len2 = strlen(flow->protos.tls_quic.ja3_client);
 
-	      if(rc1 == 0)
-	        ndpi_set_risk(ndpi_struct, flow, NDPI_MALICIOUS_JA3, flow->protos.tls_quic.ja3_client);
+		strcpy(risk_ja3_str,pref_str);
+		strncpy(&risk_ja3_str[len],flow->protos.tls_quic.ja3_client,len2);
+		len += len2;
+		risk_ja3_str[len] = '\0';
+
+		rc = ndpi_match_string_value(ndpi_struct->host_automa.ac_automa,
+				risk_ja3_str, len, &val) == -1;
 	      }
 #endif
+	      if(rc == 0)
+	            ndpi_set_risk(ndpi_struct, flow, NDPI_MALICIOUS_JA3, flow->protos.tls_quic.ja3_client);
 	    }
 
 	    /* Before returning to the caller we need to make a final check */
