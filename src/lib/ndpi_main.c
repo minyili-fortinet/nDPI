@@ -5759,6 +5759,20 @@ static u_int8_t ndpi_is_multi_or_broadcast(struct ndpi_packet_struct *packet) {
 
 /* ************************************************ */
 
+static int tcp_ack_padding(struct ndpi_packet_struct *packet) {
+  const struct ndpi_tcphdr *tcph = packet->tcp;
+  if(tcph && tcph->ack && !tcph->syn && !tcph->psh &&
+     packet->payload_packet_len < 8 &&
+     packet->payload_packet_len > 1 /* To avoid TCP keep-alives */) {
+    int i;
+    for(i = 0; i < packet->payload_packet_len; i++)
+      if(packet->payload[i] != 0)
+        return 0;
+    return 1;
+  }
+  return 0;
+}
+
 void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_str,
 			      struct ndpi_flow_struct *flow) {
   if(!flow) {
@@ -5873,7 +5887,10 @@ void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_str,
 	}
       } else if(packet->payload_packet_len > 0) {
 	/* check tcp sequence counters */
-	if(((u_int32_t)(ntohl(tcph->seq) - flow->next_tcp_seq_nr[packet->packet_direction])) >
+	if(tcp_ack_padding(packet)) {
+          NDPI_LOG_DBG2(ndpi_str, "TCP ACK with zero padding. Ignored\n");
+	  packet->tcp_retransmission = 1;
+	} else if(((u_int32_t)(ntohl(tcph->seq) - flow->next_tcp_seq_nr[packet->packet_direction])) >
 	   ndpi_str->tcp_max_retransmission_window_size) {
 	  packet->tcp_retransmission = 1;
 
