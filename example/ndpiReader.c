@@ -127,7 +127,6 @@ static struct ndpi_detection_module_struct *ndpi_info_mod = NULL;
 extern u_int8_t enable_doh_dot_detection;
 extern u_int32_t max_num_packets_per_flow, max_packet_payload_dissection, max_num_reported_top_payloads;
 extern u_int16_t min_pattern_len, max_pattern_len;
-extern void ndpi_self_check_host_match(); /* Self check function */
 u_int8_t dump_internal_stats;
 
 struct ndpi_bin malloc_bins;
@@ -819,7 +818,7 @@ static void parseOptions(int argc, char **argv) {
   for(i = 0; i < NDPI_MAX_SUPPORTED_PROTOCOLS; i++)
     aggressiveness[i] = -1; /* Use the default value */
 
-  while((opt = getopt_long(argc, argv, "a:Ab:B:e:Ec:C:dDf:g:i:Ij:k:K:S:hHp:pP:l:r:s:tu:v:V:n:rp:x:w:zZ:q0123:456:7:89:m:MT:U:",
+  while((opt = getopt_long(argc, argv, "a:Ab:B:e:Ec:C:dDFf:g:i:Ij:k:K:S:hHp:pP:l:r:s:tu:v:V:n:rp:x:w:zZ:q0123:456:7:89:m:MT:U:",
                            longopts, &option_idx)) != EOF) {
 #ifdef DEBUG_TRACE
     if(trace) fprintf(trace, " #### Handling option -%c [%s] #### \n", opt, optarg ? optarg : "");
@@ -828,7 +827,7 @@ static void parseOptions(int argc, char **argv) {
     switch (opt) {
     case 'a':
       ndpi_generate_options(atoi(optarg));
-      break;
+      exit(0);
 
     case 'A':
       dump_internal_stats = 1;
@@ -5217,7 +5216,7 @@ int main(int argc, char **argv) {
     bitmapUnitTest();
     automataUnitTest();
     analyzeUnitTest();
-    ndpi_self_check_host_match();
+    ndpi_self_check_host_match(stderr);
     analysisUnitTest();
     compressedBitmapUnitTest();
 #endif

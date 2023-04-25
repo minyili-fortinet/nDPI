@@ -739,20 +739,6 @@ static int ndpi_default_ports_tree_node_t_cmp(const void *a, const void *b) {
 
 /* ******************************************************************** */
 
-void ndpi_default_ports_tree_node_t_walker(const void *node, const ndpi_VISIT which, const int depth) {
-  ndpi_default_ports_tree_node_t *f = *(ndpi_default_ports_tree_node_t **) node;
-
-  printf("<%d>Walk on node %s (%u)\n", depth,
-	 which == ndpi_preorder ?
-	 "ndpi_preorder" :
-	 which == ndpi_postorder ?
-	 "ndpi_postorder" :
-	 which == ndpi_endorder ? "ndpi_endorder" : which == ndpi_leaf ? "ndpi_leaf" : "unknown",
-	 f->default_port);
-}
-
-/* ******************************************************************** */
-
 static int addDefaultPort(struct ndpi_detection_module_struct *ndpi_str,
 			  ndpi_port_range *range,
 			  ndpi_proto_defaults_t *def,
@@ -1028,17 +1014,20 @@ int ndpi_init_protocol_match(struct ndpi_detection_module_struct *ndpi_str,
 /* ******************************************************************** */
 
 #ifndef __KERNEL__
-/* Self check function to be called onli for testing purposes */
-void ndpi_self_check_host_match() {
+/* Self check function to be called only for testing purposes */
+void ndpi_self_check_host_match(FILE *error_out) {
   u_int32_t i, j;
 
   for(i = 0; host_match[i].string_to_match != NULL; i++) {
     for(j = 0; host_match[j].string_to_match != NULL; j++) {
       if((i != j) && (strcmp(host_match[i].string_to_match, host_match[j].string_to_match) == 0)) {
-	printf("[INTERNAL ERROR]: Duplicate string detected '%s' [id: %u, id %u]\n",
-	       host_match[i].string_to_match, i, j);
-	printf("\nPlease fix host_match[] in ndpi_content_match.c.inc\n");
-	exit(0);
+        if (error_out != NULL) {
+          fprintf(error_out,
+                  "[NDPI] INTERNAL ERROR duplicate string detected '%s' [id: %u, id %u]\n",
+                  host_match[i].string_to_match, i, j);
+          fprintf(error_out, "\nPlease fix host_match[] in ndpi_content_match.c.inc\n");
+        }
+        abort();
       }
     }
   }
@@ -1049,39 +1038,40 @@ void ndpi_self_check_host_match() {
 #define XGRAMS_C 26
 static int ndpi_xgrams_inited = 0;
 static unsigned int bigrams_bitmap[(XGRAMS_C*XGRAMS_C+31)/32];
-static unsigned int imposible_bigrams_bitmap[(XGRAMS_C*XGRAMS_C+31)/32];
+static unsigned int impossible_bigrams_bitmap[(XGRAMS_C*XGRAMS_C+31)/32];
 static unsigned int trigrams_bitmap[(XGRAMS_C*XGRAMS_C*XGRAMS_C+31)/32];
 
+#ifndef __KERNEL__
+#define xABORT abort()
+#else
+#define xABORT continue
+#endif
 
-static void ndpi_xgrams_init(unsigned int *dst,size_t dn, const char **src,size_t sn,unsigned int l) {
-unsigned int i,j,c;
+static void ndpi_xgrams_init(struct ndpi_detection_module_struct *ndpi_str,
+                             unsigned int *dst, size_t dn,
+                             const char **src, size_t sn,
+                             unsigned int l)
+{
+  unsigned int i,j,c;
   for(i=0;i < sn && src[i]; i++) {
     for(j=0,c=0; j < l; j++) {
-        unsigned char a = (unsigned char)src[i][j];
-        if(a < 'a' || a > 'z') { 
-#ifndef __KERNEL__
-	    printf("%u: c%u %c\n",i,j,a); abort(); 
-#else
-	    continue;
-#endif
-        }
-        c *= XGRAMS_C;
-        c += a - 'a';
+      unsigned char a = (unsigned char)src[i][j];
+      if(a < 'a' || a > 'z') {
+        NDPI_LOG_ERR(ndpi_str,
+                     "[NDPI] INTERNAL ERROR ndpi_xgrams_init %u: c%u %c\n",
+                     i,j,a);
+        xABORT;
+      }
+      c *= XGRAMS_C;
+      c += a - 'a';
     }
-    if(src[i][l]) { 
-#ifndef __KERNEL__
-       printf("%u: c[%d] != 0\n",i,l); abort(); 
-#else
-       continue;
-#endif
+    if(src[i][l]) {
+      NDPI_LOG_ERR(ndpi_str,
+                   "[NDPI] INTERNAL ERROR ndpi_xgrams_init %u: c[%d] != 0\n",
+                   i,l);
+      xABORT;
     }
-    if((c >> 3) >= dn) {
-#ifndef __KERNEL__
-       abort();
-#else
-       continue;
-#endif
-    }
+    if((c >> 3) >= dn) xABORT;
     dst[c >> 5] |= 1u << (c & 0x1f);
   }
 }
@@ -1133,12 +1123,12 @@ static void init_string_based_protocols(struct ndpi_detection_module_struct *ndp
 
   if(!ndpi_xgrams_inited) {
     ndpi_xgrams_inited = 1;
-    ndpi_xgrams_init(bigrams_bitmap,sizeof(bigrams_bitmap),
+    ndpi_xgrams_init(ndpi_str,bigrams_bitmap,sizeof(bigrams_bitmap),
 		     ndpi_en_bigrams,sizeof(ndpi_en_bigrams)/sizeof(ndpi_en_bigrams[0]), 2);
 
-    ndpi_xgrams_init(imposible_bigrams_bitmap,sizeof(imposible_bigrams_bitmap),
+    ndpi_xgrams_init(ndpi_str,impossible_bigrams_bitmap,sizeof(impossible_bigrams_bitmap),
 		     ndpi_en_impossible_bigrams,sizeof(ndpi_en_impossible_bigrams)/sizeof(ndpi_en_impossible_bigrams[0]), 2);
-    ndpi_xgrams_init(trigrams_bitmap,sizeof(trigrams_bitmap),
+    ndpi_xgrams_init(ndpi_str,trigrams_bitmap,sizeof(trigrams_bitmap),
 		     ndpi_en_trigrams,sizeof(ndpi_en_trigrams)/sizeof(ndpi_en_trigrams[0]), 3);
   }
 }
@@ -2262,6 +2252,14 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
                           "BACnet", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
                           ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
                           ndpi_build_default_ports(ports_b, 47808, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_OICQ,
+                          "OICQ", NDPI_PROTOCOL_CATEGORY_CHAT,
+                          ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+                          ndpi_build_default_ports(ports_b, 8000, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_HOTS,
+                          "Heroes_of_the_Storm", NDPI_PROTOCOL_CATEGORY_GAME,
+                          ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+                          ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
@@ -5156,6 +5154,12 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* BACnet */
   init_bacnet_dissector(ndpi_str, &a);
 
+  /* OICQ */
+  init_oicq_dissector(ndpi_str, &a);
+
+  /* Heroes of the Storm */
+  init_hots_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -6468,9 +6472,7 @@ static void ndpi_add_connection_as_zoom(struct ndpi_detection_module_struct *ndp
  */
 static void ndpi_check_tcp_flags(struct ndpi_detection_module_struct *ndpi_str,
 				 struct ndpi_flow_struct *flow) {
-#if 0
-  printf("[TOTAL] %u / %u [tot: %u]\n", flow->packet_direction_complete_counter[0], flow->packet_direction_complete_counter[1], flow->all_packets_counter);
-#endif
+  // printf("[TOTAL] %u / %u [tot: %u]\n", flow->packet_direction_complete_counter[0], flow->packet_direction_complete_counter[1], flow->all_packets_counter);
 
   if((flow->l4.tcp.cli2srv_tcp_flags & TH_SYN)
      && (flow->l4.tcp.srv2cli_tcp_flags & TH_RST)
@@ -8169,11 +8171,7 @@ u_int16_t ndpi_get_upper_proto(ndpi_protocol proto) {
 /* ****************************************************** */
 
 static ndpi_protocol ndpi_internal_guess_undetected_protocol(struct ndpi_detection_module_struct *ndpi_str,
-							     struct ndpi_flow_struct *flow, u_int8_t proto,
-							     u_int32_t shost /* host byte order */, u_int16_t sport,
-							     u_int32_t dhost /* host byte order */, u_int16_t dport) {
-  u_int32_t rc;
-  struct in_addr addr;
+							     struct ndpi_flow_struct *flow, u_int8_t proto) {
   ndpi_protocol ret = NDPI_PROTOCOL_NULL;
   u_int8_t user_defined_proto;
 
@@ -8181,82 +8179,33 @@ static ndpi_protocol ndpi_internal_guess_undetected_protocol(struct ndpi_detecti
     return(ret);
 
 #ifdef BITTORRENT_CACHE_DEBUG
-  printf("[%s:%u] ndpi_guess_undetected_protocol(%08X, %u, %08X, %u) [flow: %p]\n",
-	 __FILE__, __LINE__, shost, sport, dhost, dport, flow);
+  printf("[%s:%u] [flow: %p] proto %u\n", __FILE__, __LINE__, flow, proto);
 #endif
 
-  if((proto == IPPROTO_TCP) || (proto == IPPROTO_UDP)) {
-    rc = ndpi_search_tcp_or_udp_raw(ndpi_str, flow, proto, shost, dhost, sport, dport);
+  if(flow && ((proto == IPPROTO_TCP) || (proto == IPPROTO_UDP))) {
 
-    if(rc != NDPI_PROTOCOL_UNKNOWN) {
-      if(flow && (proto == IPPROTO_UDP) &&
-	 NDPI_COMPARE_PROTOCOL_TO_BITMASK(flow->excluded_protocol_bitmask, rc) && is_udp_not_guessable_protocol(rc))
-	;
-      else {
-	ret.app_protocol = rc,
-	  ret.master_protocol = ndpi_guess_protocol_id(ndpi_str, flow, proto, sport, dport, &user_defined_proto);
-
-	if(ret.app_protocol == ret.master_protocol)
-	  ret.master_protocol = NDPI_PROTOCOL_UNKNOWN;
-
-#ifndef __KERNEL__
-#ifdef BITTORRENT_CACHE_DEBUG
-	printf("[%s:%u] Guessed %u.%u\n", __FILE__, __LINE__, ret.master_protocol, ret.app_protocol);
-#endif
-
-	ret.category = ndpi_get_proto_category(ndpi_str, ret);
-#endif
-	return(ret);
+    if(flow->guessed_protocol_id != NDPI_PROTOCOL_UNKNOWN) {
+      if(flow->guessed_protocol_id_by_ip != NDPI_PROTOCOL_UNKNOWN) {
+        ret.master_protocol = flow->guessed_protocol_id;
+        ret.app_protocol = flow->guessed_protocol_id_by_ip;
+      } else {
+        ret.app_protocol = flow->guessed_protocol_id;
       }
+    } else {
+      ret.app_protocol = flow->guessed_protocol_id_by_ip;
     }
 
-    rc = ndpi_guess_protocol_id(ndpi_str, flow, proto, sport, dport, &user_defined_proto);
-    if(rc != NDPI_PROTOCOL_UNKNOWN) {
-      if(flow && (proto == IPPROTO_UDP) &&
-	 NDPI_COMPARE_PROTOCOL_TO_BITMASK(flow->excluded_protocol_bitmask, rc) && is_udp_not_guessable_protocol(rc))
-	;
-      else {
-	ret.app_protocol = rc;
-
-	if(rc == NDPI_PROTOCOL_TLS)
-	  goto check_guessed_skype;
-	else {
-#ifndef __KERNEL__
-#ifdef BITTORRENT_CACHE_DEBUG
-	  printf("[%s:%u] Guessed %u.%u\n", __FILE__, __LINE__, ret.master_protocol, ret.app_protocol);
-#endif
-	  ret.category = ndpi_get_proto_category(ndpi_str, ret);
-#endif
-	  return(ret);
-	}
-      }
-    }
-
-    if(ndpi_search_into_bittorrent_cache(ndpi_str, NULL /* flow */,
-					 htonl(shost), htons(sport),
-					 htonl(dhost), htons(dport))) {
+    if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
+       !flow->is_ipv6 && /* TODO */
+       ndpi_search_into_bittorrent_cache(ndpi_str, flow,
+					 flow->c_address.v4, flow->c_port,
+					 flow->s_address.v4, flow->s_port)) {
       /* This looks like BitTorrent */
       ret.app_protocol = NDPI_PROTOCOL_BITTORRENT;
-#ifndef __KERNEL__
-      ret.category = ndpi_get_proto_category(ndpi_str, ret);
-#ifdef BITTORRENT_CACHE_DEBUG
-      printf("[%s:%u] Guessed %u.%u\n", __FILE__, __LINE__, ret.master_protocol, ret.app_protocol);
-#endif
-#endif
-      return(ret);
     }
-
-  check_guessed_skype:
-    addr.s_addr = htonl(shost);
-    if(ndpi_network_ptree_match(ndpi_str, &addr) == NDPI_PROTOCOL_SKYPE_TEAMS) {
-      ret.app_protocol = NDPI_PROTOCOL_SKYPE_TEAMS;
-    } else {
-      addr.s_addr = htonl(dhost);
-      if(ndpi_network_ptree_match(ndpi_str, &addr) == NDPI_PROTOCOL_SKYPE_TEAMS)
-	ret.app_protocol = NDPI_PROTOCOL_SKYPE_TEAMS;
-    }
-  } else
-    ret.app_protocol = ndpi_guess_protocol_id(ndpi_str, flow, proto, sport, dport, &user_defined_proto);
+  } else {
+    ret.app_protocol = ndpi_guess_protocol_id(ndpi_str, flow, proto, 0, 0, &user_defined_proto);
+  }
 
 #ifndef __KERNEL__
   ret.category = ndpi_get_proto_category(ndpi_str, ret);
@@ -8271,11 +8220,8 @@ static ndpi_protocol ndpi_internal_guess_undetected_protocol(struct ndpi_detecti
 /* ****************************************************** */
 
 ndpi_protocol ndpi_guess_undetected_protocol(struct ndpi_detection_module_struct *ndpi_str,
-					     struct ndpi_flow_struct *flow, u_int8_t proto,
-					     u_int32_t shost /* host byte order */, u_int16_t sport,
-					     u_int32_t dhost /* host byte order */, u_int16_t dport) {
-  ndpi_protocol p = ndpi_internal_guess_undetected_protocol(ndpi_str, flow, proto,
-							    shost, sport, dhost, dport);
+					     struct ndpi_flow_struct *flow, u_int8_t proto) {
+  ndpi_protocol p = ndpi_internal_guess_undetected_protocol(ndpi_str, flow, proto);
 
   p.master_protocol = ndpi_map_ndpi_id_to_user_proto_id(ndpi_str, p.master_protocol),
     p.app_protocol = ndpi_map_ndpi_id_to_user_proto_id(ndpi_str, p.app_protocol);
@@ -8650,8 +8596,6 @@ void ndpi_generate_options(u_int opt) {
     printf("WARNING: option -a out of range\n");
     break;
   }
-
-  exit(0);
 }
 
 /* ****************************************************** */
@@ -8978,7 +8922,7 @@ int ndpi_match_bigram(const char *str) {
 }
 
 int ndpi_match_impossible_bigram(const char *str) {
-  return ndpi_match_xgram(imposible_bigrams_bitmap, 2, str);
+  return ndpi_match_xgram(impossible_bigrams_bitmap, 2, str);
 }
 
 /* ****************************************************** */

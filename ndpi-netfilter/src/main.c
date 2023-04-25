@@ -999,8 +999,8 @@ ndpi_process_packet(struct ndpi_net *n, struct nf_conn * ct, struct nf_ct_ext_nd
                     const struct sk_buff *skb,int dir, ndpi_protocol *proto)
 {
         struct ndpi_flow_struct * flow;
-	uint32_t low_ip, up_ip, tmp_ip;
-	uint16_t low_port, up_port, tmp_port, protocol;
+	uint32_t low_ip, up_ip;
+	uint16_t low_port, up_port, protocol;
 	const struct iphdr *iph = NULL;
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
 	const struct ipv6hdr *ip6h;
@@ -1085,11 +1085,10 @@ ndpi_process_packet(struct ndpi_net *n, struct nf_conn * ct, struct nf_ct_ext_nd
 		    }
 		}
 		if(0 && l_conf == NDPI_CONFIDENCE_UNKNOWN) {
-			if(low_ip > up_ip) { tmp_ip = low_ip; low_ip=up_ip; up_ip = tmp_ip; }
-			if(low_port > up_port) { tmp_port = low_port; low_port=up_port; up_port = tmp_port; }
-			    *proto = ndpi_guess_undetected_protocol (
-					n->ndpi_struct,flow,protocol,low_ip,low_port,up_ip,up_port);
-			    if(_DBG_TRACE_GUESSED)
+			//if(low_ip > up_ip) { uint32_t tmp_ip = low_ip; low_ip=up_ip; up_ip = tmp_ip; }
+			//if(low_port > up_port) { uint16_t tmp_port = low_port; low_port=up_port; up_port = tmp_port; }
+			*proto = ndpi_guess_undetected_protocol (n->ndpi_struct,flow,protocol);
+			if(_DBG_TRACE_GUESSED)
 				packet_trace(skb,ct,ct_ndpi," guess_undet "," [%d,%d]",
 						proto->app_protocol,proto->master_protocol);
 		}

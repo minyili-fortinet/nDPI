@@ -233,6 +233,7 @@
     <ClCompile Include="..\src\lib\protocols\h323.c" />
     <ClCompile Include="..\src\lib\protocols\halflife2_and_mods.c" />
     <ClCompile Include="..\src\lib\protocols\hangout.c" />
+    <ClCompile Include="..\src\lib\protocols\hots.c" />
     <ClCompile Include="..\src\lib\protocols\http.c" />
     <ClCompile Include="..\src\lib\protocols\iax.c" />
     <ClCompile Include="..\src\lib\protocols\icecast.c" />
@@ -261,6 +262,7 @@
     <ClCompile Include="..\src\lib\protocols\noe.c" />
     <ClCompile Include="..\src\lib\protocols\non_tcp_udp.c" />
     <ClCompile Include="..\src\lib\protocols\ntp.c" />
+    <ClCompile Include="..\src\lib\protocols\oicq.c" />
     <ClCompile Include="..\src\lib\protocols\openvpn.c" />
     <ClCompile Include="..\src\lib\protocols\oracle.c" />
     <ClCompile Include="..\src\lib\protocols\postgres.c" />

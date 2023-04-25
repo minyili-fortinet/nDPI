@@ -86,6 +86,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/halflife2_and_mods.c \
 		     protocols/hpvirtgrp.c \
 		     protocols/hsrp.c \
+		     protocols/hots.c \
 		     protocols/http.c \
 		     protocols/iax.c \
 		     protocols/icecast.c \
@@ -131,6 +132,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/noe.c \
 		     protocols/non_tcp_udp.c \
 		     protocols/ntp.c \
+		     protocols/oicq.c \
 		     protocols/openvpn.c \
 		     protocols/ookla.c \
 		     protocols/oracle.c \

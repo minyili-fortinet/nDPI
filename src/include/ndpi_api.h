@@ -432,20 +432,12 @@ extern "C" {
    * @par    ndpi_struct  = the detection module
    * @par    flow         = the flow we're trying to guess, NULL if not available
    * @par    proto        = the l4 protocol number
-   * @par    shost        = source address in host byte order
-   * @par    sport        = source port number
-   * @par    dhost        = destination address in host byte order
-   * @par    dport        = destination port number
    * @return the struct ndpi_protocol that match the port base protocol
    *
    */
   ndpi_protocol ndpi_guess_undetected_protocol(struct ndpi_detection_module_struct *ndpi_struct,
 					       struct ndpi_flow_struct *flow,
-					       u_int8_t proto,
-					       u_int32_t shost,
-					       u_int16_t sport,
-					       u_int32_t dhost,
-					       u_int16_t dport);
+					       u_int8_t proto);
   /**
    * Check if the string passed match with a protocol
    *
@@ -992,6 +984,7 @@ extern "C" {
   int ndpi_get_custom_category_match(struct ndpi_detection_module_struct *ndpi_struct,
 				     char *name_or_ip, u_int name_len,
 				     ndpi_protocol_category_t *id);
+  void ndpi_self_check_host_match(FILE *error_out);
 #endif
   void ndpi_fill_protocol_category(struct ndpi_detection_module_struct *ndpi_struct,
 				   struct ndpi_flow_struct *flow,
