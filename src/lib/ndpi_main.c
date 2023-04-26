@@ -1210,6 +1210,8 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
   ndpi_port_range ports_a[MAX_DEFAULT_PORTS], ports_b[MAX_DEFAULT_PORTS];
   int i;
 
+  if(ndpi_str->udpRoot != NULL) { ndpi_tdestroy(ndpi_str->udpRoot, ndpi_free); ndpi_str->udpRoot = NULL; }
+  if(ndpi_str->tcpRoot != NULL) { ndpi_tdestroy(ndpi_str->tcpRoot, ndpi_free); ndpi_str->tcpRoot = NULL; }
   for (i = 0; i < (NDPI_MAX_SUPPORTED_PROTOCOLS); i++) {
       if(ndpi_str->proto_defaults[i].protoName)
         ndpi_free(ndpi_str->proto_defaults[i].protoName);
