@@ -453,7 +453,7 @@ u_int16_t ndpi_map_user_proto_id_to_ndpi_id(struct ndpi_detection_module_struct 
 					    u_int16_t user_proto_id) {
 
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
-  NDPI_LOG_DBG2(ndpi_str, "[DEBUG] ***** %s(%u)\n", __FUNCTION__, user_proto_id);
+  // NDPI_LOG_DBG2(ndpi_str, "[DEBUG] ***** %s(%u)\n", __FUNCTION__, user_proto_id);
 #endif
   
   if(user_proto_id < NDPI_MAX_SUPPORTED_PROTOCOLS)
@@ -480,7 +480,7 @@ u_int16_t ndpi_map_user_proto_id_to_ndpi_id(struct ndpi_detection_module_struct 
 u_int16_t ndpi_map_ndpi_id_to_user_proto_id(struct ndpi_detection_module_struct *ndpi_str,
 						   u_int16_t ndpi_proto_id) {
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
-  NDPI_LOG_DBG2(ndpi_str, "[DEBUG] ***** %s(%u)\n", __FUNCTION__, ndpi_proto_id);
+  //NDPI_LOG_DBG2(ndpi_str, "[DEBUG] ***** %s(%u)\n", __FUNCTION__, ndpi_proto_id);
 #endif
   
   if(ndpi_proto_id < NDPI_MAX_SUPPORTED_PROTOCOLS)
