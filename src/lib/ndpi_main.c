@@ -5765,7 +5765,7 @@ static u_int8_t ndpi_is_multi_or_broadcast(struct ndpi_packet_struct *packet) {
 
 static int tcp_ack_padding(struct ndpi_packet_struct *packet) {
   const struct ndpi_tcphdr *tcph = packet->tcp;
-  if(tcph && tcph->ack && !tcph->syn && !tcph->psh &&
+  if(tcph && tcph->ack && !tcph->psh &&
      packet->payload_packet_len < 8 &&
      packet->payload_packet_len > 1 /* To avoid TCP keep-alives */) {
     int i;
@@ -5866,7 +5866,10 @@ void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_str,
 	}
       }
 
-      if(flow->next_tcp_seq_nr[0] == 0 || flow->next_tcp_seq_nr[1] == 0 ||
+	if(tcp_ack_padding(packet)) {
+          NDPI_LOG_DBG2(ndpi_str, "TCP ACK with zero padding. Ignored\n");
+	  packet->tcp_retransmission = 1;
+	} else if(flow->next_tcp_seq_nr[0] == 0 || flow->next_tcp_seq_nr[1] == 0 ||
 	 (tcph->syn && flow->packet_counter == 0)) {
 	/* initialize tcp sequence counters */
 	/* the ack flag needs to be set to get valid sequence numbers from the other
@@ -5891,10 +5894,7 @@ void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_str,
 	}
       } else if(packet->payload_packet_len > 0) {
 	/* check tcp sequence counters */
-	if(tcp_ack_padding(packet)) {
-          NDPI_LOG_DBG2(ndpi_str, "TCP ACK with zero padding. Ignored\n");
-	  packet->tcp_retransmission = 1;
-	} else if(((u_int32_t)(ntohl(tcph->seq) - flow->next_tcp_seq_nr[packet->packet_direction])) >
+        if(((u_int32_t)(ntohl(tcph->seq) - flow->next_tcp_seq_nr[packet->packet_direction])) >
 	   ndpi_str->tcp_max_retransmission_window_size) {
 	  packet->tcp_retransmission = 1;
 
