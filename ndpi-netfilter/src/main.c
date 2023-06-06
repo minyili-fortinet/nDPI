@@ -485,8 +485,10 @@ static char *dbl_lvl_txt[5] = {
 };
 #endif
 /* debug functions */
-static void debug_printf(u_int32_t protocol, void *id_struct, ndpi_log_level_t log_level,
-	const char *file_name, const char *func_name, unsigned line_number, const char * format, ...)
+static void debug_printf(u_int32_t protocol, struct ndpi_detection_module_struct *id_struct,
+		ndpi_log_level_t log_level, const char *file_name,
+		const char *func_name, unsigned line_number,
+		const char * format, ...)
 {
 	struct ndpi_net *n = id_struct ? ((struct ndpi_detection_module_struct *)id_struct)->user_data : NULL;
 //	if(!n || protocol >= NDPI_NUM_BITS)

@@ -99,7 +99,7 @@ char *_debug_protocols = NULL;
 char *_disabled_protocols = NULL;
 int aggressiveness[NDPI_MAX_SUPPORTED_PROTOCOLS];
 static u_int8_t stats_flag = 0;
-ndpi_init_prefs init_prefs = ndpi_no_prefs;
+ndpi_init_prefs init_prefs = ndpi_no_prefs | ndpi_enable_tcp_ack_payload_heuristic;
 u_int8_t human_readeable_string_len = 5;
 u_int8_t max_num_udp_dissected_pkts = 24 /* 8 is enough for most protocols, Signal and SnapchatCall require more */, max_num_tcp_dissected_pkts = 80 /* due to telnet */;
 static u_int32_t pcap_analysis_duration = (u_int32_t)-1;
@@ -253,7 +253,7 @@ static int dpdk_port_id = 0, dpdk_run_capture = 1;
 
 void test_lib(); /* Forward */
 
-extern void ndpi_report_payload_stats(int print);
+extern void ndpi_report_payload_stats(FILE *out);
 extern int parse_proto_name_list(char *str, NDPI_PROTOCOL_BITMASK *bitmask, int inverted_logic);
 
 /* ********************************** */
@@ -421,10 +421,10 @@ flowGetBDMeanandVariance(struct ndpi_flow_info* flow) {
       if(csv_fp) {
         fprintf(csv_fp, ",%.3f,%.3f,%.3f,%.3f", mean, variance, entropy, entropy * num_bytes);
       } else {
-        fprintf(out, "[byte_dist_mean: %f", mean);
-        fprintf(out, "][byte_dist_std: %f]", variance);
-        fprintf(out, "[entropy: %f]", entropy);
-        fprintf(out, "[total_entropy: %f]", entropy * num_bytes);
+        fprintf(out, "[byte_dist_mean: %.3f", mean);
+        fprintf(out, "][byte_dist_std: %.3f]", variance);
+        fprintf(out, "[entropy: %.3f]", entropy);
+        fprintf(out, "[total_entropy: %.3f]", entropy * num_bytes);
       }
     } else {
       if(csv_fp)
@@ -552,6 +552,8 @@ static void help(u_int long_help) {
 
     printf("\n\nnDPI supported risks:\n");
     ndpi_dump_risks_score();
+
+    ndpi_exit_detection_module(ndpi_info_mod);
   }
 
   exit(!long_help);
@@ -1637,15 +1639,20 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
       if(risk != NDPI_NO_RISK)
 	NDPI_SET_BIT(flow->risk, risk);
 
-      fprintf(out, "[URL: %s][StatusCode: %u]",
-	      flow->http.url, flow->http.response_status_code);
-
-      if(flow->http.request_content_type[0] != '\0')
-	fprintf(out, "[Req Content-Type: %s]", flow->http.request_content_type);
-
-      if(flow->http.content_type[0] != '\0')
-	fprintf(out, "[Content-Type: %s]", flow->http.content_type);
+      fprintf(out, "[URL: %s]", flow->http.url);
     }
+
+    if(flow->http.response_status_code)
+      fprintf(out, "[StatusCode: %u]", flow->http.response_status_code);
+
+    if(flow->http.request_content_type[0] != '\0')
+      fprintf(out, "[Req Content-Type: %s]", flow->http.request_content_type);
+
+    if(flow->http.content_type[0] != '\0')
+      fprintf(out, "[Content-Type: %s]", flow->http.content_type);
+
+    if(flow->http.nat_ip[0] != '\0')
+      fprintf(out, "[Nat-IP: %s]", flow->http.nat_ip);
 
     if(flow->http.server[0] != '\0')
       fprintf(out, "[Server: %s]", flow->http.server);
@@ -1746,12 +1753,12 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
     if(flow->flow_payload && (flow->flow_payload_len > 0)) {
       u_int i;
 
-      printf("[Payload: ");
+      fprintf(out, "[Payload: ");
 
       for(i=0; i<flow->flow_payload_len; i++)
-	printf("%c", isspace(flow->flow_payload[i]) ? '.' : flow->flow_payload[i]);
+	fprintf(out, "%c", isspace(flow->flow_payload[i]) ? '.' : flow->flow_payload[i]);
 
-      printf("]");
+      fprintf(out, "]");
     }
 
     fprintf(out, "\n");
@@ -2746,7 +2753,7 @@ static void printFlowsStats() {
   FILE *out = results_file ? results_file : stdout;
 
   if(enable_payload_analyzer)
-    ndpi_report_payload_stats(1);
+    ndpi_report_payload_stats(out);
 
   for(thread_id = 0; thread_id < num_threads; thread_id++)
     total_flows += ndpi_thread_info[thread_id].workflow->num_allocated_flows;
@@ -5162,6 +5169,20 @@ void zscoreUnitTest() {
 
 /* *********************************************** */
 
+void linearUnitTest() {
+  u_int32_t values[] = {15, 27, 38, 49, 68, 72, 90, 150, 175, 203};
+  u_int32_t prediction;
+  u_int32_t const num = NDPI_ARRAY_LENGTH(values);
+  bool do_trace = false;
+  int rc = ndpi_predict_linear(values, num, 2*num, &prediction);
+  
+  if(do_trace) {
+    printf("[rc: %d][predicted value: %u]\n", rc, prediction);
+  }
+}
+
+/* *********************************************** */
+
 /**
    @brief MAIN FUNCTION
 **/
@@ -5201,6 +5222,7 @@ int main(int argc, char **argv) {
     exit(0);
 #endif
 
+    linearUnitTest();
     zscoreUnitTest();
     sesUnitTest();
     desUnitTest();
