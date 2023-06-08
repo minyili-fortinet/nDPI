@@ -6,7 +6,10 @@ int ndpi_delete_acct(struct ndpi_net *n,int all);
 ssize_t nflow_read(struct ndpi_net *n, char __user *buf,
 	            size_t count, loff_t *ppos);
 int dbg_ipt_opt(char *lbuf,size_t count);
+
+#ifdef NDPI_ENABLE_DEBUG_MESSAGES
 uint32_t dbg_ipt_opt_get(const char *lbuf);
+#endif
 
 enum dbg_trace {
 	DBG_TRACE_CT,
