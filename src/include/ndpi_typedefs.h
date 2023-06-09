@@ -895,6 +895,7 @@ struct ndpi_flow_udp_struct {
 
   /* NDPI_PROTOCOL_QUIC */
   u_int32_t quic_0rtt_found:1;
+  u_int32_t quic_vn_pair:1;
 
   /* NDPI_PROTOCOL_EPICGAMES */
   u_int32_t epicgames_stage:1;
@@ -1847,6 +1848,7 @@ typedef enum {
        See #1946 for other details */
     ndpi_enable_tcp_ack_payload_heuristic = (1 << 17),
     ndpi_dont_load_crawlers_list = (1 << 18),
+    ndpi_dont_load_protonvpn_list = (1 << 19),
   } ndpi_prefs;
 
 typedef struct {

@@ -1394,6 +1394,9 @@ ndpi_protocol_match host_match[] =
 
    { "nvidia.com",                       "Nvidia", NDPI_PROTOCOL_NVIDIA, NDPI_PROTOCOL_CATEGORY_WEB, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_DEFAULT_LEVEL},
 
+   { "proton.me",                        "ProtonVPN", NDPI_PROTOCOL_PROTONVPN, NDPI_PROTOCOL_CATEGORY_VPN, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+   { "protonvpn.com",                    "ProtonVPN", NDPI_PROTOCOL_PROTONVPN, NDPI_PROTOCOL_CATEGORY_VPN, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+
    /*
       ADS/tracking/analytic
     */
