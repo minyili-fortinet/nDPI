@@ -181,6 +181,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/telegram.c \
 		     protocols/telnet.c \
 		     protocols/tftp.c \
+		     protocols/thrift.c \
 		     protocols/tls.c \
 		     protocols/threema.c \
 		     protocols/tplink_shp.c \

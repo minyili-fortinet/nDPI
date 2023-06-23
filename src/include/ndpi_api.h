@@ -1072,6 +1072,12 @@ extern "C" {
   u_int32_t ndpi_get_protocol_aggressiveness(struct ndpi_detection_module_struct *ndpi_struct,
                                              u_int16_t proto);
 
+  int ndpi_set_monitoring_state(struct ndpi_detection_module_struct *ndpi_struct,
+                                u_int16_t proto, u_int32_t num_pkts, u_int32_t flags);
+  int ndpi_get_monitoring_state(struct ndpi_detection_module_struct *ndpi_struct,
+                                u_int16_t proto, u_int32_t *num_pkts, u_int32_t *flags);
+
+
   /**
    * Find a protocol id associated with a string automata
    *
@@ -1157,6 +1163,7 @@ extern "C" {
 		     struct ndpi_flow_struct *flow,
 		     u_int8_t ip_version,
 		     u_int8_t l4_protocol,
+		     u_int16_t vlan_id,
 		     u_int32_t src_v4, u_int32_t dst_v4,
 		     struct ndpi_in6_addr *src_v6, struct ndpi_in6_addr *dst_v6,
 		     u_int16_t src_port, u_int16_t dst_port,
