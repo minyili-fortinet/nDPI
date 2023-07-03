@@ -51,7 +51,8 @@ static int stun_monitoring(struct ndpi_detection_module_struct *ndpi_struct,
   u_int8_t first_byte;
 
 #ifdef DEBUG_MONITORING
-  printf("[STUN-MON] Packet counter %d\n", flow->packet_counter);
+  printf("[STUN-MON] Packet counter %d protos %d/%d\n", flow->packet_counter,
+         flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
 #endif
 
   if(packet->payload_packet_len == 0)
@@ -269,6 +270,10 @@ static void ndpi_int_stun_add_connection(struct ndpi_detection_module_struct *nd
                           0 /* dummy */, ndpi_get_current_time(flow));
   }
 
+
+#ifdef DEBUG_STUN
+  printf("[STUN] Setting %d\n", app_proto);
+#endif
   ndpi_set_detected_protocol(ndpi_struct, flow, app_proto, NDPI_PROTOCOL_STUN, confidence);
 
   if(ndpi_struct->monitoring_stun_pkts_to_process > 0 &&
@@ -276,7 +281,7 @@ static void ndpi_int_stun_add_connection(struct ndpi_detection_module_struct *nd
                                       * multiple msg in the same TCP segment
                                       * same msg split across multiple segments */) {
     if((ndpi_struct->monitoring_stun_flags & NDPI_MONITORING_STUN_SUBCLASSIFIED) ||
-       app_proto == NDPI_PROTOCOL_UNKNOWN /* No-subclassification */) {
+       flow->detected_protocol_stack[1] == NDPI_PROTOCOL_UNKNOWN /* No-subclassification */) {
       flow->max_extra_packets_to_check = ndpi_struct->monitoring_stun_pkts_to_process;
       flow->extra_packets_func = stun_monitoring;
     }
@@ -500,15 +505,6 @@ static ndpi_int_stun_t ndpi_int_check_stun(struct ndpi_detection_module_struct *
 	    }
 	  }
 	  break;
-
-        case 0xC057: /* Messeger */
-          if(msg_type == 0x0001) {
-            if((msg_len == 100) || (msg_len == 104)) {
-              *app_proto = NDPI_PROTOCOL_FACEBOOK_VOIP;
-              return(NDPI_IS_STUN);
-            }
-          }
-          break;
 
         case 0x8054: /* Candidate Identifier */
           if((len == 4)
