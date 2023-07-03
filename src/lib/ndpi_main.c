@@ -2417,10 +2417,7 @@ int ndpi_fill_prefix_v4(ndpi_prefix_t *p, const struct in_addr *a, int b, int mb
     return(-1);
 
   memset(p, 0, sizeof(ndpi_prefix_t));
-  memcpy(&p->add.sin, a, (mb + 7) / 8);
-  p->family = AF_INET;
-  p->bitlen = b;
-  p->ref_count = 0;
+  p->add.sin.s_addr = a->s_addr, p->family = AF_INET, p->bitlen = b, p->ref_count = 0;
 
   return(0);
 }
@@ -3217,6 +3214,7 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
   ndpi_str->opportunistic_tls_imap_enabled = 1;
   ndpi_str->opportunistic_tls_pop_enabled = 1;
   ndpi_str->opportunistic_tls_ftp_enabled = 1;
+  ndpi_str->opportunistic_tls_stun_enabled = 1;
 
   ndpi_str->monitoring_stun_pkts_to_process = 4;
   ndpi_str->monitoring_stun_flags = 0;
@@ -5002,9 +5000,6 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* GIT */
   init_git_dissector(ndpi_str, &a);
 
-  /* HANGOUT */
-  init_hangout_dissector(ndpi_str, &a);
-
   /* DRDA */
   init_drda_dissector(ndpi_str, &a);
 
@@ -6359,13 +6354,13 @@ static int ndpi_reconcile_msteams_call_udp_port(struct ndpi_detection_module_str
   */
   
   if((dport == 3478) || (dport == 3479) || ((sport >= 50000) && (sport <= 50019)))
-    flow->flow_type = ndpi_multimedia_audio_flow;
+    flow->flow_multimedia_type = ndpi_multimedia_audio_flow;
   else if((dport == 3480) || ((sport >= 50020) && (sport <= 50039)))
-    flow->flow_type = ndpi_multimedia_video_flow;
+    flow->flow_multimedia_type = ndpi_multimedia_video_flow;
   else if((dport == 3481) || ((sport >= 50040) && (sport <= 50059)))
-    flow->flow_type = ndpi_multimedia_screen_sharing_flow;
+    flow->flow_multimedia_type = ndpi_multimedia_screen_sharing_flow;
   else {
-    flow->flow_type = ndpi_multimedia_unknown_flow;
+    flow->flow_multimedia_type = ndpi_multimedia_unknown_flow;
     return(0);
   }
   
@@ -10189,6 +10184,9 @@ int ndpi_set_opportunistic_tls(struct ndpi_detection_module_struct *ndpi_struct,
   case NDPI_PROTOCOL_FTP_CONTROL:
     ndpi_struct->opportunistic_tls_ftp_enabled = value;
     return 0;
+  case NDPI_PROTOCOL_STUN:
+    ndpi_struct->opportunistic_tls_stun_enabled = value;
+    return 0;
   default:
     return -1;
   }
@@ -10211,6 +10209,8 @@ int ndpi_get_opportunistic_tls(struct ndpi_detection_module_struct *ndpi_struct,
     return ndpi_struct->opportunistic_tls_pop_enabled;
   case NDPI_PROTOCOL_FTP_CONTROL:
     return ndpi_struct->opportunistic_tls_ftp_enabled;
+  case NDPI_PROTOCOL_STUN:
+    return ndpi_struct->opportunistic_tls_stun_enabled;
   default:
     return -1;
   }

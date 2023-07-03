@@ -83,7 +83,6 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/gnutella.c \
 		     protocols/gtp.c \
 		     protocols/guildwars.c \
-		     protocols/hangout.c \
 		     protocols/h323.c \
 		     protocols/halflife2_and_mods.c \
 		     protocols/hots.c \
