@@ -5977,7 +5977,9 @@ void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_str,
 	  if(flow->num_processed_pkts > 1)
 	    flow->next_tcp_seq_nr[1 - packet->packet_direction] = ntohl(tcph->ack_seq);
 	}
-      } else if(((u_int32_t)(ntohl(tcph->seq) - flow->next_tcp_seq_nr[packet->packet_direction])) >
+      } else if(packet->payload_packet_len > 0) {
+	/* check tcp sequence counters */
+	if(((u_int32_t)(ntohl(tcph->seq) - flow->next_tcp_seq_nr[packet->packet_direction])) >
 	   ndpi_str->tcp_max_retransmission_window_size) {
 	  packet->tcp_retransmission = 1;
 
@@ -5990,6 +5992,7 @@ void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_str,
 	}
 	else {
 	  flow->next_tcp_seq_nr[packet->packet_direction] = ntohl(tcph->seq) + packet->payload_packet_len;
+	}
       }
 
       if(tcph->rst) {
@@ -7164,9 +7167,9 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
   packet = ndpi_get_packet_struct(ndpi_str);
   if(ndpi_str->ndpi_log_level >= NDPI_LOG_TRACE)
     NDPI_LOG(flow ? flow->detected_protocol_stack[0] : NDPI_PROTOCOL_UNKNOWN, ndpi_str, NDPI_LOG_TRACE,
-             "START packet processing p:%u/%u [%d/%d]\n",
-	     flow->num_processed_pkts,ndpi_str->max_packets_to_process,
-	     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]
+             "[%d/%d] START packet processing\n", // p:%u/%u\n",
+	     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1] /*,
+	     flow->num_processed_pkts,ndpi_str->max_packets_to_process */
 	     );
 
   ret.master_protocol = flow->detected_protocol_stack[1],

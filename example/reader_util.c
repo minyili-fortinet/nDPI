@@ -1721,15 +1721,16 @@ static struct ndpi_proto packet_processing(struct ndpi_workflow * workflow,
     input_info.seen_flow_beginning = NDPI_FLOW_BEGINNING_UNKNOWN;
 #if 1
     if(nDPI_LogLevel > 1 && iph) {
+	static int pkt_seq=0;
   	char ip1[48],ip2[48];
        	inet_ntop(AF_INET, &flow->src_ip, ip1, sizeof(ip1));
 	inet_ntop(AF_INET, &flow->dst_ip, ip2, sizeof(ip2));
 	if(iph->saddr == flow->src_ip) {
-	LOG(NDPI_LOG_DEBUG,"DPI Packets -> %s %s:%u => %s:%u len %u\n",
+	LOG(NDPI_LOG_DEBUG,"%5d DPI Packets -> %s %s:%u => %s:%u len %u\n",pkt_seq++,
 		proto == IPPROTO_TCP ? "TCP":(proto == IPPROTO_UDP ? "UDP":"OTH"),
 		ip1,ntohs(flow->src_port),ip2,ntohs(flow->dst_port),ipsize);
 	} else {
-	LOG(NDPI_LOG_DEBUG,"DPI Packets <- %s %s:%u => %s:%u len %u\n",
+	LOG(NDPI_LOG_DEBUG,"%5d DPI Packets <- %s %s:%u => %s:%u len %u\n",pkt_seq++,
 		proto == IPPROTO_TCP ? "TCP":(proto == IPPROTO_UDP ? "UDP":"OTH"),
 		ip2,ntohs(flow->dst_port),ip1,ntohs(flow->src_port),ipsize);
 	}
