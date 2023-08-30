@@ -1100,8 +1100,9 @@ static void init_string_based_protocols(struct ndpi_detection_module_struct *ndp
 	    if(0) NDPI_LOG_ERR(ndpi_str, "[NDPI] Skip protocol match for %s/protoId=%d: disabled\n",
 		 host_match[i].string_to_match, host_match[i].protocol_id);
 
-  for(i = 0; ndpi_protocol_gambling_hostname_list[i].string_to_match != NULL; i++)
-    ndpi_init_protocol_match(ndpi_str, &ndpi_protocol_gambling_hostname_list[i]);
+  if(ndpi_str->enable_load_gambling_list)
+    for(i = 0; ndpi_protocol_gambling_hostname_list[i].string_to_match != NULL; i++)
+      ndpi_init_protocol_match(ndpi_str, &ndpi_protocol_gambling_hostname_list[i]);
 
   /* ************************ */
   if(ndpi_str->tls_cert_subject_automa.ac_automa != NULL) {
@@ -2986,6 +2987,10 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
   if(prefs & ndpi_enable_ja3_plus)
     ndpi_str->enable_ja3_plus = 1;
 
+  ndpi_str->enable_load_gambling_list = 1;
+  if(prefs & ndpi_dont_load_gambling_list)
+    ndpi_str->enable_load_gambling_list = 0;
+
   if(!(prefs & ndpi_dont_init_libgcrypt)) {
     if(!gcry_control (GCRYCTL_INITIALIZATION_FINISHED_P,0)) {
       const char *gcrypt_ver = gcry_check_version(NULL);
@@ -4557,7 +4562,8 @@ int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_str, cons
     char *line = buffer;
     int line_len = buffer_len;
 
-    while((line = fgets(line, line_len, fd)) != NULL && line[strlen(line) - 1] != '\n') {
+    while(((line = fgets(line, line_len, fd)) != NULL)
+	  && (line[strlen(line) - 1] != '\n')) {
       i = strlen(line);
       old_buffer = buffer;
       old_buffer_len = buffer_len;
@@ -4573,7 +4579,7 @@ int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_str, cons
 
       line = &buffer[i];
       line_len = chunk_len;
-    }
+    } /* while */
 
     if(!line) /* safety check */
       break;
@@ -4581,8 +4587,18 @@ int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_str, cons
     i = strlen(buffer);
     if((i <= 1) || (buffer[0] == '#'))
       continue;
-    else
+    else {
       buffer[i - 1] = '\0';
+      i--;
+
+      if((i > 0) && (buffer[i-1] == '\r'))
+	buffer[i - 1] = '\0';
+
+      if(buffer[0] == '\0')
+	continue;
+    }
+
+    /* printf("Processing: \"%s\"\n", buffer); */
 
     if(ndpi_handle_rule(ndpi_str, buffer, 1) != 0)
       NDPI_LOG_INFO(ndpi_str, "Discraded rule '%s'\n", buffer);
@@ -6327,7 +6343,6 @@ static u_int32_t make_msteams_key(struct ndpi_flow_struct *flow, u_int8_t use_cl
 static void ndpi_reconcile_msteams_udp(struct ndpi_detection_module_struct *ndpi_str,
 				       struct ndpi_flow_struct *flow,
 				       u_int16_t master) {
-
   /* This function can NOT access &ndpi_str->packet since it is called also from ndpi_detection_giveup(), via ndpi_reconcile_protocols() */
 
   if(flow->l4_proto == IPPROTO_UDP) {
@@ -6358,15 +6373,15 @@ static void ndpi_reconcile_msteams_udp(struct ndpi_detection_module_struct *ndpi
 static int ndpi_reconcile_msteams_call_udp_port(struct ndpi_detection_module_struct *ndpi_str,
 						struct ndpi_flow_struct *flow,
 						u_int16_t sport, u_int16_t dport) {
-  
+
   /*
     https://extremeportal.force.com/ExtrArticleDetail?an=000101782
-    
+
     Audio:   UDP 50000-50019; 3478; 3479
     Video:   UDP 50020-50039; 3480
 	Sharing: UDP 50040-50059; 3481
   */
-  
+
   if((dport == 3478) || (dport == 3479) || ((sport >= 50000) && (sport <= 50019)))
     flow->flow_multimedia_type = ndpi_multimedia_audio_flow;
   else if((dport == 3480) || ((sport >= 50020) && (sport <= 50039)))
@@ -6377,7 +6392,7 @@ static int ndpi_reconcile_msteams_call_udp_port(struct ndpi_detection_module_str
     flow->flow_multimedia_type = ndpi_multimedia_unknown_flow;
     return(0);
   }
-  
+
   return(1);
 }
 
@@ -6407,6 +6422,12 @@ static void ndpi_reconcile_protocols(struct ndpi_detection_module_struct *ndpi_s
 
   // printf("====>> %u.%u [%u]\n", ret->master_protocol, ret->app_protocol, flow->detected_protocol_stack[0]);
 
+  if((flow->risk != 0) && (flow->risk != flow->risk_shadow)) {
+    /* Trick to avoid evaluating exceptions when nothing changed */
+    ndpi_handle_risk_exceptions(ndpi_str, flow);
+    flow->risk_shadow = flow->risk;
+  }
+  
   switch(ret->app_protocol) {
   case NDPI_PROTOCOL_MICROSOFT_AZURE:
     ndpi_reconcile_msteams_udp(ndpi_str, flow, flow->detected_protocol_stack[1]);

@@ -1300,7 +1300,7 @@ struct ndpi_detection_module_struct {
   u_int64_t current_ts;
   u_int16_t max_packets_to_process;
   u_int16_t num_tls_blocks_to_follow;
-  u_int8_t skip_tls_blocks_until_change_cipher:1, enable_ja3_plus:1, _notused:6;
+  u_int8_t skip_tls_blocks_until_change_cipher:1, enable_ja3_plus:1, enable_load_gambling_list:1, _notused:5;
   u_int8_t tls_certificate_expire_in_x_days;
   
   char custom_category_labels[NUM_CUSTOM_CATEGORIES][CUSTOM_CATEGORY_LABEL_LEN];
@@ -1561,7 +1561,7 @@ struct ndpi_flow_struct {
   u_int8_t initial_binary_bytes[8], initial_binary_bytes_len;
   u_int8_t risk_checked:1, ip_risk_mask_evaluated:1, host_risk_mask_evaluated:1, tree_risk_checked:1, _notused:4;
   ndpi_risk risk_mask; /* Stores the flow risk mask for flow peers */
-  ndpi_risk risk; /* Issues found with this flow [bitmask of ndpi_risk] */
+  ndpi_risk risk, risk_shadow; /* Issues found with this flow [bitmask of ndpi_risk] */
   struct ndpi_risk_information risk_infos[MAX_NUM_RISK_INFOS]; /* String that contains information about the risks found */
   u_int8_t num_risk_infos;
   
@@ -1811,8 +1811,8 @@ struct ndpi_flow_struct {
 _Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 210,
                "Size of the struct member protocols increased to more than 210 bytes, "
                "please check if this change is necessary.");
-_Static_assert(sizeof(struct ndpi_flow_struct) <= 960,
-               "Size of the flow struct increased to more than 952 bytes, "
+_Static_assert(sizeof(struct ndpi_flow_struct) <= 968,
+               "Size of the flow struct increased to more than 968 bytes, "
                "please check if this change is necessary.");
 #endif
 #endif
@@ -1877,6 +1877,7 @@ typedef enum {
     ndpi_enable_tcp_ack_payload_heuristic = (1 << 17),
     ndpi_dont_load_crawlers_list = (1 << 18),
     ndpi_dont_load_protonvpn_list = (1 << 19),
+    ndpi_dont_load_gambling_list = (1 << 20),
   } ndpi_prefs;
 
 typedef struct {
@@ -1889,7 +1890,8 @@ typedef enum {
   ndpi_serialization_format_unknown = 0,
   ndpi_serialization_format_tlv,
   ndpi_serialization_format_json,
-  ndpi_serialization_format_csv
+  ndpi_serialization_format_csv,
+  ndpi_serialization_format_multiline_json
 } ndpi_serialization_format;
 
 /* Note:
@@ -1954,6 +1956,7 @@ typedef struct {
   ndpi_serialization_format fmt;
   char csv_separator[2];
   u_int8_t has_snapshot;
+  u_int8_t multiline_json_array;
   ndpi_private_serializer_status snapshot;
 } ndpi_private_serializer;
 
@@ -2026,6 +2029,12 @@ struct ndpi_hll {
   u_int8_t bits;
   size_t size;
   u_int8_t *registers;
+};
+
+struct ndpi_cm_sketch {
+  u_int16_t num_hashes;       /* depth: Number of hash tables   */
+  u_int32_t num_hash_buckets; /* Number pf nuckets of each hash */
+  u_int32_t *tables;
 };
 
 /* **************************************** */

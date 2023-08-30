@@ -1106,6 +1106,8 @@ extern "C" {
   void ndpi_set_tls_cert_expire_days(struct ndpi_detection_module_struct *ndpi_str,
 				     u_int8_t days);
 
+  void ndpi_handle_risk_exceptions(struct ndpi_detection_module_struct *ndpi_str,
+				   struct ndpi_flow_struct *flow);
 
   /* Utility functions to set ndpi malloc/free/print wrappers */
   void set_ndpi_ticks_per_second(u_int32_t ticks_per_second);
@@ -1779,7 +1781,8 @@ extern "C" {
   /* ******************************* */
 
   u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
-
+  u_int32_t ndpi_nearest_power_of_two(u_int32_t x);
+  
   /* ******************************* */
 
   int ndpi_des_init(struct ndpi_des_struct *des, double alpha, double beta, float significance);
@@ -1826,7 +1829,7 @@ extern "C" {
   
   /* ******************************* */
 
-  /* HyperLogLog cardinality estimator */
+  /* HyperLogLog cardinality estimator [count unique items] */
 
   /* Memory lifecycle */
   int ndpi_hll_init(struct ndpi_hll *hll, u_int8_t bits);
@@ -1840,6 +1843,15 @@ extern "C" {
   /* Get cardinality estimation */
   double ndpi_hll_count(struct ndpi_hll *hll);
 
+  /* ******************************* */
+
+  /* Count-Min Sketch [count how many times a value has been observed] */
+
+  struct ndpi_cm_sketch *ndpi_cm_sketch_init(u_int16_t depth);
+  void ndpi_cm_sketch_add(struct ndpi_cm_sketch *sketch, u_int32_t element);
+  u_int32_t ndpi_cm_sketch_count(struct ndpi_cm_sketch *sketch, u_int32_t element);
+  void ndpi_cm_sketch_destroy(struct ndpi_cm_sketch *sketch);
+  
   /* ******************************* */
 
   int  ndpi_init_bin(struct ndpi_bin *b, enum ndpi_bin_family f, u_int16_t num_bins);
