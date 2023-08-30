@@ -930,6 +930,9 @@ struct ndpi_flow_udp_struct {
   u_int32_t epicgames_stage:1;
   u_int32_t epicgames_word;
 
+  /* NDPI_PROTOCOL_RAKNET */
+  u_int32_t raknet_custom:1;
+
   /* NDPI_PROTOCOL_SKYPE */
   u_int8_t skype_crc[4];
 
@@ -1650,6 +1653,11 @@ struct ndpi_flow_struct {
         u_int16_t cipher_suite;
         char *esni;
       } encrypted_sni;
+
+      struct {
+        u_int16_t version;
+      } encrypted_ch;
+
       ndpi_cipher_weakness server_unsafe_cipher;
     } tls_quic; /* Used also by DTLS and POPS/IMAPS/SMTPS/FTPS */
 

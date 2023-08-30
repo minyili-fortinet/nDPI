@@ -132,6 +132,7 @@
 #include "inc_generated/ndpi_asn_line.c.inc"
 #include "inc_generated/ndpi_asn_epicgames.c.inc"
 #include "inc_generated/ndpi_asn_nvidia.c.inc"
+#include "inc_generated/ndpi_asn_roblox.c.inc"
 #endif
 
 #include "inc_generated/ndpi_icloud_private_relay_match.c.inc"
@@ -991,8 +992,23 @@ static int ndpi_remove_host_url_subprotocol(struct ndpi_detection_module_struct 
 
 /* ******************************************************************** */
 
-int ndpi_init_protocol_match(struct ndpi_detection_module_struct *ndpi_str,
-			      ndpi_protocol_match *match) {
+int ndpi_init_empty_app_protocol(ndpi_protocol_match const * const hostname_list,
+                                 ndpi_protocol_match * const empty_app_protocol) {
+  if (hostname_list[0].proto_name == NULL)
+    return 1;
+
+  memset(empty_app_protocol, 0, sizeof(*empty_app_protocol));
+  empty_app_protocol->proto_name = hostname_list[0].proto_name;
+  empty_app_protocol->protocol_id = hostname_list[0].protocol_id;
+  empty_app_protocol->protocol_category = hostname_list[0].protocol_category;
+  empty_app_protocol->protocol_breed = hostname_list[0].protocol_breed;
+  empty_app_protocol->level = hostname_list[0].level;
+
+  return 0;
+}
+
+int ndpi_init_app_protocol(struct ndpi_detection_module_struct *ndpi_str,
+                           ndpi_protocol_match const * const match) {
   ndpi_port_range ports_a[MAX_DEFAULT_PORTS], ports_b[MAX_DEFAULT_PORTS];
 
   if(ndpi_str->proto_defaults[match->protocol_id].protoName == NULL) {
@@ -1005,25 +1021,34 @@ int ndpi_init_protocol_match(struct ndpi_detection_module_struct *ndpi_str,
     ndpi_str->proto_defaults[match->protocol_id].protoBreed = match->protocol_breed;
 
     ndpi_set_proto_defaults(ndpi_str,
-			    ndpi_str->proto_defaults[match->protocol_id].isClearTextProto,
-			    ndpi_str->proto_defaults[match->protocol_id].isAppProtocol,
-			    ndpi_str->proto_defaults[match->protocol_id].protoBreed,
-			    ndpi_str->proto_defaults[match->protocol_id].protoId,
-			    ndpi_str->proto_defaults[match->protocol_id].protoName,
-			    ndpi_str->proto_defaults[match->protocol_id].protoCategory,
-			    ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
-			    ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+                ndpi_str->proto_defaults[match->protocol_id].isClearTextProto,
+                ndpi_str->proto_defaults[match->protocol_id].isAppProtocol,
+                ndpi_str->proto_defaults[match->protocol_id].protoBreed,
+                ndpi_str->proto_defaults[match->protocol_id].protoId,
+                ndpi_str->proto_defaults[match->protocol_id].protoName,
+                ndpi_str->proto_defaults[match->protocol_id].protoCategory,
+                ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+                ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   }
 
   if(!is_proto_enabled(ndpi_str, match->protocol_id)) {
-    if(0) NDPI_LOG_ERR(ndpi_str, "[NDPI] Skip protocol match for %s/protoId=%d: disabled\n",
-		 match->string_to_match, match->protocol_id);
+    NDPI_LOG_DBG(ndpi_str, "[NDPI] Skip protocol match for %s/protoId=%d: disabled\n",
+         match->string_to_match, match->protocol_id);
     return 1;
   }
 
-  return ndpi_add_host_url_subprotocol(ndpi_str, match->string_to_match,
+  return 0;
+}
+
+/* ******************************************************************** */
+
+void ndpi_init_protocol_match(struct ndpi_detection_module_struct *ndpi_str,
+                              ndpi_protocol_match const * const match) {
+	if (ndpi_init_app_protocol(ndpi_str, match) == 0) {
+		ndpi_add_host_url_subprotocol(ndpi_str, match->string_to_match,
 				match->protocol_id, match->protocol_category,
 				match->protocol_breed, match->level);
+	}
 }
 
 /* ******************************************************************** */
@@ -1103,6 +1128,14 @@ static void init_string_based_protocols(struct ndpi_detection_module_struct *ndp
   if(ndpi_str->enable_load_gambling_list)
     for(i = 0; ndpi_protocol_gambling_hostname_list[i].string_to_match != NULL; i++)
       ndpi_init_protocol_match(ndpi_str, &ndpi_protocol_gambling_hostname_list[i]);
+  else {
+    ndpi_protocol_match gambling_match;
+    if (ndpi_init_empty_app_protocol(ndpi_protocol_gambling_hostname_list, &gambling_match) != 0 ||
+        ndpi_init_app_protocol(ndpi_str, &gambling_match) != 0) {
+      NDPI_LOG_ERR(ndpi_str,
+        "[NDPI] INTERNAL ERROR could not initialize empty gambling app protocol\n");
+    }
+  }
 
   /* ************************ */
   if(ndpi_str->tls_cert_subject_automa.ac_automa != NULL) {
@@ -2055,7 +2088,7 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  ndpi_build_default_ports(ports_b, 5246, 5247, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_ZABBIX,
 			  "Zabbix", NDPI_PROTOCOL_CATEGORY_NETWORK,
-			  ndpi_build_default_ports(ports_a, 10050, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_a, 10050, 10051, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_S7COMM,
 			  "s7comm", NDPI_PROTOCOL_CATEGORY_NETWORK,
@@ -2295,6 +2328,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_APACHE_THRIFT,
 			  "Thrift", NDPI_PROTOCOL_CATEGORY_RPC,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_ROBLOX,
+			  "Roblox", NDPI_PROTOCOL_CATEGORY_GAME,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
@@ -3084,6 +3121,7 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
       ndpi_init_ptree_ipv4(ndpi_str, ndpi_str->protocols_ptree, ndpi_protocol_hulu_protocol_list);
       ndpi_init_ptree_ipv4(ndpi_str, ndpi_str->protocols_ptree, ndpi_protocol_epicgames_protocol_list);
       ndpi_init_ptree_ipv4(ndpi_str, ndpi_str->protocols_ptree, ndpi_protocol_nvidia_protocol_list);
+      ndpi_init_ptree_ipv4(ndpi_str, ndpi_str->protocols_ptree, ndpi_protocol_roblox_protocol_list);
     }
 #endif
 
@@ -6863,7 +6901,7 @@ int ndpi_load_ip_category(struct ndpi_detection_module_struct *ndpi_str,
   if(!ndpi_str->custom_categories.ipAddresses_shadow)
     return(-1);
 
-  strncpy(ipbuf, ip_address_and_mask, sizeof(ipbuf));
+  strncpy(ipbuf, ip_address_and_mask, sizeof(ipbuf) - 1);
   ipbuf[sizeof(ipbuf) - 1] = '\0';
 
   ptr = strrchr(ipbuf, '/');
