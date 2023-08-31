@@ -755,7 +755,6 @@ extern "C" {
    */
   void ndpi_dump_risks_score(void);
 
-#endif
   /**
    * Read a file and load the protocols
    *
@@ -768,12 +767,15 @@ extern "C" {
    * @par     ndpi_mod = the detection module
    * @par     path     = the path of the file
    * @return  0 if the file is loaded correctly;
-   *          -1 else
+   *          -1 generic error
+   *          -2 memory allocation error
    *
    */
   int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_mod,
 			       const char* path);
-
+  int ndpi_load_protocols_file2(struct ndpi_detection_module_struct *ndpi_mod,
+			        FILE *fd);
+#endif
   /**
    * Add an IP-address based risk mask
    *
@@ -815,6 +817,30 @@ extern "C" {
    *          -1 else
    */
   int ndpi_load_categories_file(struct ndpi_detection_module_struct *ndpi_str, const char* path, void *user_data);
+
+  /**
+   * Loads a file (separated by <cr>) of domain names associated with the specified category
+   *
+   * @par     ndpi_mod    = the detection module
+   * @par     path        = the path of the file
+   * @par     category_id = Id of the category to which domains will be associated
+   * @return  0 if the file is loaded correctly;
+   *          -1 else
+   */
+  int ndpi_load_category_file(struct ndpi_detection_module_struct *ndpi_str,
+			      char* path, ndpi_protocol_category_t category_id);
+  
+  /**
+   * Load files (whose name is <categoryid>_<label>.<extension>) stored
+   * in a directory and bind each domain to the specified category.
+   *
+   * @par     ndpi_mod    = the detection module
+   * @par     path        = the path of the file
+   * @return  0 if the file is loaded correctly;
+   *          -1 else
+   */
+  int ndpi_load_categories_dir(struct ndpi_detection_module_struct *ndpi_str,
+			       char* path);
 
   /**
    * Read a file and load the list of risky domains
@@ -2011,10 +2037,14 @@ extern "C" {
   /* ******************************* */
 
 #ifndef __KERNEL__
+  /* Based on https://roaringbitmap.org */
+  
   ndpi_bitmap* ndpi_bitmap_alloc(void);
+  ndpi_bitmap* ndpi_bitmap_alloc_size(u_int32_t size);
   void ndpi_bitmap_free(ndpi_bitmap* b);
   ndpi_bitmap* ndpi_bitmap_copy(ndpi_bitmap* b);
   u_int64_t ndpi_bitmap_cardinality(ndpi_bitmap* b);
+  bool ndpi_bitmap_is_empty(ndpi_bitmap* b);
   void ndpi_bitmap_set(ndpi_bitmap* b, u_int32_t value);
   void ndpi_bitmap_unset(ndpi_bitmap* b, u_int32_t value);
   bool ndpi_bitmap_isset(ndpi_bitmap* b, u_int32_t value);
@@ -2024,13 +2054,62 @@ extern "C" {
   ndpi_bitmap* ndpi_bitmap_deserialize(char *buf);
 
   void ndpi_bitmap_and(ndpi_bitmap* a, ndpi_bitmap* b_and);
+  ndpi_bitmap* ndpi_bitmap_and_alloc(ndpi_bitmap* a, ndpi_bitmap* b_and);
+  void ndpi_bitmap_andnot(ndpi_bitmap* a, ndpi_bitmap* b_and);
   void ndpi_bitmap_or(ndpi_bitmap* a, ndpi_bitmap* b_or);
+  ndpi_bitmap* ndpi_bitmap_ot_alloc(ndpi_bitmap* a, ndpi_bitmap* b_and);
   void ndpi_bitmap_xor(ndpi_bitmap* a, ndpi_bitmap* b_xor);
-
+  void ndpi_bitmap_optimize(ndpi_bitmap* a);
+  
   ndpi_bitmap_iterator* ndpi_bitmap_iterator_alloc(ndpi_bitmap* b);
   void ndpi_bitmap_iterator_free(ndpi_bitmap* b);
   bool ndpi_bitmap_iterator_next(ndpi_bitmap_iterator* i, u_int32_t *value);
 
+  /* ******************************* */
+  /*
+    Bloom-filter on steroids based on ndpi_bitmap
+  */
+
+  ndpi_filter* ndpi_filter_alloc();
+  bool         ndpi_filter_add(ndpi_filter *f, u_int32_t value); /* returns true on success, false on failure */
+  bool         ndpi_filter_add_string(ndpi_filter *f, char *string); /* returns true on success, false on failure */
+  bool         ndpi_filter_contains(ndpi_filter *f, u_int32_t value); /* returns true on success, false on failure */
+  bool         ndpi_filter_contains_string(ndpi_filter *f, char *string); /* returns true on success, false on failure */
+  void         ndpi_filter_free(ndpi_filter *f);
+  size_t       ndpi_filter_size(ndpi_filter *f);
+  u_int32_t    ndpi_filter_cardinality(ndpi_filter *f);
+  
+  /* ******************************* */
+ 
+  /*
+    Efficient (space and speed) probabilitic datastructure
+    for exact string searching with a false positive rate
+    of 5 * 10 ^ -8
+  */
+  ndpi_string_search* ndpi_string_search_alloc();
+  void                ndpi_string_search_free(ndpi_string_search *s);
+  u_int32_t           ndpi_string_search_size(ndpi_string_search *s);
+  bool                ndpi_string_search_add(ndpi_string_search *s, char *string);
+  bool                ndpi_string_search_contains(ndpi_string_search *s, char *string);
+  u_int32_t           ndpi_string_search_cardinality(ndpi_string_search *f);
+
+  /* ******************************* */
+
+  /*
+    Efficient (space and speed) probabilitic datastructure
+    for substring domain matching and classification
+  */
+
+  ndpi_domain_classify* ndpi_domain_classify_alloc();
+  void                  ndpi_domain_classify_free(ndpi_domain_classify *s);
+  u_int32_t             ndpi_domain_classify_size(ndpi_domain_classify *s);
+  bool                  ndpi_domain_classify_add(ndpi_domain_classify *s,
+						 u_int16_t classification_id, char *domain);
+  u_int32_t             ndpi_domain_classify_add_domains(ndpi_domain_classify *_s,
+							 u_int16_t classification_id,
+							 char *file_path);
+  u_int16_t             ndpi_domain_classify_contains(ndpi_domain_classify *s, char *domain);
+  
   /* ******************************* */
 
   char* ndpi_get_flow_risk_info(struct ndpi_flow_struct *flow,

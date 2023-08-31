@@ -18,6 +18,7 @@ libndpi_a_include_HEADERS = ../include/ndpi_api.h \
 			     third_party/include/ndpi_md5.h \
 			     third_party/include/ndpi_sha1.h \
 			     third_party/include/gcrypt_light.h \
+			     third_party/include/hll.h \
 			     third_party/include/libcache.h
 
 libndpi_a_SOURCES = ndpi_content_match.c.inc \
@@ -29,6 +30,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     ndpi_classify.c \
 		     ndpi_serializer.c \
 		     ndpi_community_id.c \
+		     ndpi_domain_classify.c \
+		     ndpi_filter.c \
 		     ndpi_geoip.c \
 		     protocols/activision.c \
 		     protocols/afp.c \
@@ -229,6 +232,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     third_party/src/libcache.c \
 		     third_party/src/btlib.c \
 		     third_party/src/ndpi_patricia.c \
+		     third_party/src/hll/MurmurHash3.c \
+		     third_party/src/hll/hll.c \
 		     third_party/src/gcrypt_light.c
 
 lib_LIBRARIES = libndpi.a
