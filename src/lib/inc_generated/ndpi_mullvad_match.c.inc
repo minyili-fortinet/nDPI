@@ -20,6 +20,7 @@
 /* ****************************************************** */
 
 
+#if 0
 static ndpi_network ndpi_protocol_mullvad_protocol_list[] = {
  { 0x2D09F922 /* 45.9.249.34/32 */, 32, NDPI_PROTOCOL_MULLVAD },
  { 0x1FAB9A32 /* 31.171.154.50/32 */, 32, NDPI_PROTOCOL_MULLVAD },
@@ -675,3 +676,4 @@ static ndpi_network ndpi_protocol_mullvad_protocol_list[] = {
  /* End */
  { 0x0, 0, 0 }
 };
+#endif

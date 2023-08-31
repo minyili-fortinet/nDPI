@@ -20,6 +20,7 @@
 /* ****************************************************** */
 
 
+#if 0
 static ndpi_network ndpi_protocol_roblox_protocol_list[] = {
  { 0x678C1C00 /* 103.140.28.0/23 */, 23, NDPI_PROTOCOL_ROBLOX },
  { 0x80740000 /* 128.116.0.0/17 */, 17, NDPI_PROTOCOL_ROBLOX },
@@ -29,3 +30,4 @@ static ndpi_network ndpi_protocol_roblox_protocol_list[] = {
  /* End */
  { 0x0, 0, 0 }
 };
+#endif

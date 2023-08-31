@@ -99,7 +99,6 @@
 #include "inc_generated/ndpi_google_match.c.inc"
 #include "inc_generated/ndpi_google_cloud_match.c.inc"
 #include "inc_generated/ndpi_protonvpn_in_match.c.inc"
-#include "inc_generated/ndpi_protonvpn_out_match.c.inc"
 #include "inc_generated/ndpi_mullvad_match.c.inc"
 #include "inc_generated/ndpi_asn_telegram.c.inc"
 #include "inc_generated/ndpi_asn_apple.c.inc"
@@ -140,6 +139,7 @@
 #include "inc_generated/ndpi_icloud_private_relay_match.c.inc"
 #include "inc_generated/ndpi_crawlers_match.c.inc"
 #include "inc_generated/ndpi_gambling_match.c.inc"
+#include "inc_generated/ndpi_protonvpn_out_match.c.inc"
 
 /* Third party libraries */
 #include "third_party/include/ndpi_patricia.h"
@@ -1124,9 +1124,7 @@ static void init_string_based_protocols(struct ndpi_detection_module_struct *ndp
   int i;
 
   for(i = 0; host_match[i].string_to_match != NULL; i++)
-	if(ndpi_init_protocol_match(ndpi_str, &host_match[i]))
-	    if(0) NDPI_LOG_ERR(ndpi_str, "[NDPI] Skip protocol match for %s/protoId=%d: disabled\n",
-		 host_match[i].string_to_match, host_match[i].protocol_id);
+	ndpi_init_protocol_match(ndpi_str, &host_match[i]);
 
   if(ndpi_str->enable_load_gambling_list)
     for(i = 0; ndpi_protocol_gambling_hostname_list[i].string_to_match != NULL; i++)
@@ -5931,23 +5929,25 @@ static u_int8_t ndpi_is_multi_or_broadcast(struct ndpi_packet_struct *packet) {
 
 static int fully_enc_heuristic(struct ndpi_detection_module_struct *ndpi_str,
                                struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = &ndpi_str->packet;
-  struct ndpi_popcount popcount;
-  float ratio;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_str);
   unsigned int i, len, cnt, cnt_consecutives = 0;
 
   if(flow->l4_proto == IPPROTO_TCP &&
      ndpi_seen_flow_beginning(flow)) {
     /* See original paper, Algorithm 1, for the reference numbers */
-
+#ifndef __KERNEL__
+  {
+    struct ndpi_popcount popcount;
+    int ratio;
     /* Ex1 */
     ndpi_popcount_init(&popcount);
     ndpi_popcount_count(&popcount, packet->payload, packet->payload_packet_len);
-    ratio = (float)popcount.pop_count / (float)popcount.tot_bytes_count;
-    if(ratio <= 3.4 || ratio >= 4.6) {
-      return 0;
-    }
 
+    ratio = popcount.pop_count * 100 / (popcount.tot_bytes_count ? popcount.tot_bytes_count:1);
+    if( ratio < 340 || ratio >= 460)
+	    return 0;
+  }
+#endif
     /* Ex2 */
     len = ndpi_min(6, packet->payload_packet_len);
     cnt = 0;
@@ -5972,7 +5972,7 @@ static int fully_enc_heuristic(struct ndpi_detection_module_struct *ndpi_str,
         cnt_consecutives = 0;
       }
     }
-    if((float)cnt / packet->payload_packet_len > 0.5) {
+    if(cnt*100 / packet->payload_packet_len > 50) {
       return 0;
     }
 

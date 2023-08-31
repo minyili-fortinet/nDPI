@@ -159,6 +159,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/sip.c \
 		     protocols/skinny.c \
 		     protocols/skype.c \
+		     protocols/slp.c \
 		     protocols/smb.c \
 		     protocols/snmp_proto.c \
 		     protocols/soap.c \

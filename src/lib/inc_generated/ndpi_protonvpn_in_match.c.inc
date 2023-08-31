@@ -20,6 +20,7 @@
 /* ****************************************************** */
 
 
+#if 0
 static ndpi_network ndpi_protocol_protonvpn_protocol_list[] = {
  { 0x023AF142 /* 2.58.241.66/32 */, 32, NDPI_PROTOCOL_PROTONVPN },
  { 0x05081092 /* 5.8.16.146/32 */, 32, NDPI_PROTOCOL_PROTONVPN },
@@ -496,3 +497,4 @@ static ndpi_network ndpi_protocol_protonvpn_protocol_list[] = {
  /* End */
  { 0x0, 0, 0 }
 };
+#endif

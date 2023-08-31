@@ -97,7 +97,7 @@ static int slp_check_packet_length(struct ndpi_detection_module_struct *ndpi_str
                                    struct ndpi_flow_struct *flow,
                                    unsigned int packet_length)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
 
   if (packet->payload_packet_len != packet_length) {
     NDPI_EXCLUDE_PROTO(ndpi_struct, flow);
@@ -141,7 +141,7 @@ static int slp_dissect_url_entries(struct ndpi_detection_module_struct *ndpi_str
                                    struct ndpi_flow_struct *flow,
                                    uint16_t url_entries_offset)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
   struct slp_url_entry const *url_entry;
   uint16_t url_entries_count;
   size_t i;
@@ -192,7 +192,7 @@ static int slp_dissect_url_entries(struct ndpi_detection_module_struct *ndpi_str
 static void ndpi_search_slp_v1(struct ndpi_detection_module_struct *ndpi_struct,
                                struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
   struct slp_hdr_v1 const * const hdr = (struct slp_hdr_v1 *)&packet->payload[0];
 
   NDPI_LOG_DBG(ndpi_struct, "search Service Location Protocol v1\n");
@@ -215,7 +215,7 @@ static void ndpi_search_slp_v1(struct ndpi_detection_module_struct *ndpi_struct,
 static int ndpi_search_slp_v2(struct ndpi_detection_module_struct *ndpi_struct,
                               struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
   struct slp_hdr_v2 const * const hdr = (struct slp_hdr_v2 *)&packet->payload[0];
 
   NDPI_LOG_DBG(ndpi_struct, "search Service Location Protocol v2\n");
@@ -239,7 +239,7 @@ static int ndpi_search_slp_v2(struct ndpi_detection_module_struct *ndpi_struct,
 static void ndpi_dissect_slp_v2(struct ndpi_detection_module_struct *ndpi_struct,
                                 struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
   struct slp_hdr_v2 const * const hdr = (struct slp_hdr_v2 *)&packet->payload[0];
   int url_offset = -1; // Can be either an offset to <URL String> or <URL Entry>
   int url_length_offset = -1; // length of <URL String>
@@ -301,7 +301,7 @@ static void ndpi_dissect_slp_v2(struct ndpi_detection_module_struct *ndpi_struct
 static void ndpi_search_slp(struct ndpi_detection_module_struct *ndpi_struct,
                             struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
 
   NDPI_LOG_DBG(ndpi_struct, "search Service Location Protocol\n");
 
