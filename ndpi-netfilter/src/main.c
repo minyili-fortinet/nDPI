@@ -102,8 +102,8 @@ static char proto_name[]="proto";
 static char debug_name[]="debug";
 static char risk_name[]="risks";
 
-#ifdef CONFIG_NDPI_HOOK
-#define USE_NDPI_HOOK
+#ifdef CONFIG_NF_CONNTRACK_DESTROY_HOOK
+#define USE_NF_CONNTRACK_DESTROY_HOOK
 #elif LINUX_VERSION_CODE > KERNEL_VERSION(5,19,0)
 #ifndef USE_LIVEPATCH
 #define USE_LIVEPATCH
@@ -164,10 +164,10 @@ static inline const struct net_device *xt_out(const struct xt_action_param *par)
 // for testing only!
 // #define USE_CONNLABELS
 
-#if !defined(USE_CONNLABELS) && !defined(USE_NDPI_HOOK) && defined(CONFIG_NF_CONNTRACK_CUSTOM) && CONFIG_NF_CONNTRACK_CUSTOM > 0
+#if !defined(USE_CONNLABELS) && !defined(USE_NF_CONNTRACK_DESTROY_HOOK) && defined(CONFIG_NF_CONNTRACK_CUSTOM) && CONFIG_NF_CONNTRACK_CUSTOM > 0
 #define NF_CT_CUSTOM
 #else
-#ifndef USE_NDPI_HOOK
+#ifndef USE_NF_CONNTRACK_DESTROY_HOOK
 #undef NF_CT_CUSTOM
 #include <net/netfilter/nf_conntrack_labels.h>
 #ifndef CONFIG_NF_CONNTRACK_LABELS
@@ -3191,7 +3191,7 @@ static int __net_init ndpi_net_init(struct net *net)
 	return -ENOMEM;
 }
 
-#if !defined(USE_LIVEPATCH) && !defined(USE_NDPI_HOOK)
+#if !defined(USE_LIVEPATCH) && !defined(USE_NF_CONNTRACK_DESTROY_HOOK)
 static struct nf_ct_ext_type ndpi_extend = {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,8,0)
        .seq_print = seq_print_ndpi,
@@ -3201,7 +3201,7 @@ static struct nf_ct_ext_type ndpi_extend = {
        .align  = __alignof__(uint32_t),
        .id     = 0,
 };
-#elif !defined(USE_NDPI_HOOK)
+#elif !defined(USE_NF_CONNTRACK_DESTROY_HOOK)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,17,0)
 #error "not implemented"
@@ -3270,9 +3270,9 @@ static int __init ndpi_mt_init(void)
 		return -EBUSY;
 	}
 	nf_ct_ext_id_ndpi = ndpi_extend.id;
-#elif defined(USE_NDPI_HOOK)
+#elif defined(USE_NF_CONNTRACK_DESTROY_HOOK)
 	nf_ct_ext_id_ndpi = NF_CT_EXT_LABELS;
-	register_ndpi_hook(&nf_ndpi_free_flow);
+	register_nf_ct_destroy_hook(&nf_ndpi_free_flow);
 #else
 #ifdef USE_LIVEPATCH
 	nf_ct_ext_id_ndpi = NF_CT_EXT_LABELS;
@@ -3396,11 +3396,11 @@ unreg_match:
 unreg_pernet:
 	unregister_pernet_subsys(&ndpi_net_ops);
 unreg_ext:
-#if !defined(USE_LIVEPATCH) && !defined(USE_NDPI_HOOK)
+#if !defined(USE_LIVEPATCH) && !defined(USE_NF_CONNTRACK_DESTROY_HOOK)
 	nf_ct_extend_unregister(&ndpi_extend);
 #endif
-#if defined(USE_NDPI_HOOK)
-	unregister_ndpi_hook();
+#if defined(USE_NF_CONNTRACK_DESTROY_HOOK)
+	unregister_nf_ct_destroy_hook();
 #endif
        	return ret;
 }
@@ -3411,10 +3411,10 @@ static void __exit ndpi_mt_exit(void)
 	xt_unregister_target(&ndpi_tg_reg);
 	xt_unregister_match(&ndpi_mt_reg);
 	unregister_pernet_subsys(&ndpi_net_ops);
-#if !defined(USE_LIVEPATCH) && !defined(USE_NDPI_HOOK)
+#if !defined(USE_LIVEPATCH) && !defined(USE_NF_CONNTRACK_DESTROY_HOOK)
 	nf_ct_extend_unregister(&ndpi_extend);
-#elif defined(USE_NDPI_HOOK)
-	unregister_ndpi_hook();
+#elif defined(USE_NF_CONNTRACK_DESTROY_HOOK)
+	unregister_nf_ct_destroy_hook();
 #else
 	rcu_assign_pointer(nf_conntrack_destroy_cb,NULL);
 #endif
