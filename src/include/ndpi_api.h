@@ -1834,7 +1834,6 @@ extern "C" {
 
   /* ******************************* */
 
-  u_int32_t ndpi_quick_hash(const unsigned char *str, u_int str_len);
   u_int64_t ndpi_quick_hash64(const char *str, u_int str_len);
   u_int32_t ndpi_hash_string(const char *str);
   u_int32_t ndpi_rev_hash_string(const char *str);
@@ -1873,6 +1872,7 @@ extern "C" {
                             ndpi_confidence_t confidence,
                             ndpi_protocol l7_protocol);
 #endif /* KERNEL */
+  u_int32_t ndpi_quick_hash(const unsigned char *str, u_int str_len);
   const char* ndpi_risk2str(ndpi_risk_enum risk);
   const char* ndpi_severity2str(ndpi_risk_severity s);
   ndpi_risk_info* ndpi_risk2severity(ndpi_risk_enum risk);

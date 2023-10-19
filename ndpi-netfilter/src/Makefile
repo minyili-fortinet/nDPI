@@ -29,10 +29,12 @@ xt_ndpi-y := main.o ndpi_strcol.o ndpi_proc_parsers.o ndpi_proc_generic.o \
 		${NDPI_SRC}/lib/third_party/src/ndpi_patricia.o \
 		${NDPI_SRC}/lib/third_party/src/gcrypt_light.o \
 		${NDPI_SRC}/lib/third_party/src/btlib.o \
+		${NDPI_SRC}/lib/third_party/src/hll/MurmurHash3.o \
 		${NDPI_SRC}/lib/ndpi_main.o \
 		${NDPI_SRC}/lib/ndpi_utils.o \
 		${NDPI_SRC}/lib/ndpi_serializer.o \
 		${NDPI_SRC}/lib/ndpi_geoip.o \
+		${NDPI_SRC}/lib/ndpi_hash.o \
 		$(patsubst %.c,%.o, $(NDPI_PROTO_SRC))
 
 all:	modules
