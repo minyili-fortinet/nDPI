@@ -1042,11 +1042,11 @@ int ndpi_init_app_protocol(struct ndpi_detection_module_struct *ndpi_str,
 
 void ndpi_init_protocol_match(struct ndpi_detection_module_struct *ndpi_str,
                               ndpi_protocol_match const * const match) {
-	if (ndpi_init_app_protocol(ndpi_str, match) == 0) {
-		ndpi_add_host_url_subprotocol(ndpi_str, match->string_to_match,
-				match->protocol_id, match->protocol_category,
-				match->protocol_breed, match->level);
-	}
+  if (ndpi_init_app_protocol(ndpi_str, match) == 0) {
+    ndpi_add_host_url_subprotocol(ndpi_str, match->string_to_match,
+				  match->protocol_id, match->protocol_category,
+				  match->protocol_breed, match->level);
+  }
 }
 
 /* ******************************************************************** */
@@ -2325,9 +2325,8 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Mullvad", NDPI_PROTOCOL_CATEGORY_VPN,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
-
-  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_FREE,
-			  "Free", NDPI_PROTOCOL_CATEGORY_WEB,
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_OPERA_VPN,
+			  "OperaVPN", NDPI_PROTOCOL_CATEGORY_VPN,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
@@ -2865,7 +2864,8 @@ void ndpi_debug_printf(unsigned int proto, struct ndpi_detection_module_struct *
 
 void set_ndpi_debug_function(struct ndpi_detection_module_struct *ndpi_str, ndpi_debug_function_ptr ndpi_debug_printf) {
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
-  ndpi_str->ndpi_debug_printf = ndpi_debug_printf;
+  if(ndpi_str)
+    ndpi_str->ndpi_debug_printf = ndpi_debug_printf;
 #endif
 }
 
@@ -3209,7 +3209,15 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
     ac_automata_name(ndpi_str->custom_categories.hostnames_shadow.ac_automa, "ccat_sh", 0);
 #else
   ndpi_str->custom_categories.sc_hostnames        = ndpi_domain_classify_alloc();
+  if(!ndpi_str->custom_categories.sc_hostnames) {
+    ndpi_exit_detection_module(ndpi_str);
+    return(NULL);
+  }
   ndpi_str->custom_categories.sc_hostnames_shadow = ndpi_domain_classify_alloc();
+  if(!ndpi_str->custom_categories.sc_hostnames_shadow) {
+    ndpi_exit_detection_module(ndpi_str);
+    return(NULL);
+  }
 #endif
 #endif 
   ndpi_str->custom_categories.ipAddresses = ndpi_patricia_new(32 /* IPv4 */);
@@ -3637,7 +3645,7 @@ int ndpi_match_custom_category(struct ndpi_detection_module_struct *ndpi_str,
   u_int max_len = sizeof(buf)-1;
     
   if(name_len > max_len) name_len = max_len;
-  strncpy(buf, name, name_len);
+  memcpy(buf, name, name_len);
   buf[name_len] = '\0';
   
   if(ndpi_domain_classify_contains(ndpi_str->custom_categories.sc_hostnames,
@@ -7158,6 +7166,9 @@ int ndpi_load_hostname_category(struct ndpi_detection_module_struct *ndpi_str,
 			       (AC_AUTOMATA_t *)ndpi_str->custom_categories.hostnames_shadow.ac_automa,
 			       name_to_add,category,category, 0, 0, 1); /* at_end */
 #else
+  if(ndpi_str->custom_categories.sc_hostnames_shadow == NULL)
+    return(-1);
+
   return(ndpi_domain_classify_add(ndpi_str->custom_categories.sc_hostnames_shadow,
 				  (u_int16_t)category, (char*)name_to_add) ? 0 : -1);
 #endif

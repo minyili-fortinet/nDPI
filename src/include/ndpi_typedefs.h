@@ -635,6 +635,19 @@ struct ndpi_flow_input_info {
   unsigned char seen_flow_beginning;
 };
 
+/* Save memory limiting the key to 56 bit */
+//#define SAVE_BINARY_BITMAP_MEMORY
+
+PACK_ON
+struct ndpi_binary_bitmap_entry {
+#ifdef SAVE_BINARY_BITMAP_MEMORY
+  u_int64_t value:56, category:8;
+#else
+  u_int64_t value;
+  u_int8_t category;
+#endif
+} PACK_OFF;
+
 /* ******************* ********************* ****************** */
 /* ************************************************************ */
 
@@ -976,6 +989,10 @@ struct ndpi_flow_udp_struct {
   /* NDPI_PROTOCOL_LINE_CALL */
   u_int8_t line_pkts[2];
   u_int8_t line_base_cnt[2];
+
+  /* NDPI_PROTOCOL_TFTP */
+  u_int16_t tftp_data_num;
+  u_int16_t tftp_ack_num;
 };
 
 /* ************************************************** */
@@ -1283,19 +1300,6 @@ typedef void ndpi_bitmap;
 typedef void ndpi_bitmap64;
 typedef void ndpi_bitmap_iterator;
 typedef void ndpi_filter;
-
-/* Save memory limiting the key to 56 bit */
-//#define SAVE_BINARY_BITMAP_MEMORY
-
-PACK_ON
-struct ndpi_binary_bitmap_entry {
-#ifdef SAVE_BINARY_BITMAP_MEMORY
-  u_int64_t value:56, category:8;
-#else
-  u_int64_t value;
-  u_int8_t category;
-#endif
-} PACK_OFF;
     
 typedef struct {
   u_int32_t num_allocated_entries, num_used_entries;
