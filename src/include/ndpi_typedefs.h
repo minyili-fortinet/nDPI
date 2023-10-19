@@ -31,6 +31,9 @@ E * ndpi_typedefs.h
 #undef HAVE_HYPERSCAN
 #endif
 #include "ndpi_define.h"
+#ifndef NDPI_CFFI_PREPROCESSING
+#include "ndpi_includes.h"
+#endif
 #include "ndpi_protocol_ids.h"
 #include "ndpi_utils.h"
 
@@ -54,6 +57,12 @@ typedef unsigned int u_int;
 #endif
 #endif
 #endif /* __KERNEL__ */
+
+#ifdef __APPLE__
+typedef unsigned char u_char;
+typedef unsigned short u_short;
+typedef unsigned int u_int;
+#endif
 
 /* NDPI_LOG_LEVEL */
 typedef enum {

@@ -40,6 +40,7 @@
 #else
 #include <unistd.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #endif
 #ifdef linux
 #include <pcap/nflog.h>

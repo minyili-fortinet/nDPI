@@ -62,6 +62,8 @@
 #include "third_party/include/rce_injection.h"
 #endif
 
+#include "ndpi_replace_printf.h"
+
 #define NDPI_CONST_GENERIC_PROTOCOL_NAME  "GenericProtocol"
 
 // #define MATCH_DEBUG 1

@@ -130,6 +130,9 @@ u_int32_t ndpi_domain_classify_add_domains(ndpi_domain_classify *s,
   FILE *fd;
   char *line;
 
+  if(!s || !file_path)
+    return(false);
+
   for(i=0; i<MAX_NUM_NDPI_DOMAIN_CLASSIFICATIONS; i++) {
     if(s->classes[i].class_id == class_id) {
       break;      
@@ -175,6 +178,22 @@ u_int32_t ndpi_domain_classify_add_domains(ndpi_domain_classify *s,
   fclose(fd);
 
   return(num_added);
+}
+
+/* ********************************************************** */
+
+bool ndpi_domain_classify_finalize(ndpi_domain_classify *s) {
+  u_int32_t i;
+
+  if(!s)
+    return(false);
+
+  for(i=0; i<MAX_NUM_NDPI_DOMAIN_CLASSIFICATIONS; i++) {
+    if(s->classes[i].class_id != 0) {
+      ndpi_bitmap64_compress(s->classes[i].domains);
+    }
+  }
+  return(true);
 }
 
 /* ********************************************************** */
