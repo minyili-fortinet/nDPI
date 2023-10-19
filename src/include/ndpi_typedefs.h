@@ -167,7 +167,8 @@ typedef enum {
   NDPI_TCP_ISSUES,             /* 50 */ /* TCP issues such as connection failed, probing or scan */
   NDPI_FULLY_ENCRYPTED,        /* This (unknown) session is fully encrypted */
   NDPI_TLS_ALPN_SNI_MISMATCH,  /* Invalid ALPN/SNI combination */
-  
+  NDPI_MALWARE_HOST_CONTACTED, /* Flow client contacted a malware host */
+				 
   /* Leave this as last member */
   NDPI_MAX_RISK /* must be <= 63 due to (**) */
 } ndpi_risk_enum;
@@ -1609,9 +1610,6 @@ struct ndpi_flow_struct {
   /* Some protocols calculate the entropy. */
   float entropy;
 
-  /* Place textual flow info here */
-  char flow_extra_info[16];
-
   /* General purpose field used to save mainly hostname/SNI information.
    * In details it used for: MGCP, COLLECTD, DNS, SSDP and NETBIOS name, HTTP, MUNIN and DHCP hostname,
    * WHOIS request, TLS/QUIC server name, XIAOMI domain and STUN realm.
@@ -1692,6 +1690,10 @@ struct ndpi_flow_struct {
     } softether;
 
     struct {
+      char currency[16];
+    } mining;  
+
+    struct {
       char *server_names, *advertised_alpns, *negotiated_alpn, *tls_supported_versions, *issuerDN, *subjectDN;
       u_int32_t notBefore, notAfter;
       char ja3_client[33], ja3_server[33];
@@ -1719,6 +1721,8 @@ struct ndpi_flow_struct {
       } encrypted_ch;
 
       ndpi_cipher_weakness server_unsafe_cipher;
+
+      u_int32_t quic_version;
     } tls_quic; /* Used also by DTLS and POPS/IMAPS/SMTPS/FTPS */
 
     struct {
@@ -1881,8 +1885,8 @@ struct ndpi_flow_struct {
 
 #if !defined(NDPI_CFFI_PREPROCESSING) && defined(__linux__)
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 210,
-               "Size of the struct member protocols increased to more than 210 bytes, "
+_Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 216,
+               "Size of the struct member protocols increased to more than 216 bytes, "
                "please check if this change is necessary.");
 _Static_assert(sizeof(struct ndpi_flow_struct) <= 988,
                "Size of the flow struct increased to more than 988 bytes, "
