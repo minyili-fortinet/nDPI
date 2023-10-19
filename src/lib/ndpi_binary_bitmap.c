@@ -47,6 +47,10 @@ ndpi_binary_bitmap* ndpi_binary_bitmap_alloc() {
     return(NULL);
   }
 
+#ifdef USE_BITMAP64_BINARY_BITMAP_MEMORY
+  rc->bitmap = NULL;
+#endif
+
   rc->is_compressed = false;
 
   return(rc);
@@ -83,7 +87,11 @@ static int ndpi_binary_bitmap_entry_compare(const void *_a, const void *_b) {
   struct ndpi_binary_bitmap_entry *a = (struct ndpi_binary_bitmap_entry*)_a;
   struct ndpi_binary_bitmap_entry *b = (struct ndpi_binary_bitmap_entry*)_b;
 
-  return(a->value > b->value) - (a->value < b->value);
+  // return(a->value > b->value) - (a->value < b->value);
+
+  if (a->value < b->value) return -1;
+  else if (a->value > b->value) return 1;
+  else return 0;
 }
 
 /* ********************************************************** */
@@ -127,6 +135,22 @@ bool ndpi_binary_bitmap_compress(ndpi_binary_bitmap *b) {
   }
 
   b->is_compressed = true;
+
+#ifdef USE_BITMAP64_BINARY_BITMAP_MEMORY
+  if(b->bitmap != NULL) ndpi_bitmap64_free(b->bitmap);
+  b->bitmap = ndpi_bitmap64_alloc_size(b->num_used_entries);
+
+  u_int64_t *values = (u_int64_t*)ndpi_malloc(sizeof(u_int64_t)*b->num_used_entries);
+
+  if(values) {
+    for(i=0; i<b->num_used_entries; i++)
+      values[i] =  b->entries[i].value;
+    
+    ndpi_bitmap64_multiset(b->bitmap, values, b->num_used_entries);
+    ndpi_free(values);
+  }
+#endif
+  
   return(true);
 }
 
@@ -136,17 +160,22 @@ bool ndpi_binary_bitmap_isset(ndpi_binary_bitmap *b, u_int64_t value, u_int8_t *
   if(!b->is_compressed) ndpi_binary_bitmap_compress(b);
 
   if(b->num_used_entries > 0) {
+#ifdef USE_BITMAP64_BINARY_BITMAP_MEMORY
+    return(ndpi_bitmap64_isset(b->bitmap, value));
+#else
     struct ndpi_binary_bitmap_entry *rc;
     struct ndpi_binary_bitmap_entry tofind;
 
     tofind.value = value;
-    rc = (struct ndpi_binary_bitmap_entry*)bsearch(&tofind, b->entries,						   
+    rc = (struct ndpi_binary_bitmap_entry*)bsearch(&tofind, b->entries,						  
 						   b->num_used_entries,
 						   sizeof(struct ndpi_binary_bitmap_entry),
-						   ndpi_binary_bitmap_entry_compare);
-    
-    if(rc != NULL) *out_category = rc->category;
+						   ndpi_binary_bitmap_entry_compare);    
+    if(rc != NULL)
+      *out_category = rc->category;
+        
     return(rc == NULL ? false : true);
+#endif
   } else
     return(false);
 }
@@ -155,13 +184,22 @@ bool ndpi_binary_bitmap_isset(ndpi_binary_bitmap *b, u_int64_t value, u_int8_t *
 
 void ndpi_binary_bitmap_free(ndpi_binary_bitmap *b) {
   ndpi_free(b->entries);
+
+#ifdef USE_BITMAP64_BINARY_BITMAP_MEMORY
+  if(b->bitmap != NULL) ndpi_bitmap64_free(b->bitmap);
+#endif
+  
   ndpi_free(b);
 }
 
 /* ********************************************************** */
 
 u_int32_t ndpi_binary_bitmap_size(ndpi_binary_bitmap *b) {
+#ifdef USE_BITMAP64_BINARY_BITMAP_MEMORY
+  return(sizeof(ndpi_binary_bitmap) + ndpi_bitmap64_size(b->bitmap));
+#else
   return(sizeof(ndpi_binary_bitmap) + b->num_used_entries * sizeof(struct ndpi_binary_bitmap_entry));
+#endif
 }
 
 /* ********************************************************** */

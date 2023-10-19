@@ -1832,11 +1832,12 @@ extern "C" {
   /* ******************************* */
   
   u_int32_t ndpi_quick_hash(unsigned char *str, u_int str_len);
+  u_int64_t ndpi_quick_hash64(char *str, u_int str_len);
   u_int32_t ndpi_hash_string(char *str);
   u_int32_t ndpi_rev_hash_string(char *str);
   u_int32_t ndpi_hash_string_len(char *str, u_int len);
   u_int32_t ndpi_murmur_hash(char *str, u_int str_len);
-  
+    
   /* ******************************* */
 
   int ndpi_des_init(struct ndpi_des_struct *des, double alpha, double beta, float significance);
@@ -2075,6 +2076,20 @@ extern "C" {
   bool ndpi_bitmap_iterator_next(ndpi_bitmap_iterator* i, u_int32_t *value);
 
   /* ******************************* */
+
+  /*
+    Bitmap with 64 bit values based
+    on https://github.com/FastFilter/xor_singleheader/tree/master
+   */
+
+  ndpi_bitmap64* ndpi_bitmap64_alloc();
+  bool ndpi_bitmap64_set(ndpi_bitmap64 *b, u_int64_t value);
+  bool ndpi_bitmap64_compress(ndpi_bitmap64 *b);
+  bool ndpi_bitmap64_isset(ndpi_bitmap64 *b, u_int64_t value);
+  void ndpi_bitmap64_free(ndpi_bitmap64 *b);
+  u_int32_t ndpi_bitmap64_size(ndpi_bitmap64 *b);
+
+  /* ******************************* */
   /*
     Bloom-filter on steroids based on ndpi_bitmap
 
@@ -2141,6 +2156,9 @@ extern "C" {
   void ndpi_binary_bitmap_free(ndpi_binary_bitmap *b);
   u_int32_t ndpi_binary_bitmap_size(ndpi_binary_bitmap *b);
   u_int32_t ndpi_binary_bitmap_cardinality(ndpi_binary_bitmap *b);
+
+  /* ******************************* */
+
   
   /* ******************************* */
 

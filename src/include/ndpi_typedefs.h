@@ -1279,11 +1279,12 @@ typedef struct ndpi_proto {
 #define CUSTOM_CATEGORY_LABEL_LEN 32
 
 typedef void ndpi_bitmap;
+typedef void ndpi_bitmap64;
 typedef void ndpi_bitmap_iterator;
 typedef void ndpi_filter;
 
 /* Save memory limiting the key to 56 bit */
-#define SAVE_BINARY_BITMAP_MEMORY
+//#define SAVE_BINARY_BITMAP_MEMORY
 
 PACK_ON
 struct ndpi_binary_bitmap_entry {
@@ -1301,8 +1302,13 @@ typedef struct {
   bool is_compressed;
 } ndpi_binary_bitmap;
 
+#define MAX_NUM_NDPI_DOMAIN_CLASSIFICATIONS          16
+
 typedef struct {
-  ndpi_binary_bitmap *bitmap;
+  struct {
+    u_int16_t class_id;
+    ndpi_bitmap64 *domains;
+  } classes[MAX_NUM_NDPI_DOMAIN_CLASSIFICATIONS];
 } ndpi_domain_classify;
 
 #ifdef NDPI_LIB_COMPILATION
