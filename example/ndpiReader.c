@@ -5493,6 +5493,19 @@ void domainSearchUnitTest() {
 
 /* *********************************************** */
 
+void domainSearchUnitTest2() {
+  ndpi_domain_classify *c = ndpi_domain_classify_alloc();
+  u_int16_t class_id = 9;
+
+  ndpi_domain_classify_add(c, class_id, "ntop.org");
+  ndpi_domain_classify_add(c, class_id, "apple.com");
+
+  assert(ndpi_domain_classify_contains(c,"ntop.com") == 0);
+  ndpi_domain_classify_free(c);
+}
+
+/* *********************************************** */
+
 /**
    @brief MAIN FUNCTION
 **/
@@ -5533,6 +5546,7 @@ int main(int argc, char **argv) {
 #endif
 
     domainSearchUnitTest();
+    domainSearchUnitTest2();
     sketchUnitTest();
     linearUnitTest();
     zscoreUnitTest();

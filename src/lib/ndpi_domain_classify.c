@@ -32,8 +32,6 @@
 
 #include "ndpi_config.h"
 #include "ndpi_api.h"
-#include "ndpi_includes.h"
-#include "ndpi_encryption.h"
 
 typedef struct {
   ndpi_bitmap *bitmap[NUM_DOMAIN_BITMAPS];
@@ -106,7 +104,7 @@ static u_int32_t ndpi_domain_search_size(ndpi_domain_search *search) {
 /* NOTE: domain will be modified: copy it if necessary */
 static bool ndpi_domain_search_add(ndpi_domain_search *search, char *domain) {
   char *elem;
-  u_int32_t bitmap_id = 0, len;
+  u_int32_t bitmap_id = 0, len, hsum = 0;
   bool quit = false;
 
   if(domain == NULL)              return(false);
@@ -135,9 +133,9 @@ static bool ndpi_domain_search_add(ndpi_domain_search *search, char *domain) {
       h += END_OF_TOKENS_DELIMITER;
     }
 
-    ndpi_bitmap_set(search->bitmap[bitmap_id], h);
+    ndpi_bitmap_set(search->bitmap[bitmap_id], h + hsum);
 
-    bitmap_id++;
+    bitmap_id++, hsum += h;
 
     if(quit)
       break;
@@ -160,7 +158,7 @@ static bool ndpi_domain_search_add(ndpi_domain_search *search, char *domain) {
 
 static bool ndpi_domain_search_contains(ndpi_domain_search *search, char *domain) {
   char *elem;
-  u_int32_t bitmap_id = 0;
+  u_int32_t bitmap_id = 0, hsum = 0;
   bool quit = false;
 
   if((elem = strrchr(domain, '.')) == NULL)
@@ -173,16 +171,16 @@ static bool ndpi_domain_search_contains(ndpi_domain_search *search, char *domain
 
     h = ndpi_hash_string(elem);
 
-    if(!ndpi_bitmap_isset(search->bitmap[bitmap_id], h)) {
+    if(!ndpi_bitmap_isset(search->bitmap[bitmap_id], h + hsum)) {
       /* Exact match does not work, so let's see if a partial match works instead */
 
       /* We're adding the beginning of the domain, hence the last token before quitting */
       h += END_OF_TOKENS_DELIMITER;
 
-      return(ndpi_bitmap_isset(search->bitmap[bitmap_id], h));
+      return(ndpi_bitmap_isset(search->bitmap[bitmap_id], h + hsum));
     }
 
-    bitmap_id++;
+    bitmap_id++, hsum += h;
 
     if(quit)
       break;
@@ -308,7 +306,7 @@ u_int32_t ndpi_domain_classify_add_domains(ndpi_domain_classify *_s,
 	return(false);
 
       s->class[i]->class_id = class_id;
-      s->class[i]->domains     =  ndpi_domain_search_alloc();
+      s->class[i]->domains  =  ndpi_domain_search_alloc();
       break;
     }
   }
@@ -410,3 +408,4 @@ u_int16_t ndpi_domain_classify_contains(ndpi_domain_classify *_s,
 
   return(0);
 }
+

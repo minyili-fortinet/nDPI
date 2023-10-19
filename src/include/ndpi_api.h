@@ -1223,9 +1223,6 @@ extern "C" {
 
   char *ndpi_get_ip_proto_name(u_int16_t ip_proto, char *name, unsigned int name_len);
 
-  void ndpi_md5(const u_char *data, size_t data_len, u_char hash[16]);
-  u_int32_t ndpi_quick_hash(unsigned char *str, u_int str_len);
-
   const char* ndpi_http_method2str(ndpi_http_method m);
   ndpi_http_method ndpi_http_str2method(const char* method, u_int16_t method_len);
 
@@ -1828,10 +1825,16 @@ extern "C" {
   
   /* ******************************* */
 
+  void ndpi_md5(const u_char *data, size_t data_len, u_char hash[16]);
   u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
   u_int32_t ndpi_nearest_power_of_two(u_int32_t x);
+
+  /* ******************************* */
+  
+  u_int32_t ndpi_quick_hash(unsigned char *str, u_int str_len);
   u_int32_t ndpi_hash_string(char *str);
-    
+  u_int32_t ndpi_hash_string_len(char *str, u_int len);
+  
   /* ******************************* */
 
   int ndpi_des_init(struct ndpi_des_struct *des, double alpha, double beta, float significance);
@@ -2120,6 +2123,20 @@ extern "C" {
 							 u_int16_t classification_id,
 							 char *file_path);
   u_int16_t             ndpi_domain_classify_contains(ndpi_domain_classify *s, char *domain);
+  
+  /* ******************************* */
+
+  /*
+    Similar to ndpi_filter but based on binary search and with the
+    ability to store a category per value (as ndpi_domain_classify)
+  */
+  ndpi_binary_bitmap* ndpi_binary_bitmap_alloc();
+  bool ndpi_binary_bitmap_set(ndpi_binary_bitmap *b, u_int32_t value, u_int8_t category);
+  bool ndpi_binary_bitmap_compress(ndpi_binary_bitmap *b);
+  bool ndpi_binary_bitmap_isset(ndpi_binary_bitmap *b, u_int32_t value, u_int8_t *out_category);
+  void ndpi_binary_bitmap_free(ndpi_binary_bitmap *b);
+  u_int32_t ndpi_binary_bitmap_size(ndpi_binary_bitmap *b);
+  u_int32_t ndpi_binary_bitmap_cardinality(ndpi_binary_bitmap *b);
   
   /* ******************************* */
 
