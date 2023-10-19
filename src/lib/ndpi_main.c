@@ -221,6 +221,7 @@ static ndpi_risk_info ndpi_known_risks[] = {
   { NDPI_MINOR_ISSUES,                          NDPI_RISK_LOW,    CLIENT_LOW_RISK_PERCENTAGE,  NDPI_BOTH_ACCOUNTABLE   },
   { NDPI_TCP_ISSUES,                            NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_FULLY_ENCRYPTED,                       NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
+  { NDPI_TLS_ALPN_SNI_MISMATCH,                 NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
 
   /* Leave this as last member */
   { NDPI_MAX_RISK,                              NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_NO_ACCOUNTABILITY   }
@@ -4414,7 +4415,7 @@ int ndpi_load_category_file(struct ndpi_detection_module_struct *ndpi_str,
     return(-1);
 
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
-//  printf("Loading %s [proto %d]\n", path, category_id);
+  // printf("Loading %s [proto %d]\n", path, category_id);
 #endif
 
   fd = fopen(path, "r");

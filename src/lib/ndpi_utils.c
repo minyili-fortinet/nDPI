@@ -2029,7 +2029,7 @@ const char* ndpi_risk2str(ndpi_risk_enum risk) {
     return("Fragmented DNS Message");
 
   case NDPI_INVALID_CHARACTERS:
-    return("Text With Non-Printable Chars");
+    return("Non-Printable/Invalid Chars Detected");
 
   case NDPI_POSSIBLE_EXPLOIT:
     return("Possible Exploit");
@@ -2067,6 +2067,10 @@ const char* ndpi_risk2str(ndpi_risk_enum risk) {
   case NDPI_FULLY_ENCRYPTED:
     return("Fully encrypted flow");
 
+  case NDPI_TLS_ALPN_SNI_MISMATCH:
+    return("ALPN/SNI Mismatch");
+    break;
+    
   default:
     ndpi_snprintf(buf, sizeof(buf), "%d", (int)risk);
     return(buf);
