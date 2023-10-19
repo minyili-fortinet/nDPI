@@ -1830,7 +1830,8 @@ extern "C" {
 
   u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
   u_int32_t ndpi_nearest_power_of_two(u_int32_t x);
-  
+  u_int32_t ndpi_hash_string(char *str);
+    
   /* ******************************* */
 
   int ndpi_des_init(struct ndpi_des_struct *des, double alpha, double beta, float significance);
@@ -2037,7 +2038,10 @@ extern "C" {
   /* ******************************* */
 
 #ifndef __KERNEL__
-  /* Based on https://roaringbitmap.org */
+  /*
+    Bitmap based on compressed bitmaps
+    implemented by https://roaringbitmap.org
+  */
   
   ndpi_bitmap* ndpi_bitmap_alloc(void);
   ndpi_bitmap* ndpi_bitmap_alloc_size(u_int32_t size);
@@ -2068,6 +2072,27 @@ extern "C" {
   /* ******************************* */
   /*
     Bloom-filter on steroids based on ndpi_bitmap
+
+    The main difference with respect to bloom filters
+    is that here the filter cardinality is 2^32 and thus
+    not limited as in blooms. This combined with compression
+    of ndpi_bitmap creates a memory savvy datastructure at the
+    price of little performance penalty due to using a
+    compressed datastucture.
+
+    The result is a datatructure with few false positives
+    (see https://hur.st/bloomfilter/) computed as
+
+    p = (1 - e(-((k * n)/m)))^k
+
+    number of hash function (k)
+    false positive rate (p)
+    number of item (n)
+    the number of bits (m)
+
+    As in our case m = 2^32, k = 1, for n = 1000000
+    (see https://hur.st/bloomfilter/?n=1000000&p=&m=4294967296&k=1)
+    p = 2.3 x 10^-4
   */
 
   ndpi_filter* ndpi_filter_alloc();
@@ -2079,20 +2104,6 @@ extern "C" {
   size_t       ndpi_filter_size(ndpi_filter *f);
   u_int32_t    ndpi_filter_cardinality(ndpi_filter *f);
   
-  /* ******************************* */
- 
-  /*
-    Efficient (space and speed) probabilitic datastructure
-    for exact string searching with a false positive rate
-    of 5 * 10 ^ -8
-  */
-  ndpi_string_search* ndpi_string_search_alloc();
-  void                ndpi_string_search_free(ndpi_string_search *s);
-  u_int32_t           ndpi_string_search_size(ndpi_string_search *s);
-  bool                ndpi_string_search_add(ndpi_string_search *s, char *string);
-  bool                ndpi_string_search_contains(ndpi_string_search *s, char *string);
-  u_int32_t           ndpi_string_search_cardinality(ndpi_string_search *f);
-
   /* ******************************* */
 
   /*
