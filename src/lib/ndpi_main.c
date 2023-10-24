@@ -2335,6 +2335,14 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
               "HAProxy", NDPI_PROTOCOL_CATEGORY_WEB,
               ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
               ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_RMCP,
+              "RMCP", NDPI_PROTOCOL_CATEGORY_SYSTEM_OS,
+              ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+              ndpi_build_default_ports(ports_b, 623, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_CAN,
+              "Controller_Area_Network", NDPI_PROTOCOL_CATEGORY_SYSTEM_OS,
+              ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+              ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -5467,6 +5475,12 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
 
   /* HAProxy */
   init_haproxy_dissector(ndpi_str, &a);
+
+  /* RMCP */
+  init_rmcp_dissector(ndpi_str, &a);
+
+  /* Controller Area Network */
+  init_can_dissector(ndpi_str, &a);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
@@ -10117,10 +10131,9 @@ int ndpi_check_dga_name(struct ndpi_detection_module_struct *ndpi_str,
       u_int i, j, max_tmp_len = sizeof(tmp)-1;
 
       len = ndpi_snprintf(tmp, max_tmp_len, "%s", name);
+      
       if(len < 0) {
-
-	  NDPI_LOG_DBG2(ndpi_str, "[DGA] too short");
-
+	NDPI_LOG_DBG2(ndpi_str, "[DGA] too short");
 	return(0);
       } else
 	tmp[(u_int)len < max_tmp_len ? (u_int)len : max_tmp_len] = '\0';
@@ -10227,8 +10240,8 @@ int ndpi_check_dga_name(struct ndpi_detection_module_struct *ndpi_str,
       u_int max_num_consecutive_digits_first_word = 0, num_word = 0;
 
       for(word = strtok_r(tmp, ".", &tok_tmp); ; word = strtok_r(NULL, ".", &tok_tmp)) {
-	u_int num_consecutive_digits = 0;
-
+	u_int num_consecutive_digits = 0, word_len;
+	
 	if(!word) break; else num_word++;
 
 	num_words++;
@@ -10236,8 +10249,11 @@ int ndpi_check_dga_name(struct ndpi_detection_module_struct *ndpi_str,
 	if(num_words > 2)
 	  break; /* Stop after the 2nd word of the domain name */
 
-	if(strlen(word) < 5) continue;
+	if((word_len = strlen(word)) < 5) continue;
 
+	if((word_len < 10) && (ndpi_ends_with(ndpi_str, word, "cdn") /* Content Delivery Network ? */))
+	  continue; /* Ignore names (not too long) that end with cdn [ ssl.p.jwpcdn.com or www.awxcdn.com ] */
+	
 	NDPI_LOG_DBG2(ndpi_str, "[DGA] word(%s) [%s][len: %u]\n", word, name, (unsigned int)strlen(word));
 
 	trigram_char_skip = 0;
@@ -10321,11 +10337,11 @@ int ndpi_check_dga_name(struct ndpi_detection_module_struct *ndpi_str,
 	  max_num_consecutive_digits_first_word = num_consecutive_digits;
       } /* for */
 
-    NDPI_LOG_DBG2(ndpi_str, "[DGA] max_num_consecutive_digits_first_word=%u\n", max_num_consecutive_digits_first_word);
+      NDPI_LOG_DBG2(ndpi_str, "[DGA] max_num_consecutive_digits_first_word=%u\n", max_num_consecutive_digits_first_word);
 
-	NDPI_LOG_DBG2(ndpi_str, "[DGA] [%s][num_found: %u][num_impossible: %u][num_digits: %u][num_bigram_checks: %u][num_vowels: %u/%u][num_trigram_vowels: %u][num_trigram_found: %u/%u][vowels: %u][rc: %u]\n",
-	       name, num_found, num_impossible, num_digits, num_bigram_checks, num_vowels, len, num_trigram_vowels,
-	       num_trigram_checked, num_trigram_found, num_vowels, rc);
+      NDPI_LOG_DBG2(ndpi_str, "[DGA] [%s][num_found: %u][num_impossible: %u][num_digits: %u][num_bigram_checks: %u][num_vowels: %u/%u][num_trigram_vowels: %u][num_trigram_found: %u/%u][vowels: %u][rc: %u]\n",
+		    name, num_found, num_impossible, num_digits, num_bigram_checks, num_vowels, len, num_trigram_vowels,
+		    num_trigram_checked, num_trigram_found, num_vowels, rc);
 
       if((len > 16) && (num_dots < 3) && ((num_vowels*4) < (len-num_dots))) {
 	if((num_trigram_checked > 2) && (num_trigram_vowels >= (num_trigram_found-1)))
@@ -10357,8 +10373,8 @@ int ndpi_check_dga_name(struct ndpi_detection_module_struct *ndpi_str,
         rc = 0;
 
       if(rc)
-	    NDPI_LOG_DBG2(ndpi_str, "[DGA] %s [num_found: %u][num_impossible: %u]\n",
-		              name, num_found, num_impossible);
+	NDPI_LOG_DBG2(ndpi_str, "[DGA] %s [num_found: %u][num_impossible: %u]\n",
+		      name, num_found, num_impossible);
     }
 
     NDPI_LOG_DBG2(ndpi_str, "[DGA] Result: %u\n", rc);

@@ -139,3 +139,21 @@ Notes:
 HAProxy is a free and open source software that provides a high availability load balancer and reverse proxy for TCP and HTTP-based applications that spreads requests across multiple servers.
 
 References: `Main site: <https://www.haproxy.org>`_.
+
+
+.. _Proto 351:
+
+`NDPI_PROTOCOL_RMCP`
+====================
+The Intelligent Platform Management Interface (IPMI) is a set of computer interface specifications for an autonomous computer subsystem that provides management and monitoring capabilities independently of the host system's CPU, firmware (BIOS or UEFI) and operating system.
+
+References: `Protocol Specs: <https://www.dmtf.org/sites/default/files/standards/documents/DSP0114.pdf>`_.
+
+
+.. _Proto 352:
+
+`NDPI_PROTOCOL_CAN`
+===================
+Controller Area Network (CAN) is used extensively in automotive applications, with in excess of 400 million CAN enabled microcontrollers manufactured each year.
+
+References: `Protocol Specs: <https://www.iso.org/standard/63648.html>`_.
