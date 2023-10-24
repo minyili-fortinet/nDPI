@@ -3377,7 +3377,7 @@ static int __init ndpi_mt_init(void)
 	pr_info("xt_ndpi: MAX_PROTOCOLS %d LAST_PROTOCOL %d\n",
 		NDPI_NUM_BITS,
 		NDPI_LAST_IMPLEMENTED_PROTOCOL);
-	pr_info("xt_ndpi: flow acctounting %s\n",ndpi_enable_flow ? "ON":"OFF");
+	pr_info("xt_ndpi: flow accounting %s\n",ndpi_enable_flow ? "ON":"OFF");
 #ifdef USE_LIVEPATCH
 	rcu_assign_pointer(nf_conntrack_destroy_cb,nf_ndpi_free_flow);
 	return klp_enable_patch(&ndpi_patch);

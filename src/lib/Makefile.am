@@ -54,6 +54,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/bitcoin.c \
 		     protocols/bittorrent.c \
 		     protocols/bjnp.c \
+		     protocols/can.c \
 		     protocols/capwap.c \
 		     protocols/cassandra.c \
 		     protocols/checkmk.c \
@@ -156,6 +157,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/raknet.c \
 		     protocols/rdp.c \
 		     protocols/redis_net.c \
+		     protocols/rmcp.c \
 		     protocols/rsh.c \
 		     protocols/rsync.c \
 		     protocols/rtcp.c \
