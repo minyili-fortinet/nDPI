@@ -20,7 +20,6 @@
 
 /* ****************************************************** */
 
-#if 0
 static ndpi_network host_protocol_list[] = {
   /*
     OCS GO (Orange Cinéma Séries)
@@ -303,7 +302,6 @@ static ndpi_network host_protocol_list[] = {
   /* End */
   { 0x0, 0, 0 }
 };
-#endif
 
 /* ****************************************************** */
 

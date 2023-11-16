@@ -20,7 +20,6 @@
 /* ****************************************************** */
 
 
-#if 0
 static ndpi_network ndpi_protocol_cachefly_protocol_list[] = {
  { 0xCDEAAF00 /* 205.234.175.0/24 */, 24, NDPI_PROTOCOL_CACHEFLY },
  { 0xCC5D9600 /* 204.93.150.0/24 */, 24, NDPI_PROTOCOL_CACHEFLY },
@@ -34,4 +33,8 @@ static ndpi_network ndpi_protocol_cachefly_protocol_list[] = {
  /* End */
  { 0x0, 0, 0 }
 };
-#endif
+
+static ndpi_network6 ndpi_protocol_cachefly_protocol_list_6[] = {
+ /* End */
+ { NULL, 0, 0 }
+};

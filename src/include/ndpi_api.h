@@ -168,6 +168,9 @@ extern "C" {
   u_int16_t ndpi_network_port_ptree_match(struct ndpi_detection_module_struct *ndpi_struct,
 					  struct in_addr *pin /* network byte order */,
 					  u_int16_t port /* network byte order */);
+  u_int16_t ndpi_network_port_ptree6_match(struct ndpi_detection_module_struct *ndpi_struct,
+					   struct in6_addr *pin,
+					   u_int16_t port /* network byte order */);
 
   /**
    * Creates a protocol match that does not contain any hostnames.
@@ -774,9 +777,10 @@ extern "C" {
    */
   int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_mod,
 			       const char* path);
-  int ndpi_load_protocols_file2(struct ndpi_detection_module_struct *ndpi_mod,
-			        FILE *fd);
+  int ndpi_load_protocols_file_fd(struct ndpi_detection_module_struct *ndpi_mod,
+			          FILE *fd);
 #endif
+
   /**
    * Add an IP-address based risk mask
    *
@@ -808,6 +812,7 @@ extern "C" {
    */
   int ndpi_add_trusted_issuer_dn(struct ndpi_detection_module_struct *ndpi_mod, char *dn);
 
+#ifndef __KERNEL__
   /**
    * Read a file and load the categories
    *
@@ -818,6 +823,7 @@ extern "C" {
    *          -1 else
    */
   int ndpi_load_categories_file(struct ndpi_detection_module_struct *ndpi_str, const char* path, void *user_data);
+  int ndpi_load_categories_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd, void *user_data);
 
   /**
    * Loads a file (separated by <cr>) of domain names associated with the specified category
@@ -842,7 +848,7 @@ extern "C" {
    */
   int ndpi_load_categories_dir(struct ndpi_detection_module_struct *ndpi_str,
 			       char* path);
-
+#endif
   /**
    * Read a file and load the list of risky domains
    *
@@ -1045,11 +1051,17 @@ extern "C" {
   int ndpi_enable_loaded_categories(struct ndpi_detection_module_struct *ndpi_struct);
   void* ndpi_find_ipv4_category_userdata(struct ndpi_detection_module_struct *ndpi_str,
 					 u_int32_t saddr);
+  void* ndpi_find_ipv6_category_userdata(struct ndpi_detection_module_struct *ndpi_str,
+					 struct in6_addr *saddr);
   int ndpi_fill_ip_protocol_category(struct ndpi_detection_module_struct *ndpi_struct,
 				     struct ndpi_flow_struct *flow,
 				     u_int32_t saddr,
 				     u_int32_t daddr,
 				     ndpi_protocol *ret);
+  int ndpi_fill_ip6_protocol_category(struct ndpi_detection_module_struct *ndpi_str,
+				      struct ndpi_flow_struct *flow,
+				      struct in6_addr *saddr, struct in6_addr *daddr,
+				      ndpi_protocol *ret);
   int ndpi_match_custom_category(struct ndpi_detection_module_struct *ndpi_struct,
 				 char *name, u_int name_len, ndpi_protocol_category_t *id);
   int ndpi_get_custom_category_match(struct ndpi_detection_module_struct *ndpi_struct,

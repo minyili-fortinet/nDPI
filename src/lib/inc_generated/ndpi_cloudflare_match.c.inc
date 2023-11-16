@@ -20,7 +20,6 @@
 /* ****************************************************** */
 
 
-#if 0
 static ndpi_network ndpi_protocol_cloudflare_protocol_list[] = {
  { 0xADF53000 /* 173.245.48.0/20 */, 20, NDPI_PROTOCOL_CLOUDFLARE },
  { 0x6715F400 /* 103.21.244.0/22 */, 22, NDPI_PROTOCOL_CLOUDFLARE },
@@ -40,4 +39,15 @@ static ndpi_network ndpi_protocol_cloudflare_protocol_list[] = {
  /* End */
  { 0x0, 0, 0 }
 };
-#endif
+
+static ndpi_network6 ndpi_protocol_cloudflare_protocol_list_6[] = {
+ { "2400:cb00::", 32, NDPI_PROTOCOL_CLOUDFLARE },
+ { "2606:4700::", 32, NDPI_PROTOCOL_CLOUDFLARE },
+ { "2803:f800::", 32, NDPI_PROTOCOL_CLOUDFLARE },
+ { "2405:b500::", 32, NDPI_PROTOCOL_CLOUDFLARE },
+ { "2405:8100::", 32, NDPI_PROTOCOL_CLOUDFLARE },
+ { "2a06:98c0::", 29, NDPI_PROTOCOL_CLOUDFLARE },
+ { "2c0f:f248::", 32, NDPI_PROTOCOL_CLOUDFLARE },
+ /* End */
+ { NULL, 0, 0 }
+};

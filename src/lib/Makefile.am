@@ -5,7 +5,7 @@ CFLAGS += -fPIC -DPIC -DNDPI_LIB_COMPILATION # --coverage
 
 libndpi_a_includedir = $(includedir)/libndpi-@VERSION@/libndpi
 
-BUILT_SOURCES = ndpi_network_list.c.inc
+#BUILT_SOURCES = ndpi_network_list.c.inc
 
 libndpi_a_include_HEADERS = ../include/ndpi_api.h \
 			     ../include/ndpi_define.h \
@@ -22,7 +22,6 @@ libndpi_a_include_HEADERS = ../include/ndpi_api.h \
 			     third_party/include/libcache.h
 
 libndpi_a_SOURCES = ndpi_content_match.c.inc \
-		     ndpi_network_list.c.inc \
 		     ndpi_main.c \
 		     ndpi_utils.c \
 		     ndpi_bitmap.c \
@@ -82,6 +81,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/edonkey.c \
 		     protocols/elastic_search.c \
 		     protocols/epicgames.c \
+		     protocols/ethereum.c \
 		     protocols/ethernet_ip.c \
 		     protocols/fastcgi.c \
 		     protocols/fix.c \
@@ -151,6 +151,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/postgres.c \
 		     protocols/ppstream.c \
 		     protocols/pptp.c \
+		     protocols/protobuf.c \
 		     protocols/qq.c \
 		     protocols/quic.c \
 		     protocols/radius.c \
@@ -252,8 +253,8 @@ libndpi_a_CPPFLAGS = -I$(top_srcdir)/src/include/  -I$(top_srcdir)/src/lib/third
 
 #EXTRA_DIST = third_party/src/ndpi_patricia.c
 
-PROTO_CFG_FILES = $(wildcard ndpi_network_list_*.yaml)
-
-ndpi_network_list.c.inc: $(PROTO_CFG_FILES) ndpi_network_list_compile
-		./ndpi_network_list_compile -o $@ $(PROTO_CFG_FILES)
+#PROTO_CFG_FILES = $(wildcard ndpi_network_list_*.yaml)
+#
+#ndpi_network_list.c.inc: $(PROTO_CFG_FILES) ndpi_network_list_compile
+#		./ndpi_network_list_compile -o $@ $(PROTO_CFG_FILES)
 
