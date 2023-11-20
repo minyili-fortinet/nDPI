@@ -2346,6 +2346,11 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			        "ETHEREUM", NDPI_PROTOCOL_CATEGORY_CRYPTO_CURRENCY,
 			        ndpi_build_default_ports(ports_a, 30303, 0, 0, 0, 0) /* TCP */,
 			        ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_TELEGRAM_VOIP,
+			  "TelegramVoip", NDPI_PROTOCOL_CATEGORY_VOIP,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -2880,11 +2885,9 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
   u_int16_t port = 0; /* Format ip:8.248.73.247 */
                       /* Format ipv6:[fe80::76ac:b9ff:fe6c:c124]/64 */
   char *double_column = NULL;
-#ifndef __KERNEL__
-  struct hostent *h;
-#endif
   bool value_ready = false;
-  
+  struct addrinfo hints, *result, *rp;
+
   if(!ndpi_str->protocols_ptree)
     return(-1);
 
@@ -2937,18 +2940,33 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
     }
   }
 
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = is_ipv6 ? AF_INET6 : AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_CANONNAME;
+
   if(!is_ipv6) {
     /* Check if the IP address is symbolic or numeric */
 #ifndef __KERNEL__
     unsigned int d[4];
     char tail[16] = { '\0' };
-    int c = sscanf(value, "%3u.%3u.%3u.%3u%s", &d[0], &d[1], &d[2], &d[3], tail);
+    int c = sscanf(value, "%3u.%3u.%3u.%3u%15s",
+		   &d[0], &d[1], &d[2], &d[3], tail);
+
     if ((c != 4) || tail[0]) {
       /* This might be a symbolic IPv4 address */
 
-      if((h = gethostbyname2(value, AF_INET)) != NULL) {
-	memcpy(&pin, h->h_addr_list[0], sizeof(pin));
-	value_ready = true;
+      if(getaddrinfo(value, NULL, &hints, &result) != 0)
+	return(-1);
+
+      for(rp = result; rp != NULL; rp = rp->ai_next) {
+	if(rp->ai_family == AF_INET) {
+	  struct sockaddr_in *addr = (struct sockaddr_in *)rp->ai_addr;
+
+	  memcpy(&pin, &(addr->sin_addr), sizeof(struct in_addr));
+	  value_ready = true;
+	  break;
+	}
       }
     }
 #endif
@@ -2963,9 +2981,17 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
     if(strchr(value, ':') == NULL) {
       /* This might be a symbolic IPv6 address */
 
-      if((h = gethostbyname2(value, AF_INET6)) != NULL) {
-	memcpy(&pin6, h->h_addr_list[0], sizeof(pin6));
-	value_ready = true;
+      if(getaddrinfo(value, NULL, &hints, &result) != 0)
+	return(-1);
+
+      for(rp = result; rp != NULL; rp = rp->ai_next) {
+	if(rp->ai_family == AF_INET6) {
+	  struct sockaddr_in6 *addr = (struct sockaddr_in6 *)rp->ai_addr;
+
+	  memcpy(&pin6, &(addr->sin6_addr), sizeof(struct in6_addr));
+	  value_ready = true;
+	  break;
+	}
       }
     }
 #endif
@@ -2973,7 +2999,7 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
       if(inet_pton(AF_INET6, value, &pin6) != 1)
 	return(-1);
     }
-    
+
     node = add_to_ptree(ndpi_str->protocols_ptree6, AF_INET6, &pin6, bits);
   }
 
@@ -7333,14 +7359,6 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
   if(ret.app_protocol != NDPI_PROTOCOL_UNKNOWN)
     return(ret);
 
-  if((flow->guessed_protocol_id == NDPI_PROTOCOL_STUN) ||
-     (enable_guess &&
-      flow->stun.num_binding_requests > 0 &&
-      flow->stun.num_processed_pkts > 0)) {
-    ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_STUN, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL);
-    ret.app_protocol = flow->detected_protocol_stack[0];
-  }
-
   /* Check some caches */
 
   /* Does it looks like BitTorrent? */
@@ -8855,6 +8873,14 @@ void ndpi_set_detected_protocol(struct ndpi_detection_module_struct *ndpi_str, s
   ndpi_int_change_protocol(ndpi_str, flow, upper_detected_protocol, lower_detected_protocol, confidence);
   ret.master_protocol = flow->detected_protocol_stack[1], ret.app_protocol = flow->detected_protocol_stack[0];
   ndpi_reconcile_protocols(ndpi_str, flow, &ret);
+}
+
+/* ********************************************************************************* */
+
+void ndpi_reset_detected_protocol(struct ndpi_detection_module_struct *ndpi_str, struct ndpi_flow_struct *flow) {
+  flow->detected_protocol_stack[1] = NDPI_PROTOCOL_UNKNOWN;
+  flow->detected_protocol_stack[0] = NDPI_PROTOCOL_UNKNOWN;
+  flow->confidence = NDPI_CONFIDENCE_UNKNOWN;
 }
 
 /* ********************************************************************************* */
