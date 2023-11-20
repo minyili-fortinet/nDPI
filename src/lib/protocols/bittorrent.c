@@ -1460,7 +1460,7 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
 #endif
 
 #ifndef __KERNEL__
-  if(packet->detected_protocol_stack[0] == NDPI_PROTOCOL_BITTORRENT) {
+  if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_BITTORRENT) {
 	if(packet->udp != NULL &&  packet->payload_packet_len > 28 ) {
 	    if(bt_utp2(packet->payload, packet->payload_packet_len,ndpi_struct,flow,&utp_type))
 		    return;

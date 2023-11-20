@@ -60,12 +60,12 @@ static void ndpi_search_icecast_tcp(struct ndpi_detection_module_struct *ndpi_st
     }
   }
 
-  if(ndpi_current_pkt_from_client_to_server(packet, flow)
-      && (flow->packet_counter < 10)) {
+  if(packet->packet_direction == flow->client_packet_direction &&
+      flow->packet_counter < 10) {
     return;
   }
 
-  if(ndpi_current_pkt_from_server_to_client(packet, flow)) {
+  if(packet->packet_direction != flow->client_packet_direction) {
     /* server answer, now test Server for Icecast */
 
     ndpi_parse_packet_line_info(ndpi_struct, flow);

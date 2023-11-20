@@ -1033,77 +1033,6 @@ struct ndpi_int_one_line_struct {
   u_int16_t len;
 };
 
-struct ndpi_packet_struct {
-  const struct ndpi_iphdr *iph;
-  const struct ndpi_ipv6hdr *iphv6;
-  const struct ndpi_tcphdr *tcp;
-  const struct ndpi_udphdr *udp;
-  const u_int8_t *generic_l4_ptr;	/* is set only for non tcp-udp traffic */
-  const u_int8_t *payload;
-
-  u_int64_t current_time_ms;
-  u_int64_t current_time;
-
-  u_int16_t detected_protocol_stack[NDPI_PROTOCOL_SIZE];
-  u_int16_t protocol_stack_info;
-
-/* Don't change order! */
-
-#define host_line_idx (1)
-#define forwarded_line_idx (2)
-#define referer_line_idx (3)
-#define content_line_idx (4)
-#define content_disposition_line_idx (5)
-#define accept_line_idx (6)
-#define authorization_line_idx (7)
-#define user_agent_line_idx (8)
-#define http_url_name_idx (9)
-#define http_encoding_idx (10)
-#define http_transfer_encoding_idx (11)
-#define http_contentlen_idx (12)
-#define http_cookie_idx (13)
-#define http_origin_idx (14)
-#define http_x_session_type_idx (15)
-#define server_line_idx (16)
-#define http_method_idx (17)
-#define http_response_idx (18)
-#define last_hdr_idx (19)
-
-  struct ndpi_int_one_line_struct line[NDPI_MAX_PARSE_LINES_PER_PACKET];
-  /* HTTP headers */
-  struct ndpi_int_one_line_struct null_line;
-  struct ndpi_int_one_line_struct host_line;
-  struct ndpi_int_one_line_struct forwarded_line;
-  struct ndpi_int_one_line_struct referer_line;
-  struct ndpi_int_one_line_struct content_line;
-  struct ndpi_int_one_line_struct content_disposition_line;
-  struct ndpi_int_one_line_struct accept_line;
-  struct ndpi_int_one_line_struct authorization_line;
-  struct ndpi_int_one_line_struct user_agent_line;
-  struct ndpi_int_one_line_struct http_url_name;
-  struct ndpi_int_one_line_struct http_encoding;
-  struct ndpi_int_one_line_struct http_transfer_encoding;
-  struct ndpi_int_one_line_struct http_contentlen;
-  struct ndpi_int_one_line_struct http_cookie;
-  struct ndpi_int_one_line_struct http_origin;
-  struct ndpi_int_one_line_struct http_x_session_type;
-  struct ndpi_int_one_line_struct server_line;
-  struct ndpi_int_one_line_struct http_method;
-  struct ndpi_int_one_line_struct http_response; /* the first "word" in this pointer is the
-                                                   response code in the packet (200, etc) */
-  struct ndpi_int_one_line_struct *hdr_line;
-  u_int16_t http_num_headers; /* number of found (valid) header lines in HTTP request or response */
-
-  u_int16_t l3_packet_len;
-  u_int16_t payload_packet_len;
-  u_int16_t parsed_lines;
-  u_int16_t empty_line_position;
-  u_int8_t tcp_retransmission;
-
-  u_int8_t packet_lines_parsed_complete:1,
-    packet_direction:1, empty_line_position_set:1, http_check_content:1, pad:4;
-};
-
 struct ndpi_detection_module_struct;
 struct ndpi_flow_struct;
 
@@ -1352,6 +1281,73 @@ typedef struct {
   u_int16_t l7_protocol;
 } nbpf_filter;
 #endif
+
+struct ndpi_packet_struct {
+  const struct ndpi_iphdr *iph;
+  const struct ndpi_ipv6hdr *iphv6;
+  const struct ndpi_tcphdr *tcp;
+  const struct ndpi_udphdr *udp;
+  const u_int8_t *generic_l4_ptr;	/* is set only for non tcp-udp traffic */
+  const u_int8_t *payload;
+
+  u_int64_t current_time_ms;
+  u_int64_t current_time;
+/* Don't change order! */
+
+  #define host_line_idx (1)
+  #define forwarded_line_idx (2)
+  #define referer_line_idx (3)
+  #define content_line_idx (4)
+  #define content_disposition_line_idx (5)
+  #define accept_line_idx (6)
+  #define authorization_line_idx (7)
+  #define user_agent_line_idx (8)
+  #define http_url_name_idx (9)
+  #define http_encoding_idx (10)
+  #define http_transfer_encoding_idx (11)
+  #define http_contentlen_idx (12)
+  #define http_cookie_idx (13)
+  #define http_origin_idx (14)
+  #define http_x_session_type_idx (15)
+  #define server_line_idx (16)
+  #define http_method_idx (17)
+  #define http_response_idx (18)
+  #define last_hdr_idx (19)
+
+  struct ndpi_int_one_line_struct line[NDPI_MAX_PARSE_LINES_PER_PACKET];
+  /* HTTP headers */
+  struct ndpi_int_one_line_struct null_line;
+  struct ndpi_int_one_line_struct host_line;
+  struct ndpi_int_one_line_struct forwarded_line;
+  struct ndpi_int_one_line_struct referer_line;
+  struct ndpi_int_one_line_struct content_line;
+  struct ndpi_int_one_line_struct content_disposition_line;
+  struct ndpi_int_one_line_struct accept_line;
+  struct ndpi_int_one_line_struct authorization_line;
+  struct ndpi_int_one_line_struct user_agent_line;
+  struct ndpi_int_one_line_struct http_url_name;
+  struct ndpi_int_one_line_struct http_encoding;
+  struct ndpi_int_one_line_struct http_transfer_encoding;
+  struct ndpi_int_one_line_struct http_contentlen;
+  struct ndpi_int_one_line_struct http_cookie;
+  struct ndpi_int_one_line_struct http_origin;
+  struct ndpi_int_one_line_struct http_x_session_type;
+  struct ndpi_int_one_line_struct server_line;
+  struct ndpi_int_one_line_struct http_method;
+  struct ndpi_int_one_line_struct http_response; /* the first "word" in this pointer is the
+						    response code in the packet (200, etc) */
+  struct ndpi_int_one_line_struct *hdr_line;
+  u_int8_t http_num_headers; /* number of found (valid) header lines in HTTP request or response */
+
+  u_int16_t l3_packet_len;
+  u_int16_t payload_packet_len;
+  u_int16_t parsed_lines;
+  u_int16_t empty_line_position;
+  u_int8_t tcp_retransmission;
+
+  u_int8_t packet_lines_parsed_complete:1,
+    packet_direction:1, empty_line_position_set:1, http_check_content:1, pad:4;
+};
 
 struct ndpi_detection_module_struct {
   NDPI_PROTOCOL_BITMASK detection_bitmask;
