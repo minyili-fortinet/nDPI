@@ -2941,7 +2941,7 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
   }
 
   memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = is_ipv6 ? AF_INET6 : AF_INET;
+  hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_CANONNAME;
 
@@ -2965,9 +2965,12 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
 
 	  memcpy(&pin, &(addr->sin_addr), sizeof(struct in_addr));
 	  value_ready = true;
+          bits = 32;
 	  break;
 	}
       }
+
+      freeaddrinfo(result);
     }
 #endif
     if(!value_ready) {
@@ -2990,9 +2993,12 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
 
 	  memcpy(&pin6, &(addr->sin6_addr), sizeof(struct in6_addr));
 	  value_ready = true;
+          bits = 128;
 	  break;
 	}
       }
+
+      freeaddrinfo(result);
     }
 #endif
     if(!value_ready) {
@@ -3241,6 +3247,12 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
        simply avoid any logs at all */
     return(NULL);
   }
+
+#ifdef WIN32
+  /* Required to use getaddrinfo on Windows */
+  WSADATA wsaData;
+  WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
 
   memset(ndpi_str, 0, sizeof(struct ndpi_detection_module_struct));
 
@@ -4163,6 +4175,10 @@ void ndpi_exit_detection_module(struct ndpi_detection_module_struct *ndpi_str) {
 	    ndpi_free(ndpi_str->callback_buffer_tcp_payload);
     ndpi_free(ndpi_str);
   }
+
+#ifdef WIN32
+  WSACleanup();
+#endif
 }
 
 /* ****************************************************** */
@@ -4364,13 +4380,15 @@ int ndpi_add_ip_risk_mask(struct ndpi_detection_module_struct *ndpi_str,
   if(!is_ipv6 && ndpi_str->ip_risk_mask_ptree) {
     struct in_addr pin;
 
-    pin.s_addr = inet_addr(addr);
+    if(inet_pton(AF_INET, addr, &pin) != 1)
+      return(-1);
     node = add_to_ptree(ndpi_str->ip_risk_mask_ptree, AF_INET,
 			&pin, cidr ? atoi(cidr) : 32 /* bits */);
   } else if(is_ipv6 && ndpi_str->ip_risk_mask_ptree6) {
     struct in6_addr pin6;
 
-    inet_pton(AF_INET6, addr, &pin6);
+    if(inet_pton(AF_INET6, addr, &pin6) != 1)
+      return(-1);
     node = add_to_ptree(ndpi_str->ip_risk_mask_ptree6, AF_INET6,
 			&pin6, cidr ? atoi(cidr) : 128 /* bits */);
   } else {
@@ -4767,9 +4785,11 @@ int ndpi_load_category_file(struct ndpi_detection_module_struct *ndpi_str,
   char buffer[256], *line;
   FILE *fd;
   u_int num_loaded = 0;
+  unsigned int failed_lines = 0;
+  unsigned int lines_read = 0;
 
   if(!ndpi_str || !path || !ndpi_str->protocols_ptree)
-    return(-1);
+    return(0);
 
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
   // printf("Loading %s [proto %d]\n", path, category_id);
@@ -4779,7 +4799,7 @@ int ndpi_load_category_file(struct ndpi_detection_module_struct *ndpi_str,
 
   if(fd == NULL) {
     NDPI_LOG_ERR(ndpi_str, "Unable to open file %s [%s]\n", path, strerror(errno));
-    return(-1);
+    return(0);
   }
 
   while(1) {
@@ -4790,24 +4810,44 @@ int ndpi_load_category_file(struct ndpi_detection_module_struct *ndpi_str,
     if(line == NULL)
       break;
 
+    lines_read++;
     len = strlen(line);
 
-    if((len <= 1) || (line[0] == '#'))
+    if(len <= 1 || len == sizeof(buffer) - 1) {
+      NDPI_LOG_ERR(ndpi_str, "[NDPI] Failed to read file '%s' line #%u, line too short/long\n",
+                   path, lines_read);
+      failed_lines++;
       continue;
-    else
-      len--;
+    } else if (line[0] == '#')
+      continue;
 
-    while((line[len] == '\n') || (line[len] == '\r'))
-      line[len--] = '\0';
+    int i = 0;
+    for (i = 0; i < len; ++i) {
+      if (line[i] == '\r' || line[i] == '\n') {
+        line[i] = '\0';
+        break;
+      }
+      if (line[i] != '-' && line[i] != '.' && isalnum(line[i]) == 0
+          /* non standard checks for the sake of compatibility */
+          && line[i] != '_')
+        break;
+    }
 
-    while((line[0] == '-') || (line[0] == '.'))
-      line++;
+    if (i != len - 2 && i != len - 1)
+    {
+      NDPI_LOG_ERR(ndpi_str, "[NDPI] Failed to read file '%s' line #%u, invalid characters found\n",
+                   path, lines_read);
+      failed_lines++;
+      continue;
+    }
 
     if(ndpi_load_category(ndpi_str, line, category_id, NULL) > 0)
       num_loaded++;
   }
 
   fclose(fd);
+  if(failed_lines)
+    return(-1 * failed_lines);
   return(num_loaded);
 }
 
@@ -4825,10 +4865,11 @@ int ndpi_load_categories_dir(struct ndpi_detection_module_struct *ndpi_str,
 			     char *dir_path) {
   DIR *dirp = opendir(dir_path);
   struct dirent *dp;
-  int rc = 0;
+  int failed_files = 0;
+  int num_loaded = 0;
 
   if (dirp == NULL)
-    return(-1);
+    return(0);
 
   while((dp = readdir(dirp)) != NULL) {
     char *underscore, *extn;
@@ -4853,15 +4894,20 @@ int ndpi_load_categories_dir(struct ndpi_detection_module_struct *ndpi_str,
 	underscore[0] = '_';
 	snprintf(path, sizeof(path), "%s/%s", dir_path, dp->d_name);
 
-	ndpi_load_category_file(ndpi_str, path, proto_id);
-	rc++;
+	if (ndpi_load_category_file(ndpi_str, path, proto_id) < 0) {
+	  NDPI_LOG_ERR(ndpi_str, "Failed to load '%s'\n", path);
+	  failed_files++;
+	}else
+	  num_loaded++;
       }
     }
   }
 
   (void)closedir(dirp);
 
-  return(rc);
+  if(failed_files)
+    return(-1 * failed_files);
+  return(num_loaded);
 }
 
 
