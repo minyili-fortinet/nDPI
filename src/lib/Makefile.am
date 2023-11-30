@@ -1,4 +1,4 @@
-bin_PROGRAMS = ndpi_network_list_compile
+#bin_PROGRAMS = ndpi_network_list_compile
 AM_CPPFLAGS = -I$(top_srcdir)/src/include/  -I$(top_srcdir)/src/lib/third_party/include/
 
 CFLAGS += -fPIC -DPIC -DNDPI_LIB_COMPILATION # --coverage

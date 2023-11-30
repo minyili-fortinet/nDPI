@@ -28,6 +28,7 @@
 #define NDPI_CURRENT_PROTO NDPI_PROTOCOL_RX
 
 #include "ndpi_api.h"
+#include "ndpi_private.h"
 
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
