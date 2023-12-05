@@ -69,8 +69,7 @@ static void ndpi_int_hart_ip_add_connection(struct ndpi_detection_module_struct 
 static void ndpi_search_hart_ip(struct ndpi_detection_module_struct *ndpi_struct,
                                 struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
-
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
   NDPI_LOG_DBG(ndpi_struct, "search HART-IP\n");
   
   if (packet->payload_packet_len < sizeof(struct hart_ip_hdr)) {

@@ -53,7 +53,7 @@ static void ndpi_int_fins_add_connection(struct ndpi_detection_module_struct * c
 static void ndpi_search_fins(struct ndpi_detection_module_struct *ndpi_struct,
                              struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
   
   /* FINS/TCP header is 20 bytes long, but it's usually followed
    * by 10 byte FINS header and command data

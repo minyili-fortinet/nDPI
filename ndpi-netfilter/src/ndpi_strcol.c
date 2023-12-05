@@ -141,8 +141,8 @@ str_collect_t *nc,*c = *pc;
 	c = nc;
     }
 
-    c->s[c->last] = slen;
-    strcpy(&c->s[c->last+1],str);
+    c->s[c->last] = (char)(slen & 0xff);
+    strncpy(&c->s[c->last+1],str,slen);
     str = &c->s[c->last+1];
     c->last += slen + 2;
     c->s[c->last] = '\0';

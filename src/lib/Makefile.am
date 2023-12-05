@@ -13,7 +13,6 @@ libndpi_a_include_HEADERS = ../include/ndpi_api.h \
 			     ../include/ndpi_includes.h \
 			     ../include/ndpi_config.h       \
 			     ../include/ndpi_protocol_ids.h \
-			     ../include/ndpi_protocols.h    \
 			     ../include/ndpi_typedefs.h     \
 			     third_party/include/ndpi_md5.h \
 			     third_party/include/ndpi_sha1.h \
@@ -82,8 +81,10 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/elastic_search.c \
 		     protocols/epicgames.c \
 		     protocols/ethereum.c \
+		     protocols/ethersio.c \
 		     protocols/ethernet_ip.c \
 		     protocols/fastcgi.c \
+		     protocols/fins.c \
 		     protocols/fix.c \
 		     protocols/ftp_control.c \
 		     protocols/ftp_data.c \
@@ -95,6 +96,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/h323.c \
 		     protocols/halflife2_and_mods.c \
 		     protocols/haproxy.c \
+		     protocols/hart-ip.c \
 		     protocols/hots.c \
 		     protocols/hpvirtgrp.c \
 		     protocols/hsrp.c \
@@ -145,6 +147,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/non_tcp_udp.c \
 		     protocols/ntp.c \
 		     protocols/oicq.c \
+		     protocols/opc-ua.c \
 		     protocols/openvpn.c \
 		     protocols/ookla.c \
 		     protocols/oracle.c \
@@ -152,6 +155,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/ppstream.c \
 		     protocols/pptp.c \
 		     protocols/protobuf.c \
+		     protocols/ptpv2.c \
 		     protocols/qq.c \
 		     protocols/quic.c \
 		     protocols/radius.c \
@@ -164,6 +168,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/rtcp.c \
 		     protocols/rtmp.c \
 		     protocols/rtp.c \
+		     protocols/rtps.c \
 		     protocols/rtsp.c \
 		     protocols/rx.c \
 		     protocols/s7comm.c \
