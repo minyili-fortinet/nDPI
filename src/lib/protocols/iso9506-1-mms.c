@@ -43,7 +43,7 @@ static void ndpi_int_iso9506_1_mms_add_connection(struct ndpi_detection_module_s
 static void ndpi_search_iso9506_1_mms(struct ndpi_detection_module_struct *ndpi_struct,
                                     struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
 
   NDPI_LOG_DBG(ndpi_struct, "search ISO 9506-1 MMS\n");
   

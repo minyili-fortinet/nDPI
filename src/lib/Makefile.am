@@ -48,6 +48,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/avast_securedns.c \
 		     protocols/amqp.c \
 		     protocols/bacnet.c \
+		     protocols/beckhoff_ads.c \
 		     protocols/bgp.c \
 		     protocols/bitcoin.c \
 		     protocols/bittorrent.c \
@@ -106,10 +107,12 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/icecast.c \
 		     protocols/i3d.c \
 		     protocols/imo.c \
+		     protocols/ieee-c37118.c \
 		     protocols/iec60870-5-104.c \
 		     protocols/ipsec.c \
 		     protocols/ipp.c \
 		     protocols/irc.c \
+		     protocols/iso9506-1-mms.c \
 		     protocols/jabber.c \
 		     protocols/kakaotalk_voice.c \
 		     protocols/kerberos.c \
