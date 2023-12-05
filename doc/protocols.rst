@@ -5,6 +5,24 @@ This page provides the list of the protocols/applications supported by nDPI. For
 
 Work in progress!
 
+.. _Proto 72:
+
+`NDPI_PROTOCOL_HART_IP`
+============================
+Highway Addressable Remote Transducer over IP
+
+References: `Protocol Specs: <https://library.fieldcommgroup.org/20085/TS20085>`_.
+
+
+.. _Proto 96:
+
+`NDPI_PROTOCOL_TFTP`
+====================
+TFTP is a very simple protocol used to transfer files. It is from this that its name comes, Trivial File Transfer Protocol or TFTP.
+
+References: `RFC1350 <https://datatracker.ietf.org/doc/html/rfc1350>`_ and `RFC2347 <https://datatracker.ietf.org/doc/html/rfc2347>`_ and `RFC2349 <https://datatracker.ietf.org/doc/html/rfc2349>`_
+
+
 .. _Proto 338:
 
 `NDPI_PROTOCOL_SRTP`
@@ -199,3 +217,20 @@ Chinese microblogging (weibo) website.
 
 References: `Wikipedia <https://en.wikipedia.org/wiki/Sina_Weibo>`_.
 
+
+.. _Proto 358:
+
+`NDPI_PROTOCOL_PTPV2`
+============================
+IEEE 1588-2008 Precision Time Protocol (PTP) Version 2.
+
+References: `Protocol Specs: <https://standards.ieee.org/ieee/1588/4355/>`_.
+
+
+.. _Proto 359:
+
+`NDPI_PROTOCOL_RTPS`
+============================
+Real-Time Publish Subscribe Protocol
+
+References: `Protocol Specs: <https://www.omg.org/spec/DDSI-RTPS/>`_.
