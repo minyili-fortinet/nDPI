@@ -234,3 +234,49 @@ References: `Protocol Specs: <https://standards.ieee.org/ieee/1588/4355/>`_.
 Real-Time Publish Subscribe Protocol
 
 References: `Protocol Specs: <https://www.omg.org/spec/DDSI-RTPS/>`_.
+
+
+.. _Proto 360:
+
+`NDPI_PROTOCOL_OPC_UA`
+============================
+IEC62541 OPC Unified Architecture
+
+References: `Protocol Specs: <https://reference.opcfoundation.org/>`_.
+
+
+.. _Proto 361:
+
+`NDPI_PROTOCOL_S7COMM_PLUS`
+============================
+A proprietary protocol from Siemens used for data exchange between PLCs and access PLC data via SCADA systems.
+Completely different from classic S7Comm, but also uses TPKT/COTP as a transport.
+
+References: `Unofficial description: <https://plc4x.apache.org/protocols/s7/s7comm-plus.html>`_.
+
+
+.. _Proto 362:
+
+`NDPI_PROTOCOL_FINS`
+============================
+Factory Interface Network Service (FINS) is a network protocol used by Omron PLCs.
+
+References: `Protocol Specs: <https://assets.omron.eu/downloads/manual/en/v4/w421_cj1w-etn21_cs1w-etn21_ethernet_units_-_construction_of_applications_operation_manual_en.pdf>`_.
+
+
+.. _Proto 363:
+
+`NDPI_PROTOCOL_ETHERSIO`
+============================
+Ether-S-I/O is a proprietary protocol used by Saia-Burgess's PLCs.
+
+References: `Wireshark wiki: <https://wiki.wireshark.org/EtherSIO.md>`_.
+
+
+.. _Proto 364:
+
+`NDPI_PROTOCOL_UMAS`
+============================
+UMAS is a proprietary Schneider Electric protocol based on Modbus. It's used in Modicon M580 and Modicon M340 CPU-based PLCs.
+
+References: `Unofficial article: <https://ics-cert.kaspersky.com/publications/reports/2022/09/29/the-secrets-of-schneider-electrics-umas-protocol/>`_.
