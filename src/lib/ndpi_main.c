@@ -3255,9 +3255,6 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
 #endif /* NDPI_ENABLE_DEBUG_MESSAGES */
   ndpi_str->ndpi_log_level =  ndpi_debug_level_init;
 
-  if(prefs & ndpi_enable_ja3_plus)
-    ndpi_str->enable_ja3_plus = 1;
-
   if(!(prefs & ndpi_dont_init_libgcrypt)) {
     if(!gcry_control (GCRYCTL_INITIALIZATION_FINISHED_P,0)) {
       const char *gcrypt_ver = gcry_check_version(NULL);
