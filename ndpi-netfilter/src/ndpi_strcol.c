@@ -117,6 +117,7 @@ return;
 char *str_collect_add(str_collect_t **pc,char *str,size_t slen) {
 uint32_t nsn;
 str_collect_t *nc,*c = *pc;
+char *rstr;
 
     if(slen >= 255) {
 	pr_err("xt_ndpi: hostname length > 255 chars : %.60s...\n", str);
@@ -141,13 +142,11 @@ str_collect_t *nc,*c = *pc;
 	c = nc;
     }
 
-    c->s[c->last] = (char)(slen & 0xff);
-    strncpy(&c->s[c->last+1],str,slen);
-    str = &c->s[c->last+1];
+    rstr = &c->s[c->last];
+    *rstr++ = slen;
+    strncpy(rstr,str,slen+1);
     c->last += slen + 2;
-    c->s[c->last] = '\0';
-
-    return str;
+    return rstr;
 }
 
 void str_collect_del(str_collect_t *c,char *str, size_t slen) {
