@@ -2831,7 +2831,9 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
                       /* Format ipv6:[fe80::76ac:b9ff:fe6c:c124]/64 */
   char *double_column = NULL;
   bool value_ready = false;
+#ifndef __KERNEL__
   struct addrinfo hints, *result, *rp;
+#endif
 
   if(!ndpi_str->protocols_ptree)
     return(-1);
@@ -2885,10 +2887,12 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
     }
   }
 
+#ifndef __KERNEL__
   memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_CANONNAME;
+#endif
 
   if(!is_ipv6) {
     /* Check if the IP address is symbolic or numeric */

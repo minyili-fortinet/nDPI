@@ -43,10 +43,8 @@ u_int32_t MurmurHash(const void *key, u_int32_t len, u_int32_t seed) {
     {
     case 3:
       k1 ^= (u_int32_t)tail[2] << 16;
-      __attribute__((fallthrough));
     case 2:
       k1 ^= (u_int32_t)tail[1] << 8;
-      __attribute__((fallthrough));
     case 1:
       k1 ^= tail[0];
       k1 *= c1;

@@ -2031,6 +2031,10 @@ extern "C" {
 
   /* ******************************* */
 
+  char* ndpi_get_flow_name(struct ndpi_flow_struct *flow);
+
+  /* ******************************* */
+
 #ifndef __KERNEL__
   int ndpi_load_geoip(struct ndpi_detection_module_struct *ndpi_str,
 		      const char *ip_city_data, const char *ip_as_data);
@@ -2040,25 +2044,9 @@ extern "C" {
   int ndpi_get_geoip_country_continent(struct ndpi_detection_module_struct *ndpi_str, char *ip,
 				       char *country_code, u_int8_t country_code_len,
 				       char *continent, u_int8_t continent_len);
-#endif
 
   /* ******************************* */
 
-  char* ndpi_get_flow_name(struct ndpi_flow_struct *flow);
-
-#ifndef __KERNEL__
-  struct ndpi_packet_struct *
-  ndpi_get_packet_struct(struct ndpi_detection_module_struct *ndpi_mod);
-#else
-  static inline struct ndpi_packet_struct *
-  ndpi_get_packet_struct(struct ndpi_detection_module_struct *ndpi_mod) {
-	return &ndpi_mod->packet_struct[smp_processor_id()];
-  }
-#endif
-
-  /* ******************************* */
-
-#ifndef __KERNEL__
   /*
     Bitmap based on compressed bitmaps
     implemented by https://roaringbitmap.org

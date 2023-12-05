@@ -67,7 +67,8 @@
 
 #include "ndpi_config.h"
 #undef HAVE_HYPERSCAN
-#include "ndpi_main.h"
+#include "ndpi_api.h"
+#include "ndpi_private.h"
 
 #include "xt_ndpi.h"
 

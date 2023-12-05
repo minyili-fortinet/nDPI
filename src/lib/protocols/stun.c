@@ -363,8 +363,10 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
        flow->detected_protocol_stack[1] == NDPI_PROTOCOL_UNKNOWN /* No previous subclassification */) {
       ndpi_int_stun_add_connection(ndpi_struct, flow, app_proto);
       /* TODO */
+#ifndef __KERNEL__
       ndpi_protocol ret = { NDPI_PROTOCOL_STUN, app_proto, NDPI_PROTOCOL_UNKNOWN /* unused */, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
       flow->category = ndpi_get_proto_category(ndpi_struct, ret);
+#endif
     }
   } else if(first_byte <= 19) {
     NDPI_LOG_DBG(ndpi_struct, "DROP or ZRTP range. Unexpected\n");

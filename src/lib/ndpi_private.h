@@ -323,9 +323,15 @@ struct ndpi_detection_module_struct {
   u_int16_t max_payload_track_len;    
 };
 
-
-
-
+#ifndef __KERNEL__
+  struct ndpi_packet_struct *
+  ndpi_get_packet_struct(struct ndpi_detection_module_struct *ndpi_mod);
+#else
+  static inline struct ndpi_packet_struct *
+  ndpi_get_packet_struct(struct ndpi_detection_module_struct *ndpi_mod) {
+        return &ndpi_mod->packet[smp_processor_id()];
+  }
+#endif
 
 
 /* Generic */
