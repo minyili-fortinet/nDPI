@@ -446,7 +446,7 @@ int ac_automata_search (AC_AUTOMATA_t * thiz,
         AC_TEXT_t * txt, AC_REP_t * param)
 {
   unsigned long position;
-  int icase = 0,i;
+  int icase = 0,exact = 0,i;
 #ifndef __KERNEL__
   int debug=0;
 #endif
@@ -466,11 +466,15 @@ int ac_automata_search (AC_AUTOMATA_t * thiz,
   position = 0;
   curr = thiz->root;
   apos = txt->astring;
+  if(thiz->to_lc) icase = 1;
+  if(txt->option & AC_FEATURE_LC) icase = 1;
+  if(txt->option & AC_FEATURE_EXACT) exact = 1;
 #ifndef __KERNEL__
   if(thiz->debug && ac_automata_global_debug) debug = 1;
   if(debug) {
       txt->option = debug;  /* for callback */
-      printf("aho %s: search %.*s\n", thiz->name[0] ? thiz->name:"unknown", txt->length, apos);
+      printf("aho %s: search %.*s %s %s\n", thiz->name[0] ? thiz->name:"unknown", txt->length, apos,
+              icase ? "IC":"",exact ? "EXACT":"");
   }
 #endif
   match = &txt->match;
@@ -479,13 +483,13 @@ int ac_automata_search (AC_AUTOMATA_t * thiz,
   /* The 'txt->ignore_case' option is checked
    * separately otherwise clang will detect
    * uninitialized memory usage much later. */
-  if(txt->option & AC_FEATURE_LC) icase = 1;
   /* This is the main search loop.
    * it must be keep as lightweight as possible. */
   while (position < txt->length) {
       uint8_t alpha = (uint8_t)apos[position];
-      if(thiz->to_lc) alpha = aho_lc[alpha];
+      //if(icase) alpha = aho_lc[alpha];
       if(!(next = node_findbs_next_ac(curr, (uint8_t)alpha, icase))) {
+          if(exact) break;
           if(curr->failure_node) /* we are not in the root node */
             curr = curr->failure_node;
           else
@@ -493,7 +497,8 @@ int ac_automata_search (AC_AUTOMATA_t * thiz,
       } else {
           curr = next;
           position++;
-          if(curr->final && curr->matched_patterns) {
+          if(curr->final && curr->matched_patterns &&
+              (!exact || position == txt->length) ) {
               /* select best match */
               match->match_map = ac_automata_exact_match(curr->matched_patterns,position,txt);
               if(match->match_map) {

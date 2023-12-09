@@ -3874,8 +3874,12 @@ static int ndpi_match_string_common(AC_AUTOMATA_t *automa, char *string_to_match
     return(-1);
   }
 
-  ac_input_text.astring = string_to_match, ac_input_text.length = string_len;
-  ac_input_text.option = 0;
+  if(string_len & (AC_FEATURE_EXACT|AC_FEATURE_LC)) { 
+	ac_input_text.option = string_len & (AC_FEATURE_EXACT|AC_FEATURE_LC);
+	string_len &= ~(AC_FEATURE_EXACT|AC_FEATURE_LC);
+  } else
+	ac_input_text.option = 0;
+  ac_input_text.astring = string_to_match; ac_input_text.length = string_len;
   rc = ac_automata_search(automa, &ac_input_text, &match);
 
   if(protocol_id)
@@ -9717,7 +9721,7 @@ u_int16_t ndpi_match_host_subprotocol(struct ndpi_detection_module_struct *ndpi_
       strncpy(&risk_domain_str[len],string_to_match,len2);
       len += len2;
       risk_domain_str[len] = '\0';
-      if(ndpi_match_string_value(ndpi_str->host_automa.ac_automa, risk_domain_str, len, &val) != -1)
+      if(ndpi_match_string_value(ndpi_str->host_automa.ac_automa, risk_domain_str, len | AC_FEATURE_EXACT, &val) != -1)			 
 	      ndpi_set_risk(ndpi_str, flow, NDPI_RISKY_DOMAIN, &risk_domain_str[len]);
   }
 #endif

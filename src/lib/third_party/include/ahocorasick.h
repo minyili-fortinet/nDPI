@@ -130,7 +130,7 @@ typedef struct
   AC_MATCH_t match;
   AC_ALPHABET_t * astring;    /* String of alphabets */
   unsigned short int  length, /* Length of string */
-	                  option; /* AC_FEATURE_LC | AC_FEATURE_DEBUG */
+	              option; /* AC_FEATURE_LC | AC_FEATURE_DEBUG | AC_FEATURE_EXACT */
 } AC_TEXT_t;
 
 
@@ -253,8 +253,10 @@ typedef AC_ERROR_t (*NODE_CALLBACK_f)(AC_AUTOMATA_t *, AC_NODE_t *,int idx, void
 typedef void (*ALPHA_CALLBACK_f)(AC_AUTOMATA_t *, AC_NODE_t *,AC_NODE_t *,int ,void *);
 
 #define AC_FEATURE_DEBUG 1 
-#define AC_FEATURE_LC 2
-#define AC_FEATURE_NO_ROOT_RANGE 4
+#define AC_FEATURE_NO_ROOT_RANGE 2 
+#define AC_FEATURE_LC 0x4000
+/* match exactly */
+#define AC_FEATURE_EXACT 0x8000
 
 AC_AUTOMATA_t * ac_automata_init     (MATCH_CALLBACK_f mc);
 AC_ERROR_t      ac_automata_feature  (AC_AUTOMATA_t * thiz, unsigned int feature);

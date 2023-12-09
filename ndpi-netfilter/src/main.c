@@ -3089,6 +3089,8 @@ static int __net_init ndpi_net_init(struct net *net)
 			pr_err("xt_ndpi: cant alloc host_ac\n");
 			break;
 		}
+		ac_automata_feature(n->host_ac,AC_FEATURE_LC);
+		ac_automata_name(n->host_ac,"host",AC_FEATURE_DEBUG);
 		for(hm = host_match; hm->string_to_match ; hm++) {
 			size_t sml;
 			ndpi_protocol_match_result s_ret;

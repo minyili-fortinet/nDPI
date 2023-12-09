@@ -27,7 +27,7 @@
 #include "ndpi_sha1.h"
 #include "ndpi_encryption.h"
 #include "ndpi_private.h"
-
+#include "ahocorasick.h"
 
 static void ndpi_search_tls_wrapper(struct ndpi_detection_module_struct *ndpi_struct,
 				    struct ndpi_flow_struct *flow);
@@ -934,9 +934,8 @@ int processCertificate(struct ndpi_detection_module_struct *ndpi_struct,
 	strncpy(&risk_sha1_str[len],sha1_str,sha1_siz*2);
 	len += sha1_siz*2;
 	risk_sha1_str[len] = '\0';
-
         rc1 = ndpi_match_string_value(ndpi_struct->host_automa.ac_automa,
-			risk_sha1_str, len, &val) == -1;
+			risk_sha1_str, len | AC_FEATURE_EXACT, &val) == -1;
       }
 #endif
       if(rc1 == 0)
@@ -2732,7 +2731,7 @@ static int _processClientServerHello(struct ndpi_detection_module_struct *ndpi_s
 		risk_ja3_str[len] = '\0';
 
 		rc = ndpi_match_string_value(ndpi_struct->host_automa.ac_automa,
-				risk_ja3_str, len, &val) == -1;
+				risk_ja3_str, len | AC_FEATURE_EXACT, &val) == -1;
 	      }
 #endif
 	      if(rc == 0)
