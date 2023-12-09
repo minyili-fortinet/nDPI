@@ -146,6 +146,7 @@ char *rstr;
     *rstr++ = slen;
     strncpy(rstr,str,slen+1);
     c->last += slen + 2;
+    c->s[c->last] = '\0'; // eol
     return rstr;
 }
 
