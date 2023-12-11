@@ -113,6 +113,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/ipp.c \
 		     protocols/irc.c \
 		     protocols/iso9506-1-mms.c \
+		     protocols/ethersbus.c \
 		     protocols/jabber.c \
 		     protocols/kakaotalk_voice.c \
 		     protocols/kerberos.c \
