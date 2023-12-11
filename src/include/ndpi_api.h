@@ -1829,9 +1829,6 @@ extern "C" {
   /* ******************************* */
 
   void ndpi_md5(const u_char *data, size_t data_len, u_char hash[16]);
-  u_int16_t ndpi_crc16_ccit(const void* data, size_t n_bytes);
-  u_int16_t ndpi_crc16_ccit_false(const void *data, size_t n_bytes);
-  u_int16_t ndpi_crc16_xmodem(const void *data, size_t n_bytes);
   u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
   u_int32_t ndpi_nearest_power_of_two(u_int32_t x);
 
@@ -1875,6 +1872,9 @@ extern "C" {
                             ndpi_confidence_t confidence,
                             ndpi_protocol l7_protocol);
 #endif /* KERNEL */
+  u_int16_t ndpi_crc16_ccit(const void* data, size_t n_bytes);
+  u_int16_t ndpi_crc16_ccit_false(const void *data, size_t n_bytes);
+  u_int16_t ndpi_crc16_xmodem(const void *data, size_t n_bytes);
   u_int32_t ndpi_quick_hash(const unsigned char *str, u_int str_len);
   const char* ndpi_risk2str(ndpi_risk_enum risk);
   const char* ndpi_severity2str(ndpi_risk_severity s);

@@ -1669,7 +1669,7 @@ int ndpi_predict_linear(u_int32_t *values, u_int32_t num_values,
 }
 
 /* ********************************************************************************* */
-
+#if 0
 static const u_int16_t crc16_ccitt_table[256] = {
 	0x0000, 0x1189, 0x2312, 0x329B, 0x4624, 0x57AD, 0x6536, 0x74BF,
 	0x8C48, 0x9DC1, 0xAF5A, 0xBED3, 0xCA6C, 0xDBE5, 0xE97E, 0xF8F7,
@@ -1764,7 +1764,7 @@ u_int16_t ndpi_crc16_ccit_false(const void *data, size_t n_bytes) {
 u_int16_t ndpi_crc16_xmodem(const void *data, size_t n_bytes) {
   return __crc16(0, data, n_bytes);
 }
-
+#endif
 /* ********************************************************** */
 /*       http://home.thep.lu.se/~bjorn/crc/crc32_fast.c       */
 /* ********************************************************** */
