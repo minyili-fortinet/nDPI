@@ -294,18 +294,20 @@ spin_lock(&ht->tbl[key].lock);
     n = ht->tbl[key].top;
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
     if(ht->ipv6) {
-	while(n) {
-	    if(!memcmp(&n->ip,ip->ipv6.u6_addr.u6_addr8,16) && n->port == port) {
-		    n->lchg = lchg;
-		    n->flag |= flag;
-		    move_up(&ht->tbl[key],n);
+	struct hash_ip6p_node *n6 = (struct hash_ip6p_node *)n;
+	while(n6) {
+	    if(!memcmp(&n6->ip,ip->ipv6.u6_addr.u6_addr8,16) && n6->port == port) {
+		    n6->lchg = lchg;
+		    n6->flag |= flag;
+		    move_up(&ht->tbl[key],(struct hash_ip4p_node *)n6);
 		    goto unlock;
 	    }
-	    n = n->next;
+	    n6 = n6->next;
 	}
-	n = BT_N_MALLOC(sizeof(struct hash_ip4p_node)+12);
-	if(!n) goto unlock;
-	memcpy(&n->ip,ip->ipv6.u6_addr.u6_addr8,16);
+	n6 = BT_N_MALLOC(sizeof(struct hash_ip6p_node));
+	if(!n6) goto unlock;
+	memcpy(&n6->ip,ip->ipv6.u6_addr.u6_addr8,16);
+	n = (struct hash_ip4p_node *)n6;
     } else {
 #endif
 	while(n) {

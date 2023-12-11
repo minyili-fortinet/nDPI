@@ -699,7 +699,14 @@ struct hash_ip4p_node {
   time_t                  lchg;
   u_int16_t               port,count:12,flag:4;
   u_int32_t               ip;
-  // + 12 bytes for ipv6
+};
+
+/* copy from hash_ip4p_node */
+struct hash_ip6p_node {
+  struct hash_ip6p_node   *next,*prev;
+  time_t                  lchg;
+  u_int16_t               port,count:12,flag:4;
+  u_int32_t               ip[4];
 };
 
 struct hash_ip4p {
