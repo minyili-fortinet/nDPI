@@ -5,6 +5,12 @@
 
 #include "MurmurHash3.h"
 
+#if __has_attribute(__fallthrough__)
+# define __fallthrough                  __attribute__((__fallthrough__));
+#else
+# define __fallthrough;
+#endif
+
 #define	ROTL32(x, r)	((x) << (r)) | ((x) >> (32 - (r)))
 
 u_int32_t MurmurHash(const void *key, u_int32_t len, u_int32_t seed) {
@@ -43,8 +49,10 @@ u_int32_t MurmurHash(const void *key, u_int32_t len, u_int32_t seed) {
     {
     case 3:
       k1 ^= (u_int32_t)tail[2] << 16;
+      __fallthrough
     case 2:
       k1 ^= (u_int32_t)tail[1] << 8;
+      __fallthrough
     case 1:
       k1 ^= tail[0];
       k1 *= c1;
