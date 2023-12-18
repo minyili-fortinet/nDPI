@@ -765,10 +765,7 @@ extern "C" {
    */
   int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_mod,
 			       const char* path);
-  int ndpi_load_protocols_file_fd(struct ndpi_detection_module_struct *ndpi_mod,
-			          FILE *fd);
 #endif
-
   /**
    * Add an IP-address based risk mask
    *
@@ -811,7 +808,6 @@ extern "C" {
    *          -1 else
    */
   int ndpi_load_categories_file(struct ndpi_detection_module_struct *ndpi_str, const char* path, void *user_data);
-  int ndpi_load_categories_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd, void *user_data);
 
   /**
    * Loads a file (separated by <cr>) of domain names associated with the specified category
@@ -1121,12 +1117,6 @@ extern "C" {
                                        u_int16_t proto, u_int32_t value);
   u_int32_t ndpi_get_protocol_aggressiveness(struct ndpi_detection_module_struct *ndpi_struct,
                                              u_int16_t proto);
-
-  int ndpi_set_monitoring_state(struct ndpi_detection_module_struct *ndpi_struct,
-                                u_int16_t proto, u_int32_t num_pkts, u_int32_t flags);
-  int ndpi_get_monitoring_state(struct ndpi_detection_module_struct *ndpi_struct,
-                                u_int16_t proto, u_int32_t *num_pkts, u_int32_t *flags);
-
 
   /**
    * Find a protocol id associated with a string automata

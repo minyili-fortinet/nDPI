@@ -292,9 +292,6 @@ struct ndpi_detection_module_struct {
   int opportunistic_tls_ftp_enabled;
   int opportunistic_tls_stun_enabled;
 
-  u_int32_t monitoring_stun_pkts_to_process;
-  u_int32_t monitoring_stun_flags;
-
   u_int32_t aggressiveness_ookla;
 
   int tcp_ack_paylod_heuristic;
@@ -414,6 +411,13 @@ char* ndpi_intoav4(unsigned int addr, char* buf, u_int16_t bufLen);
 
 u_int16_t icmp4_checksum(u_int8_t const * const buf, size_t len);
 
+#ifndef __KERNEL__
+int load_protocols_file_fd(struct ndpi_detection_module_struct *ndpi_mod, FILE *fd);
+int load_categories_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd, void *user_data);
+int load_malicious_sha1_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
+int load_malicious_ja3_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
+int load_risk_domain_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
+#endif
 
 /* TLS */
 int processClientServerHello(struct ndpi_detection_module_struct *ndpi_struct,
@@ -470,14 +474,15 @@ void ndpi_bittorrent_init(struct ndpi_detection_module_struct *ndpi_struct,
 void ndpi_bittorrent_done(struct ndpi_detection_module_struct *ndpi_struct);
 int ndpi_bittorrent_gc(struct hash_ip4p_table *ht,int key,time_t now);
 
-/* Mining */
-u_int32_t make_mining_key(struct ndpi_flow_struct *flow);
-
 /* Stun */
 int stun_search_into_zoom_cache(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
 
 /* TPKT */
 int tpkt_verify_hdr(const struct ndpi_packet_struct * const packet);
+
+/* Mining Protocols (Ethereum, Monero, ...) */
+u_int32_t mining_make_lru_cache_key(struct ndpi_flow_struct *flow);
+
 
 /* Protocols init */
 void init_diameter_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -528,6 +533,7 @@ void init_megaco_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_i
 void init_mgcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_mining_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_mms_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_monero_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_nats_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_mpegts_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_mssql_tds_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -688,6 +694,8 @@ void init_beckhoff_ads_dissector(struct ndpi_detection_module_struct *ndpi_struc
 void init_iso9506_1_mms_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ieee_c37118_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ethersbus_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_profinet_io_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_hislip_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

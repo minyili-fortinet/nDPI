@@ -62,7 +62,6 @@ u_int64_t ndpi_ntohll(u_int64_t v) {
   return(u.llv);
 }
 
-#ifndef __KERNEL__
 /* ********************************** */
 
 u_int64_t ndpi_htonll(u_int64_t v) {
@@ -73,6 +72,7 @@ u_int64_t ndpi_htonll(u_int64_t v) {
   return((u_int64_t)ntohl(u.lv[0]) << 32) | (u_int64_t)ntohl(u.lv[1]);
 }
 
+#ifndef __KERNEL__
 /* ********************************** */
 
 #ifdef OPTIMIZE_NUMERIC_KEYS

@@ -98,6 +98,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/halflife2_and_mods.c \
 		     protocols/haproxy.c \
 		     protocols/hart-ip.c \
+		     protocols/hislip.c \
 		     protocols/hots.c \
 		     protocols/hpvirtgrp.c \
 		     protocols/hsrp.c \
@@ -133,6 +134,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/mining.c \
 		     protocols/mgcp.c \
 		     protocols/modbus.c \
+		     protocols/monero.c \
 		     protocols/mongodb.c \
 		     protocols/mpegts.c \
 		     protocols/mpegdash.c \
@@ -158,6 +160,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/postgres.c \
 		     protocols/ppstream.c \
 		     protocols/pptp.c \
+		     protocols/profinet_io.c \
 		     protocols/protobuf.c \
 		     protocols/ptpv2.c \
 		     protocols/qq.c \

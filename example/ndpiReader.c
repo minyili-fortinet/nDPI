@@ -95,8 +95,6 @@ static u_int8_t ignore_vlanid = 0;
 /** User preferences **/
 u_int8_t enable_protocol_guess = 1, enable_payload_analyzer = 0, num_bin_clusters = 0, extcap_exit = 0;
 u_int8_t verbose = 0, enable_flow_stats = 0;
-int stun_monitoring_pkts_to_process = -1; /* Default */
-int stun_monitoring_flags = -1; /* Default */
 int nDPI_LogLevel = 0;
 char *_debug_protocols = NULL;
 char *_disabled_protocols = NULL;
@@ -125,7 +123,6 @@ static struct bpf_program *bpf_cfilter = NULL;
 static time_t capture_for = 0;
 static time_t capture_until = 0;
 static u_int32_t num_flows;
-static struct ndpi_detection_module_struct *ndpi_info_mod = NULL;
 
 extern u_int8_t enable_doh_dot_detection;
 extern u_int32_t max_num_packets_per_flow, max_packet_payload_dissection, max_num_reported_top_payloads;
@@ -592,8 +589,6 @@ static void help(u_int long_help) {
          "  -Z proto:value            | Set this value of aggressiveness for this protocol (0 to disable it). This flag can be used multiple times\n"
          "  --lru-cache-size=NAME:size       | Specify the size for this LRU cache (0 to disable it). This flag can be used multiple times\n"
          "  --lru-cache-ttl=NAME:size        | Specify the TTL [in seconds] for this LRU cache (0 to disable it). This flag can be used multiple times\n"
-         "  --stun-monitoring=<pkts>:<flags> | Configure STUN monitoring: keep monitoring STUN session for <pkts> more pkts looking for RTP\n"
-         "                                   | (0:0 to disable the feature); set the specified features in <flags>\n"
          ,
          human_readeable_string_len,
          min_pattern_len, max_pattern_len, max_num_packets_per_flow, max_packet_payload_dissection,
@@ -622,8 +617,7 @@ static void help(u_int long_help) {
            sizeof(((struct ndpi_flow_struct *)0)->protos));
 
     NDPI_PROTOCOL_BITMASK all;
-
-    ndpi_info_mod = ndpi_init_detection_module(init_prefs);
+    struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module(init_prefs);
     printf("\n\nnDPI supported protocols:\n");
     printf("%3s %-22s %-10s %-8s %-12s %s\n",
 	   "Id", "Protocol", "Layer_4", "Nw_Proto", "Breed", "Category");
@@ -646,8 +640,6 @@ static void help(u_int long_help) {
 
 #define OPTLONG_VALUE_LRU_CACHE_SIZE	1000
 #define OPTLONG_VALUE_LRU_CACHE_TTL	1001
-
-#define OPTLONG_VALUE_STUN_MONITORING	2000
 
 static struct option longopts[] = {
   /* mandatory extcap options */
@@ -692,7 +684,6 @@ static struct option longopts[] = {
 
   { "lru-cache-size", required_argument, NULL, OPTLONG_VALUE_LRU_CACHE_SIZE},
   { "lru-cache-ttl", required_argument, NULL, OPTLONG_VALUE_LRU_CACHE_TTL},
-  { "stun-monitoring", required_argument, NULL, OPTLONG_VALUE_STUN_MONITORING},
 
   {0, 0, 0, 0}
 };
@@ -764,7 +755,7 @@ void extcap_config() {
   ndpi_proto_defaults_t *proto_defaults;
 #endif
 
-  ndpi_info_mod = ndpi_init_detection_module(init_prefs);
+  struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module(init_prefs);
 #if 0
   ndpi_num_supported_protocols = ndpi_get_ndpi_num_supported_protocols(ndpi_info_mod);
   proto_defaults = ndpi_get_proto_defaults(ndpi_info_mod);
@@ -967,7 +958,6 @@ static void parseOptions(int argc, char **argv) {
 #endif
 #endif
   int cache_idx, cache_size, cache_ttl;
-  u_int32_t num_pkts, flags;
 
 #ifdef USE_DPDK
   {
@@ -1265,9 +1255,13 @@ static void parseOptions(int argc, char **argv) {
       break;
 
     case '9':
+    {
+      struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module(init_prefs);
       extcap_packet_filter = ndpi_get_proto_by_name(ndpi_info_mod, optarg);
       if(extcap_packet_filter == NDPI_PROTOCOL_UNKNOWN) extcap_packet_filter = atoi(optarg);
+      ndpi_exit_detection_module(ndpi_info_mod);
       break;
+    }
 
     case 'T':
       max_num_tcp_dissected_pkts = atoi(optarg);
@@ -1301,15 +1295,6 @@ static void parseOptions(int argc, char **argv) {
         exit(1);
       }
       lru_cache_ttls[cache_idx] = cache_ttl;
-      break;
-
-    case OPTLONG_VALUE_STUN_MONITORING:
-      if(parse_two_unsigned_integer(optarg, &num_pkts, &flags) == -1) {
-        printf("Invalid parameter [%s]\n", optarg);
-        exit(1);
-      }
-      stun_monitoring_pkts_to_process = num_pkts;
-      stun_monitoring_flags = flags;
       break;
 
     default:
@@ -2169,7 +2154,7 @@ static void node_proto_guess_walker(const void *node, ndpi_VISIT which, int dept
                                                       flow->ndpi_flow, enable_protocol_guess, &proto_guessed);
       malloc_size_stats = 0;
 
-      if(enable_protocol_guess) ndpi_thread_info[thread_id].workflow->stats.guessed_flow_protocols++;
+      if(proto_guessed) ndpi_thread_info[thread_id].workflow->stats.guessed_flow_protocols++;
     }
 
     process_ndpi_collected_info(ndpi_thread_info[thread_id].workflow, flow);
@@ -2757,11 +2742,6 @@ static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
     if(aggressiveness[i] != -1)
       ndpi_set_protocol_aggressiveness(ndpi_thread_info[thread_id].workflow->ndpi_struct, i, aggressiveness[i]);
   }
-
-  if(stun_monitoring_pkts_to_process != -1 &&
-     stun_monitoring_flags != -1)
-    ndpi_set_monitoring_state(ndpi_thread_info[thread_id].workflow->ndpi_struct, NDPI_PROTOCOL_STUN,
-                              stun_monitoring_pkts_to_process, stun_monitoring_flags);
 
   ndpi_finalize_initialization(ndpi_thread_info[thread_id].workflow->ndpi_struct);
 
@@ -3832,7 +3812,7 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
       printf("\tTraffic duration:      %.3f sec\n", traffic_duration/1000000);
     }
 
-    if(enable_protocol_guess)
+    if(cumulative_stats.guessed_flow_protocols)
       printf("\tGuessed flow protos:   %-13u\n", cumulative_stats.guessed_flow_protocols);
 
     if(cumulative_stats.flow_count[0])
@@ -3936,7 +3916,7 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
   }
 
   if(results_file) {
-    if(enable_protocol_guess)
+    if(cumulative_stats.guessed_flow_protocols)
       fprintf(results_file, "Guessed flow protos:\t%u\n\n", cumulative_stats.guessed_flow_protocols);
 
     if(cumulative_stats.flow_count[0])
@@ -5647,10 +5627,6 @@ int main(int argc, char **argv) {
     ac_automata_enable_debug(1);
   parseOptions(argc, argv);
 
-  ndpi_info_mod = ndpi_init_detection_module(init_prefs);
-
-  if(ndpi_info_mod == NULL) return -1;
-
   if(domain_to_check) {
     ndpiCheckHostStringMatch(domain_to_check);
     exit(0);
@@ -5692,7 +5668,6 @@ int main(int argc, char **argv) {
   if(results_file)  fclose(results_file);
   if(extcap_dumper) pcap_dump_close(extcap_dumper);
   if(extcap_fifo_h) pcap_close(extcap_fifo_h);
-  if(ndpi_info_mod) ndpi_exit_detection_module(ndpi_info_mod);
   if(enable_malloc_bins) ndpi_free_bin(&malloc_bins);
   if(csv_fp)        fclose(csv_fp);
   

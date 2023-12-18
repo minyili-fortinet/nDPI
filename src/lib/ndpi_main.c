@@ -1680,7 +1680,7 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_RPC,
 			  "RPC", NDPI_PROTOCOL_CATEGORY_RPC,
-			  ndpi_build_default_ports(ports_a, 135, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_NETFLOW,
 			  "NetFlow", NDPI_PROTOCOL_CATEGORY_NETWORK,
@@ -2344,6 +2344,26 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Ether-S-Bus", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 5050, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_MONERO,
+              "Monero", NDPI_PROTOCOL_CATEGORY_CRYPTO_CURRENCY,
+              ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+              ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DCERPC,
+			  "DCERPC", NDPI_PROTOCOL_CATEGORY_RPC,
+			  ndpi_build_default_ports(ports_a, 135, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 135, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_subprotocols(ndpi_str, NDPI_PROTOCOL_DCERPC,
+			      NDPI_PROTOCOL_PROFINET_IO,
+            NDPI_PROTOCOL_MATCHED_BY_CONTENT,
+			      NDPI_PROTOCOL_NO_MORE_SUBPROTOCOLS);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_PROFINET_IO,
+			  "PROFINET_IO", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_HISLIP,
+			  "HiSLIP", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
+			  ndpi_build_default_ports(ports_a, 4880, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -3587,9 +3607,6 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(ndpi_init_prefs 
   ndpi_str->opportunistic_tls_ftp_enabled = 1;
   ndpi_str->opportunistic_tls_stun_enabled = 1;
 
-  ndpi_str->monitoring_stun_pkts_to_process = 4;
-  ndpi_str->monitoring_stun_flags = 0;
-
   ndpi_str->aggressiveness_ookla = NDPI_AGGRESSIVENESS_OOKLA_TLS;
 
   if(prefs & ndpi_enable_tcp_ack_payload_heuristic)
@@ -4699,15 +4716,15 @@ int ndpi_load_categories_file(struct ndpi_detection_module_struct *ndpi_str,
     return -1;
   }
 
-  rc = ndpi_load_categories_file_fd(ndpi_str, fd, user_data);
+  rc = load_categories_file_fd(ndpi_str, fd, user_data);
 
   fclose(fd);
 
   return rc;
 }
 
-int ndpi_load_categories_file_fd(struct ndpi_detection_module_struct *ndpi_str,
-			         FILE *fd, void *user_data) {
+int load_categories_file_fd(struct ndpi_detection_module_struct *ndpi_str,
+			    FILE *fd, void *user_data) {
   char buffer[512], *line, *name, *category, *saveptr;
   int len, num = 0;
 
@@ -4917,19 +4934,31 @@ static int ndpi_load_risky_domain(struct ndpi_detection_module_struct *ndpi_str,
  *  - you can add a .<domain name> to avoid mismatches
  */
 int ndpi_load_risk_domain_file(struct ndpi_detection_module_struct *ndpi_str, const char *path) {
-  char buffer[128], *line;
+  int rc;
   FILE *fd;
-  int len, num = 0;
 
   if(!ndpi_str || !path)
     return(-1);
 
   fd = fopen(path, "r");
-
   if(fd == NULL) {
     NDPI_LOG_ERR(ndpi_str, "Unable to open file %s [%s]\n", path, strerror(errno));
-    return(-1);
+    return -1;
   }
+
+  rc = load_risk_domain_file_fd(ndpi_str, fd);
+
+  fclose(fd);
+
+  return rc;
+}
+
+int load_risk_domain_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd) {
+  char buffer[128], *line;
+  int len, num = 0;
+
+  if(!ndpi_str || !fd)
+    return(-1);
 
   while(1) {
     line = fgets(buffer, sizeof(buffer), fd);
@@ -4948,7 +4977,8 @@ int ndpi_load_risk_domain_file(struct ndpi_detection_module_struct *ndpi_str, co
       num++;
   }
 
-  fclose(fd);
+  if(ndpi_str->risky_domain_automa.ac_automa)
+    ac_automata_finalize((AC_AUTOMATA_t *)ndpi_str->risky_domain_automa.ac_automa);
 
   return(num);
 }
@@ -4961,21 +4991,33 @@ int ndpi_load_risk_domain_file(struct ndpi_detection_module_struct *ndpi_str, co
  *
  */
 int ndpi_load_malicious_ja3_file(struct ndpi_detection_module_struct *ndpi_str, const char *path) {
-  char buffer[128], *line;
+  int rc;
   FILE *fd;
-  int len, num = 0;
 
   if(!ndpi_str || !path)
     return(-1);
-  if(ndpi_str->malicious_ja3_hashmap == NULL && ndpi_hash_init(&ndpi_str->malicious_ja3_hashmap) != 0)
-    return(-1);
 
   fd = fopen(path, "r");
-
   if(fd == NULL) {
     NDPI_LOG_ERR(ndpi_str, "Unable to open file %s [%s]\n", path, strerror(errno));
-    return(-1);
+    return -1;
   }
+
+  rc = load_malicious_ja3_file_fd(ndpi_str, fd);
+
+  fclose(fd);
+
+  return rc;
+}
+
+int load_malicious_ja3_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd) {
+  char buffer[128], *line;
+  int len, num = 0;
+
+  if(!ndpi_str || !fd)
+    return(-1);
+  if(ndpi_str->malicious_ja3_hashmap == NULL && ndpi_hash_init(&ndpi_str->malicious_ja3_hashmap) != 0)
+    return(-1);
 
   while(1) {
     char *comma;
@@ -5006,8 +5048,6 @@ int ndpi_load_malicious_ja3_file(struct ndpi_detection_module_struct *ndpi_str, 
       num++;
   }
 
-  fclose(fd);
-
   return(num);
 }
 /* ******************************************************************** */
@@ -5022,23 +5062,37 @@ int ndpi_load_malicious_ja3_file(struct ndpi_detection_module_struct *ndpi_str, 
  */
 int ndpi_load_malicious_sha1_file(struct ndpi_detection_module_struct *ndpi_str, const char *path)
 {
-  char buffer[128];
-  char *first_comma, *second_comma;
+  int rc;
   FILE *fd;
-  size_t i, len;
-  int num = 0;
 
   if(!ndpi_str || !path)
     return(-1);
-  if(ndpi_str->malicious_sha1_hashmap == NULL && ndpi_hash_init(&ndpi_str->malicious_sha1_hashmap) != 0)
-    return(-1);
 
   fd = fopen(path, "r");
-
   if(fd == NULL) {
     NDPI_LOG_ERR(ndpi_str, "Unable to open file %s [%s]\n", path, strerror(errno));
     return -1;
   }
+
+  rc = load_malicious_sha1_file_fd(ndpi_str, fd);
+
+  fclose(fd);
+
+  return rc;
+}
+
+int load_malicious_sha1_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd)
+{
+  char buffer[128];
+  char *first_comma, *second_comma;
+  size_t i, len;
+  int num = 0;
+
+  if(!ndpi_str || !fd)
+    return(-1);
+  if(ndpi_str->malicious_sha1_hashmap == NULL && ndpi_hash_init(&ndpi_str->malicious_sha1_hashmap) != 0)
+    return(-1);
+
   while (fgets(buffer, sizeof(buffer), fd) != NULL) {
     len = strlen(buffer);
 
@@ -5068,8 +5122,6 @@ int ndpi_load_malicious_sha1_file(struct ndpi_detection_module_struct *ndpi_str,
     if(ndpi_hash_add_entry(&ndpi_str->malicious_sha1_hashmap, first_comma, second_comma - first_comma, NULL) == 0)
       num++;
   }
-
-  fclose(fd);
 
   return num;
 }
@@ -5112,14 +5164,14 @@ int ndpi_load_protocols_file(struct ndpi_detection_module_struct *ndpi_str, cons
     return -1;
   }
 
-  rc = ndpi_load_protocols_file_fd(ndpi_str, fd);
+  rc = load_protocols_file_fd(ndpi_str, fd);
 
   fclose(fd);
 
   return rc;
 }
 
-int ndpi_load_protocols_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd) {
+int load_protocols_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd) {
   char *buffer, *old_buffer;
   int chunk_len = 1024, buffer_len = chunk_len, old_buffer_len;
   int i;
@@ -5867,6 +5919,15 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
 
   /* Ether-S-Bus */
   init_ethersbus_dissector(ndpi_str, &a);
+
+  /* Monero Protocol */
+  init_monero_dissector(ndpi_str, &a);
+
+  /* PROFINET/IO */
+  init_profinet_io_dissector(ndpi_str, &a);
+
+  /* HiSLIP */
+  init_hislip_dissector(ndpi_str, &a);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
@@ -7441,7 +7502,7 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
   /* Does it looks like some Mining protocols? */
   if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
      ndpi_str->mining_cache &&
-     ndpi_lru_find_cache(ndpi_str->mining_cache, make_mining_key(flow),
+     ndpi_lru_find_cache(ndpi_str->mining_cache, mining_make_lru_cache_key(flow),
 			 &cached_proto, 0 /* Don't remove it as it can be used for other connections */,
 			 ndpi_get_current_time(flow))) {
     ndpi_set_detected_protocol(ndpi_str, flow, cached_proto, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
@@ -10767,42 +10828,6 @@ int ndpi_seen_flow_beginning(const struct ndpi_flow_struct *flow)
       flow->l4.tcp.seen_ack == 0))
     return 0;
   return 1;
-}
-
-/* ******************************************************************** */
-
-int ndpi_set_monitoring_state(struct ndpi_detection_module_struct *ndpi_struct,
-			      u_int16_t proto, u_int32_t num_pkts, u_int32_t flags)
-{
-  if(!ndpi_struct || num_pkts > 0xFFFF)
-    return -1;
-
-  switch(proto) {
-  case NDPI_PROTOCOL_STUN:
-    ndpi_struct->monitoring_stun_pkts_to_process = num_pkts;
-    ndpi_struct->monitoring_stun_flags = flags;
-    return 0;
-  default:
-    return -1;
-  }
-}
-
-/* ******************************************************************** */
-
-int ndpi_get_monitoring_state(struct ndpi_detection_module_struct *ndpi_struct,
-			      u_int16_t proto, u_int32_t *num_pkts, u_int32_t *flags)
-{
-  if(!ndpi_struct || !num_pkts || !flags)
-    return -1;
-
-  switch(proto) {
-  case NDPI_PROTOCOL_STUN:
-    *num_pkts = ndpi_struct->monitoring_stun_pkts_to_process;
-    *flags = ndpi_struct->monitoring_stun_flags;
-    return 0;
-  default:
-    return -1;
-  }
 }
 
 /* ******************************************************************** */
