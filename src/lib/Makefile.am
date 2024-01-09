@@ -22,6 +22,7 @@ libndpi_a_include_HEADERS = ../include/ndpi_api.h \
 
 libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     ndpi_main.c \
+		     ndpi_memory.c \
 		     ndpi_utils.c \
 		     ndpi_bitmap.c \
 		     ndpi_analyze.c \

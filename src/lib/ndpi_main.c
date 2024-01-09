@@ -149,9 +149,6 @@ int ndpi_debug_print_level = 0;
 static void *(*_ndpi_flow_malloc)(size_t size);
 static void (*_ndpi_flow_free)(void *ptr);
 
-static void *(*_ndpi_malloc)(size_t size);
-static void (*_ndpi_free)(void *ptr);
-
 ndpi_debug_function_ptr ndpi_debug_print_init = NULL;
 ndpi_log_level_t ndpi_debug_level_init = NDPI_LOG_ERROR;
 
@@ -256,57 +253,8 @@ static inline u_int8_t flow_is_proto(struct ndpi_flow_struct *flow, u_int16_t p)
 
 /* ****************************************** */
 
-static volatile long int ndpi_tot_allocated_memory;
-
-/* ****************************************** */
-
-u_int32_t ndpi_get_tot_allocated_memory() {
-  return(__sync_fetch_and_add(&ndpi_tot_allocated_memory, 0));
-}
-
-/* ****************************************** */
-
-void *ndpi_malloc(size_t size) {
-  void *ret = _ndpi_malloc ? _ndpi_malloc(size) :
-#ifndef __KERNEL__
-		malloc(size);
-#else
-		NULL;
-#endif
-  if(ret)
-    __sync_fetch_and_add(&ndpi_tot_allocated_memory, size);
-  return(ret);
-}
-
-/* ****************************************** */
-
 void *ndpi_flow_malloc(size_t size) {
   return(_ndpi_flow_malloc ? _ndpi_flow_malloc(size) : ndpi_malloc(size));
-}
-
-/* ****************************************** */
-
-void *ndpi_calloc(unsigned long count, size_t size) {
-  size_t len = count * size;
-  void *p = ndpi_malloc(len);
-
-  if(p) {
-    memset(p, 0, len);
-    __sync_fetch_and_add(&ndpi_tot_allocated_memory, size);
-  }
-
-  return(p);
-}
-
-/* ****************************************** */
-
-void ndpi_free(void *ptr) {
-  if(_ndpi_free) _ndpi_free(ptr); else 
-#ifndef __KERNEL__
-      free(ptr);
-#else
-      assert(_ndpi_free);
-#endif
 }
 
 /* ****************************************** */
@@ -316,41 +264,6 @@ void ndpi_flow_free(void *ptr) {
     _ndpi_flow_free(ptr);
   else
     ndpi_free_flow((struct ndpi_flow_struct *) ptr);
-}
-
-/* ****************************************** */
-
-void *ndpi_realloc(void *ptr, size_t old_size, size_t new_size) {
-  void *ret = ndpi_malloc(new_size);
-
-  if(!ret)
-    return(ret);
-  else {
-    if(ptr != NULL) {
-      memcpy(ret, ptr, (old_size < new_size ? old_size : new_size));
-      ndpi_free(ptr);
-    }
-    return(ret);
-  }
-}
-/* ****************************************** */
-
-char *ndpi_strdup(const char *s) {
-  int len;
-  char *m;
-  if(s == NULL ){
-    return NULL;
-  }
-
-  len = strlen(s);
-  m = ndpi_malloc(len + 1);
-
-  if(m) {
-    memcpy(m, s, len);
-    m[len] = '\0';
-  }
-
-  return(m);
 }
 
 /* *********************************************************************************** */
@@ -3064,17 +2977,11 @@ void set_ndpi_ticks_per_second(u_int32_t ticks_per_second) {
     _ticks_per_second = ticks_per_second;
 }
 
-void set_ndpi_malloc(void* (*__ndpi_malloc)(size_t size))
-{ 
-  _ndpi_malloc = __ndpi_malloc;
-}
 void set_ndpi_flow_malloc(void* (*__ndpi_flow_malloc)(size_t size))
 {
   _ndpi_flow_malloc = __ndpi_flow_malloc;
 }
-void set_ndpi_free(void (*__ndpi_free)(void *ptr)) {
-	  _ndpi_free = __ndpi_free;
-}
+
 void set_ndpi_flow_free(void (*__ndpi_flow_free)(void *ptr)) {
   _ndpi_flow_free = __ndpi_flow_free;
 }
