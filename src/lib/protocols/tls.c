@@ -1683,10 +1683,9 @@ static void ndpi_compute_ja4(struct ndpi_detection_module_struct *ndpi_struct,
 			     struct ndpi_flow_struct *flow,
 			     u_int32_t quic_version,
 			     union ja_info *ja) {
-  BYTE tmp_str[JA_STR_LEN];
+  u_int8_t tmp_str[JA_STR_LEN];
   u_int tmp_str_len, num_extn;
-  SHA256_CTX sha_ctx;
-  BYTE sha_hash[SHA256_BLOCK_SIZE];
+  u_int8_t sha_hash[NDPI_SHA256_BLOCK_SIZE];
   char ja_str[JA_STR_LEN];
   u_int16_t ja_str_len, i;
   int rc;
@@ -1770,9 +1769,7 @@ static void ndpi_compute_ja4(struct ndpi_detection_module_struct *ndpi_struct,
     if((rc > 0) && (tmp_str_len + rc < JA_STR_LEN)) tmp_str_len += rc; else break;
   }
 
-  ndpi_sha256_init(&sha_ctx);
-  ndpi_sha256_update(&sha_ctx, tmp_str, tmp_str_len);
-  ndpi_sha256_final(&sha_ctx, sha_hash);
+  ndpi_sha256(tmp_str, tmp_str_len, sha_hash);
 
   rc = ndpi_snprintf(&ja_str[ja_str_len], JA_STR_LEN-ja_str_len,
 		     "%02x%02x%02x%02x%02x%02x_",
@@ -1804,9 +1801,7 @@ static void ndpi_compute_ja4(struct ndpi_detection_module_struct *ndpi_struct,
   printf("[EXTN] %s [len: %u]\n", tmp_str, tmp_str_len);
 #endif
 
-  ndpi_sha256_init(&sha_ctx);
-  ndpi_sha256_update(&sha_ctx, tmp_str, tmp_str_len);
-  ndpi_sha256_final(&sha_ctx, sha_hash);
+  ndpi_sha256(tmp_str, tmp_str_len, sha_hash);
 
   rc = ndpi_snprintf(&ja_str[ja_str_len], JA_STR_LEN-ja_str_len,
 		     "%02x%02x%02x%02x%02x%02x",
@@ -1951,10 +1946,10 @@ static int _processClientServerHello(struct ndpi_detection_module_struct *ndpi_s
 
 	if(extension_id == 43 /* supported versions */) {
 	  if(extension_len >= 2) {
-	    u_int16_t tls_version_s = ntohs(*((u_int16_t*)&packet->payload[offset+4]));
+	    u_int16_t tls_version = ntohs(*((u_int16_t*)&packet->payload[offset+4]));
 
 #ifdef DEBUG_TLS
-	    printf("TLS [server] [TLS version: 0x%04X]\n", tls_version_s);
+	    printf("TLS [server] [TLS version: 0x%04X]\n", tls_version);
 #endif
 
 	    flow->protos.tls_quic.ssl_version = ja->server.tls_supported_version = tls_version;
@@ -2465,11 +2460,11 @@ static int _processClientServerHello(struct ndpi_detection_module_struct *ndpi_s
 #endif
 
 		ja->client.num_signature_algorithms = ndpi_min(sa_size, MAX_NUM_JA);
-		for(i=0, id=0; i<tot_signature_algorithms_len && s_offset+i<total_len; i += 2) {
+		for(i=0, id=0; i<tot_signature_algorithms_len && s_offset+i+1<total_len; i += 2) {
 		  ja->client.signature_algorithms[id++] = ntohs(*(u_int16_t*)&packet->payload[s_offset+i]);
 		}
 		
-		for(i=0, id=0; i<tot_signature_algorithms_len && s_offset+i<total_len; i++) {
+		for(i=0, id=0; i<tot_signature_algorithms_len && s_offset+i+1<total_len; i++) {
 		  int rc = ndpi_snprintf(&ja->client.signature_algorithms_str[i*2],
 					 sizeof(ja->client.signature_algorithms_str)-i*2,
 					 "%02X", packet->payload[s_offset+i]);
@@ -2660,19 +2655,19 @@ static int _processClientServerHello(struct ndpi_detection_module_struct *ndpi_s
 
 		  // careful not to overflow and loop forever with u_int8_t
 		  for(vi=0; vi+1<version_len && s_offset + vi + 1 < packet->payload_packet_len; vi += 2) {
-		    u_int16_t tls_version_s = ntohs(*((u_int16_t*)&packet->payload[s_offset+vi]));
+		    u_int16_t tls_version = ntohs(*((u_int16_t*)&packet->payload[s_offset+vi]));
 		    u_int8_t unknown_tls_version;
 
 #ifdef DEBUG_TLS
 		    printf("Client TLS [TLS version: %s/0x%04X]\n",
-			   ndpi_ssl_version2str(buf_ver_tmp, sizeof(buf_ver_tmp), tls_version_s, &unknown_tls_version), tls_version_s);
+			   ndpi_ssl_version2str(buf_ver_tmp, sizeof(buf_ver_tmp), tls_version, &unknown_tls_version), tls_version);
 #endif
 
 		    if((version_str_len+8) < sizeof(version_str)) {
 		      int rc = ndpi_snprintf(&version_str[version_str_len],
 					     sizeof(version_str) - version_str_len, "%s%s",
 					     (version_str_len > 0) ? "," : "",
-					     ndpi_ssl_version2str(buf_ver_tmp, sizeof(buf_ver_tmp), tls_version_s, &unknown_tls_version));
+					     ndpi_ssl_version2str(buf_ver_tmp, sizeof(buf_ver_tmp), tls_version, &unknown_tls_version));
 		      if(rc <= 0)
 			break;
 		      else

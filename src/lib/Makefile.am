@@ -154,6 +154,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/nintendo.c \
 		     protocols/nfs.c \
 		     protocols/noe.c \
+		     protocols/nomachine.c \
 		     protocols/non_tcp_udp.c \
 		     protocols/ntp.c \
 		     protocols/oicq.c \

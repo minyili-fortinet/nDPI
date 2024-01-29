@@ -134,6 +134,7 @@
 /* Third party libraries */
 #include "third_party/include/ndpi_patricia.h"
 #include "third_party/include/ndpi_md5.h"
+#include "third_party/include/ndpi_sha256.h"
 
 /* #define MATCH_DEBUG 1 */
 
@@ -2300,6 +2301,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Kafka", NDPI_PROTOCOL_CATEGORY_RPC,
 			  ndpi_build_default_ports(ports_a, 9092, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_NOMACHINE,
+			  "NoMachine", NDPI_PROTOCOL_CATEGORY_REMOTE_ACCESS,
+			  ndpi_build_default_ports(ports_a, 4000, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 4000, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -5870,6 +5875,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
 
   /* Apache Kafka */
   init_kafka_dissector(ndpi_str, &a);
+
+  /* NoMachine */
+  init_nomachine_dissector(ndpi_str, &a);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
@@ -10333,6 +10341,16 @@ void ndpi_md5(const u_char *data, size_t data_len, u_char hash[16]) {
   ndpi_MD5Init(&ctx);
   ndpi_MD5Update(&ctx, data, data_len);
   ndpi_MD5Final(hash, &ctx);
+}
+
+/* ******************************************************************** */
+
+void ndpi_sha256(const u_char *data, size_t data_len, u_int8_t sha_hash[32]) {
+  ndpi_SHA256_CTX sha_ctx;
+
+  ndpi_sha256_init(&sha_ctx);
+  ndpi_sha256_update(&sha_ctx, data, data_len);
+  ndpi_sha256_final(&sha_ctx, sha_hash);
 }
 
 /* ******************************************************************** */
