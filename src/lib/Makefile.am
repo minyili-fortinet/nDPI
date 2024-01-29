@@ -29,6 +29,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     ndpi_analyze.c \
 		     ndpi_classify.c \
 		     ndpi_serializer.c \
+		     ndpi_domains.c \
 		     ndpi_community_id.c \
 		     ndpi_domain_classify.c \
 		     ndpi_filter.c \
