@@ -155,7 +155,7 @@ typedef enum {
   NDPI_PROTOCOL_YOUTUBE               = 124,
   NDPI_PROTOCOL_SKYPE_TEAMS           = 125,
   NDPI_PROTOCOL_GOOGLE                = 126,
-  NDPI_PROTOCOL_RPC                   = 127,
+  NDPI_PROTOCOL_MS_RPCH               = 127,
   NDPI_PROTOCOL_NETFLOW               = 128,
   NDPI_PROTOCOL_SFLOW                 = 129,
   NDPI_PROTOCOL_HTTP_CONNECT          = 130,
@@ -401,6 +401,11 @@ typedef enum {
   NDPI_PROTOCOL_DCERPC                = 370,
   NDPI_PROTOCOL_PROFINET_IO           = 371,
   NDPI_PROTOCOL_HISLIP                = 372,
+  NDPI_PROTOCOL_UFTP                  = 373,
+  NDPI_PROTOCOL_OPENFLOW              = 374,
+  NDPI_PROTOCOL_JSON_RPC              = 375,
+  NDPI_PROTOCOL_WEBDAV                = 376,
+  NDPI_PROTOCOL_APACHE_KAFKA          = 377,
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_protocol_ids.h"

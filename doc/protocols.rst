@@ -23,6 +23,14 @@ TFTP is a very simple protocol used to transfer files. It is from this that its 
 References: `RFC1350 <https://datatracker.ietf.org/doc/html/rfc1350>`_ and `RFC2347 <https://datatracker.ietf.org/doc/html/rfc2347>`_ and `RFC2349 <https://datatracker.ietf.org/doc/html/rfc2349>`_
 
 
+.. _Proto 127:
+
+`NDPI_PROTOCOL_MS_RPCH`
+====================
+A Remote Procedure Call protocol over HTTP from Microsoft.
+
+References: `Protocol Specs: <https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rpch/c0f4c9c5-1a61-4d10-b8e2-005378d1d212`_.
+
 .. _Proto 338:
 
 `NDPI_PROTOCOL_SRTP`
@@ -351,3 +359,52 @@ References: `Protocol Specs: <https://www.profibus.com/download/profinet-specifi
 High-Speed LAN Instrument Protocol (HiSLIP) is a protocol for remote instrument control of LAN-based test and measurement instruments.
 
 References: `Protocol Specs: <https://www.ivifoundation.org/downloads/Protocol%20Specifications/IVI-6.1_HiSLIP-2.0-2020-04-23.pdf>`_.
+
+
+.. _Proto 373:
+
+`NDPI_PROTOCOL_UFTP`
+======================
+Encrypted UDP based FTP with multicast.
+
+References: `Protocol Specs: <https://uftp-multicast.sourceforge.net/protocol.txt>`_.
+
+
+.. _Proto 374:
+
+`NDPI_PROTOCOL_OPENFLOW`
+======================
+OpenFlow protocol is a network protocol closely associated with Software-Defined Networking (SDN).
+
+References: `Protocol Specs: <https://opennetworking.org/wp-content/uploads/2014/10/openflow-switch-v1.5.1.pdf>`_.
+
+
+.. _Proto 375:
+
+`NDPI_PROTOCOL_JSON_RPC`
+======================
+JSON-RPC is a remote procedure call protocol encoded in JSON.
+
+References: `Protocol Specs: <https://www.jsonrpc.org/specification>`_.
+
+
+.. _Proto 376:
+
+`NDPI_PROTOCOL_WEBDAV`
+======================
+WebDAV is a set of extensions to the HTTP protocol that allows WebDAV clients to collaboratively edit and manage files on remote Web servers.
+
+References: `RFC4918: <https://datatracker.ietf.org/doc/html/rfc4918>`_.
+
+Notes:
+
+- WebDAV is almost always encrypted, i.e. transported over TLS.
+
+
+.. _Proto 377:
+
+`NDPI_PROTOCOL_APACHE_KAFKA`
+======================
+Apache Kafka is a distributed event store and stream-processing platform.
+
+References: `Official site <https://kafka.apache.org>`_ and `Github <https://github.com/apache/kafka>`_.
