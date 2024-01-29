@@ -124,6 +124,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/json-rpc.c \
 		     protocols/kafka.c \
 		     protocols/kakaotalk_voice.c \
+		     protocols/kcp.c \
 		     protocols/kerberos.c \
 		     protocols/kismet.c \
 		     protocols/kontiki.c \
@@ -179,6 +180,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/rdp.c \
 		     protocols/redis_net.c \
 		     protocols/rmcp.c \
+		     protocols/roughtime.c \
 		     protocols/rsh.c \
 		     protocols/rsync.c \
 		     protocols/rtcp.c \

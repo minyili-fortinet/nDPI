@@ -132,7 +132,7 @@ int ndpi_analyze_payload(struct ndpi_flow_info *flow,
 #ifdef DEBUG_PAYLOAD
   u_int16_t i;
   for(i=0; i<payload_len; i++)
-    printf("%c", isprint(payload[i]) ? payload[i] : '.');
+    printf("%c", ndpi_isprint(payload[i]) ? payload[i] : '.');
   printf("\n");
 #endif
 
@@ -250,7 +250,7 @@ static void print_payload_stat(struct payload_stats *p, FILE *out) {
   fprintf(out, "\t[");
 
   for(i=0; i<p->pattern_len; i++) {
-    fprintf(out, "%c", isprint(p->pattern[i]) ? p->pattern[i] : '.');
+    fprintf(out, "%c", ndpi_isprint(p->pattern[i]) ? p->pattern[i] : '.');
   }
 
   fprintf(out, "]");
@@ -258,7 +258,7 @@ static void print_payload_stat(struct payload_stats *p, FILE *out) {
   fprintf(out, "[");
 
   for(i=0; i<p->pattern_len; i++) {
-    fprintf(out, "%s%02X", (i > 0) ? " " : "", isprint(p->pattern[i]) ? p->pattern[i] : '.');
+    fprintf(out, "%s%02X", (i > 0) ? " " : "", ndpi_isprint(p->pattern[i]) ? p->pattern[i] : '.');
   }
 
   fprintf(out, "]");
