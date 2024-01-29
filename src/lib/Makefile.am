@@ -18,7 +18,8 @@ libndpi_a_include_HEADERS = ../include/ndpi_api.h \
 			     third_party/include/ndpi_sha1.h \
 			     third_party/include/gcrypt_light.h \
 			     third_party/include/hll.h \
-			     third_party/include/libcache.h
+			     third_party/include/libcache.h \
+			     third_party/include/ndpi_sha256.h
 
 libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     ndpi_main.c \
@@ -117,6 +118,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/iso9506-1-mms.c \
 		     protocols/ethersbus.c \
 		     protocols/jabber.c \
+		     protocols/json-rpc.c \
+		     protocols/kafka.c \
 		     protocols/kakaotalk_voice.c \
 		     protocols/kerberos.c \
 		     protocols/kismet.c \
@@ -155,6 +158,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/ntp.c \
 		     protocols/oicq.c \
 		     protocols/opc-ua.c \
+		     protocols/openflow.c \
 		     protocols/openvpn.c \
 		     protocols/ookla.c \
 		     protocols/oracle.c \
@@ -218,6 +222,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/tvuplayer.c \
 		     protocols/tocaboca.c \
 		     protocols/ubntac2.c \
+		     protocols/uftp.c \
 		     protocols/ultrasurf.c \
 		     protocols/usenet.c \
 		     protocols/viber.c \
@@ -257,7 +262,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     third_party/src/ndpi_patricia.c \
 		     third_party/src/hll/MurmurHash3.c \
 		     third_party/src/hll/hll.c \
-		     third_party/src/gcrypt_light.c
+		     third_party/src/gcrypt_light.c \
+		     third_party/src/ndpi_sha256.c
 
 lib_LIBRARIES = libndpi.a
 
