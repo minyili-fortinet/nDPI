@@ -4,7 +4,7 @@ DPI Packets (UDP):	52	(5.20 pkts/flow)
 DPI Packets (other):	2	(1.00 pkts/flow)
 Confidence DPI (partial cache): 4 (flows)
 Confidence DPI              : 8 (flows)
-Num dissector calls: 856 (71.33 diss/flow)
+Num dissector calls: 860 (71.67 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/12/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -29,6 +29,8 @@ MDNS	3	549	1
 ICMP	53	6042	2
 Dropbox	16	2784	1
 Zoom	691	262429	8
+
+Acceptable                     763 271804        12           
 
 	1	UDP 192.168.12.156:39065 <-> 192.168.1.226:46757 [proto: 189/Zoom][IP: 0/Unknown][Encrypted][Confidence: DPI (partial cache)][DPI packets: 13][cat: Video/26][148 pkts/108673 bytes <-> 174 pkts/110457 bytes][Goodput ratio: 94/93][1.67 sec][bytes ratio: -0.008 (Mixed)][IAT c2s/s2c min/avg/max/stddev: 0/0 9/8 88/71 15/12][Pkt Len c2s/s2c min/avg/max/stddev: 127/98 734/635 1269/1302 277/371][PLAIN TEXT (192.168.1.226)][Plen Bins: 0,0,9,1,0,0,0,6,1,0,0,0,0,2,5,11,10,5,4,4,2,0,0,1,2,2,0,0,0,0,0,1,16,0,0,0,3,1,5,0,0,0,0,0,0,0,0,0]
 	2	UDP 192.168.12.156:49579 -> 10.78.14.178:49586 [proto: 189/Zoom][IP: 0/Unknown][Encrypted][Confidence: DPI (partial cache)][DPI packets: 13][cat: Video/26][154 pkts/19404 bytes -> 0 pkts/0 bytes][Goodput ratio: 67/0][4.51 sec][bytes ratio: 1.000 (Upload)][IAT c2s/s2c min/avg/max/stddev: 0/0 28/0 82/0 14/0][Pkt Len c2s/s2c min/avg/max/stddev: 126/0 126/0 126/0 0/0][Risk: ** Unidirectional Traffic **][Risk Score: 10][Risk Info: No server to client traffic][PLAIN TEXT (10.78.14.178)][Plen Bins: 0,0,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]

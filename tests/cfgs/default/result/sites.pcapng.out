@@ -4,7 +4,7 @@ DPI Packets (TCP):	229	(5.20 pkts/flow)
 DPI Packets (UDP):	3	(1.00 pkts/flow)
 Confidence Match by port    : 4 (flows)
 Confidence DPI              : 43 (flows)
-Num dissector calls: 56 (1.19 diss/flow)
+Num dissector calls: 57 (1.21 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/12/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -65,6 +65,11 @@ Fuze	31	10555	1
 Badoo	4	2145	1
 AccuWeather	30	8562	1
 GoogleClassroom	1	1292	1
+
+Safe                            86 43868         8            
+Acceptable                     113 55431         17           
+Fun                            317 169650        21           
+Potentially Dangerous             4 2225          1            
 
 JA3 Host Stats: 
 		 IP Address                  	 # JA3C     

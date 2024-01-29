@@ -5,7 +5,7 @@ DPI Packets (UDP):	27	(2.08 pkts/flow)
 DPI Packets (other):	1	(1.00 pkts/flow)
 Confidence Match by port    : 1 (flows)
 Confidence DPI              : 60 (flows)
-Num dissector calls: 425 (6.97 diss/flow)
+Num dissector calls: 451 (7.39 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/3/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -32,6 +32,10 @@ SSDP	16	2648	1
 IGMP	1	60	1
 TLS	2	126	1
 NetFlix	956	508247	38
+
+Safe                             2 126           1            
+Acceptable                     835 498043        22           
+Fun                            956 508247        38           
 
 JA3 Host Stats: 
 		 IP Address                  	 # JA3C     

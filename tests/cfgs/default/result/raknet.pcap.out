@@ -1,6 +1,6 @@
 DPI Packets (UDP):	24	(2.00 pkts/flow)
 Confidence DPI              : 12 (flows)
-Num dissector calls: 1493 (124.42 diss/flow)
+Num dissector calls: 1499 (124.92 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -22,6 +22,8 @@ Patricia protocols:   24/0 (search/found)
 Patricia protocols IPv6: 0/0 (search/found)
 
 RakNet	66	9600	12
+
+Fun                             66 9600          12           
 
 	1	UDP 192.168.2.100:60689 <-> 148.153.35.205:60028 [proto: 286/RakNet][IP: 0/Unknown][ClearText][Confidence: DPI][DPI packets: 3][cat: Game/8][8 pkts/2036 bytes <-> 7 pkts/577 bytes][Goodput ratio: 83/44][0.13 sec][bytes ratio: 0.558 (Upload)][IAT c2s/s2c min/avg/max/stddev: 0/10 14/16 30/21 11/5][Pkt Len c2s/s2c min/avg/max/stddev: 49/60 254/82 1506/152 474/31][Plen Bins: 60,20,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0]
 	2	UDP 192.168.2.100:32951 <-> 148.153.35.205:60021 [proto: 286/RakNet][IP: 0/Unknown][ClearText][Confidence: DPI][DPI packets: 3][cat: Game/8][8 pkts/2039 bytes <-> 7 pkts/563 bytes][Goodput ratio: 83/44][0.11 sec][bytes ratio: 0.567 (Upload)][IAT c2s/s2c min/avg/max/stddev: 0/0 13/12 25/21 10/9][Pkt Len c2s/s2c min/avg/max/stddev: 49/60 255/80 1506/152 474/30][Plen Bins: 60,20,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0]

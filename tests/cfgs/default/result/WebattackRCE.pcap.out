@@ -1,6 +1,6 @@
 DPI Packets (TCP):	797	(1.00 pkts/flow)
 Confidence DPI              : 797 (flows)
-Num dissector calls: 11158 (14.00 diss/flow)
+Num dissector calls: 11955 (15.00 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -22,6 +22,8 @@ Patricia protocols:   1594/0 (search/found)
 Patricia protocols IPv6: 0/0 (search/found)
 
 HTTP	797	191003	797
+
+Acceptable                     797 191003        797          
 
 	1	TCP 127.0.0.1:51184 -> 127.0.0.1:8080 [proto: 7/HTTP][IP: 0/Unknown][ClearText][Confidence: DPI][DPI packets: 1][cat: Web/5][1 pkts/651 bytes -> 0 pkts/0 bytes][Goodput ratio: 90/0][< 1 sec][Hostname/SNI: 127.0.0.1][URL: 127.0.0.1/vbulletin/ajax/api/hook/decodeArguments?arguments=O%3A12%3A%22vB_dB_Result%22%3A2%3A%7Bs%3A5%3A%22%00%2A%00db%22%3BO%3A17%3A%22vB_Database_MySQL%22%3A1%3A%7Bs%3A9%3A%22functions%22%3Ba%3A1%3A%7Bs%3A11%3A%22free_result%22%3Bs%3A6%3A%22assert%22%3][Req Content-Type: application/x-www-form-urlencoded][User-Agent: Mozilla/5.00 (Nikto/2.1.6) (Evasions:None) (Test:007058)][Risk: ** Known Proto on Non Std Port **** HTTP/TLS/QUIC Numeric Hostname/SNI **** Unidirectional Traffic **][Risk Score: 70][Risk Info: No server to client traffic / Found host 127.0.0.1 / Expected on port 80][PLAIN TEXT (GET /vbulletin/ajax/api/hook/de)][Plen Bins: 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	2	TCP 127.0.0.1:51182 -> 127.0.0.1:8080 [proto: 7/HTTP][IP: 0/Unknown][ClearText][Confidence: DPI][DPI packets: 1][cat: Web/5][1 pkts/644 bytes -> 0 pkts/0 bytes][Goodput ratio: 90/0][< 1 sec][Hostname/SNI: 127.0.0.1][URL: 127.0.0.1/vb/ajax/api/hook/decodeArguments?arguments=O%3A12%3A%22vB_dB_Result%22%3A2%3A%7Bs%3A5%3A%22%00%2A%00db%22%3BO%3A17%3A%22vB_Database_MySQL%22%3A1%3A%7Bs%3A9%3A%22functions%22%3Ba%3A1%3A%7Bs%3A11%3A%22free_result%22%3Bs%3A6%3A%22assert%22%3B%7D%7D][Req Content-Type: application/x-www-form-urlencoded][User-Agent: Mozilla/5.00 (Nikto/2.1.6) (Evasions:None) (Test:007058)][Risk: ** Known Proto on Non Std Port **** HTTP/TLS/QUIC Numeric Hostname/SNI **** Unidirectional Traffic **][Risk Score: 70][Risk Info: No server to client traffic / Found host 127.0.0.1 / Expected on port 80][PLAIN TEXT (GET /vb/ajax/api/hook/decodeArg)][Plen Bins: 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]

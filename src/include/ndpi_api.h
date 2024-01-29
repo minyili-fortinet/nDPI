@@ -1825,6 +1825,7 @@ extern "C" {
   u_int16_t ndpi_crc16_ccit(const void* data, size_t n_bytes);
   u_int16_t ndpi_crc16_ccit_false(const void *data, size_t n_bytes);
   u_int16_t ndpi_crc16_xmodem(const void *data, size_t n_bytes);
+  u_int16_t ndpi_crc16_x25(const void* data, size_t n_bytes);
   u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
   u_int32_t ndpi_nearest_power_of_two(u_int32_t x);
 
@@ -2005,7 +2006,7 @@ extern "C" {
 
   /* ******************************* */
 
-  u_int32_t ndpi_quick_16_byte_hash(u_int8_t *in_16_bytes_long);
+  u_int32_t ndpi_quick_16_byte_hash(const u_int8_t *in_16_bytes_long);
 
   extern int ndpi_stun_cache_enable;
 
@@ -2243,6 +2244,7 @@ extern "C" {
 
   /* ******************************* */
 
+  int64_t ndpi_strtonum(const char *numstr, int64_t minval, int64_t maxval, const char **errstrp, int base);
   int ndpi_vsnprintf(char * str, size_t size, char const * format, va_list va_args);
   int ndpi_snprintf(char * str, size_t size, char const * format, ...);
   struct tm *ndpi_gmtime_r(const time_t *timep,

@@ -2,7 +2,7 @@ DPI Packets (TCP):	29	(5.80 pkts/flow)
 DPI Packets (UDP):	4	(2.00 pkts/flow)
 DPI Packets (other):	3	(1.00 pkts/flow)
 Confidence DPI              : 10 (flows)
-Num dissector calls: 27 (2.70 diss/flow)
+Num dissector calls: 28 (2.80 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -28,6 +28,10 @@ IMAPS	4	516	2
 TLS	28	15397	1
 ICMPV6	48	7862	3
 Facebook	37	14726	3
+
+Safe                            32 15913         3            
+Acceptable                      58 9654          4            
+Fun                             37 14726         3            
 
 JA3 Host Stats: 
 		 IP Address                  	 # JA3C     

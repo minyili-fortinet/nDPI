@@ -1,6 +1,6 @@
 DPI Packets (UDP):	2	(2.00 pkts/flow)
 Confidence DPI              : 1 (flows)
-Num dissector calls: 126 (126.00 diss/flow)
+Num dissector calls: 127 (127.00 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -22,5 +22,7 @@ Patricia protocols:   2/1 (search/found)
 Patricia protocols IPv6: 0/0 (search/found)
 
 OpenVPN	944	303931	1
+
+Acceptable                     944 303931        1            
 
 	1	UDP 3.111.166.78:51146 <-> 85.134.13.165:1194 [proto: 159/OpenVPN][IP: 265/AmazonAWS][Encrypted][Confidence: DPI][DPI packets: 2][cat: VPN/2][594 pkts/138399 bytes <-> 350 pkts/165532 bytes][Goodput ratio: 82/91][73.25 sec][bytes ratio: -0.089 (Mixed)][IAT c2s/s2c min/avg/max/stddev: 0/0 101/181 5093/5107 502/713][Pkt Len c2s/s2c min/avg/max/stddev: 60/64 233/473 1490/1487 273/526][PLAIN TEXT (New York1)][Plen Bins: 18,1,1,72,3,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0]

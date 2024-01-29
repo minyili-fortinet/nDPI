@@ -58,6 +58,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/can.c \
 		     protocols/capwap.c \
 		     protocols/cassandra.c \
+		     protocols/ceph.c \
 		     protocols/checkmk.c \
 		     protocols/ciscovpn.c \
 		     protocols/citrix.c \
@@ -101,6 +102,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/haproxy.c \
 		     protocols/hart-ip.c \
 		     protocols/hislip.c \
+		     protocols/hl7.c \
 		     protocols/hots.c \
 		     protocols/hpvirtgrp.c \
 		     protocols/hsrp.c \
@@ -112,6 +114,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/imo.c \
 		     protocols/ieee-c37118.c \
 		     protocols/iec60870-5-104.c \
+		     protocols/iec62056.c \
 		     protocols/ipsec.c \
 		     protocols/ipp.c \
 		     protocols/irc.c \

@@ -1,6 +1,6 @@
 DPI Packets (TCP):	67	(11.17 pkts/flow)
 Confidence DPI              : 6 (flows)
-Num dissector calls: 19 (3.17 diss/flow)
+Num dissector calls: 20 (3.33 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -24,6 +24,9 @@ Patricia protocols IPv6: 0/0 (search/found)
 TLS	196	76217	4
 WindowsUpdate	19	2638	1
 Pinterest	88	34448	1
+
+Safe                           215 78855         5            
+Fun                             88 34448         1            
 
 JA3 Host Stats: 
 		 IP Address                  	 # JA3C     

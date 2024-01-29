@@ -4,7 +4,7 @@ DPI Packets (TCP):	77	(5.92 pkts/flow)
 DPI Packets (UDP):	4	(2.00 pkts/flow)
 Confidence Match by port    : 7 (flows)
 Confidence DPI              : 8 (flows)
-Num dissector calls: 162 (10.80 diss/flow)
+Num dissector calls: 163 (10.87 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/21/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -30,6 +30,10 @@ TLS	26	3245	7
 Facebook	22	10202	2
 Google	62	15977	1
 QUIC	3	502	1
+
+Safe                           106 39646         11           
+Acceptable                      65 16479         2            
+Fun                             22 10202         2            
 
 JA3 Host Stats: 
 		 IP Address                  	 # JA3C     

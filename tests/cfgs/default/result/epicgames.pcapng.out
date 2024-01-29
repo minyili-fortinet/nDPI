@@ -1,6 +1,6 @@
 DPI Packets (UDP):	12	(3.00 pkts/flow)
 Confidence DPI              : 4 (flows)
-Num dissector calls: 650 (162.50 diss/flow)
+Num dissector calls: 654 (163.50 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -22,6 +22,8 @@ Patricia protocols:   4/4 (search/found)
 Patricia protocols IPv6: 0/0 (search/found)
 
 EpicGames	81	11186	4
+
+Fun                             81 11186         4            
 
 	1	UDP 192.168.12.156:39322 <-> 18.157.15.184:9011 [proto: 340/EpicGames][IP: 265/AmazonAWS][Encrypted][Confidence: DPI][DPI packets: 2][cat: Game/8][10 pkts/4805 bytes <-> 9 pkts/772 bytes][Goodput ratio: 91/51][0.62 sec][bytes ratio: 0.723 (Upload)][IAT c2s/s2c min/avg/max/stddev: 0/0 43/76 163/199 53/74][Pkt Len c2s/s2c min/avg/max/stddev: 81/55 480/86 994/119 424/18][Plen Bins: 10,53,10,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,21,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	2	UDP 192.168.12.156:37989 <-> 18.157.15.184:15011 [proto: 340/EpicGames][IP: 265/AmazonAWS][Encrypted][Confidence: DPI][DPI packets: 2][cat: Game/8][11 pkts/1143 bytes <-> 13 pkts/1296 bytes][Goodput ratio: 60/58][1.01 sec][bytes ratio: -0.063 (Mixed)][IAT c2s/s2c min/avg/max/stddev: 19/0 116/76 455/433 133/121][Pkt Len c2s/s2c min/avg/max/stddev: 81/55 104/100 146/192 25/40][Plen Bins: 8,63,12,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]

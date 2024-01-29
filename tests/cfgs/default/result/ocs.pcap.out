@@ -4,7 +4,7 @@ DPI Packets (TCP):	92	(7.67 pkts/flow)
 DPI Packets (UDP):	8	(1.00 pkts/flow)
 Confidence DPI              : 18 (flows)
 Confidence Match by IP      : 2 (flows)
-Num dissector calls: 83 (4.15 diss/flow)
+Num dissector calls: 88 (4.40 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/6/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -34,6 +34,10 @@ PlayStore	1	72	1
 GoogleServices	13	2277	2
 Crashlytics	21	2785	2
 Azure	6	360	1
+
+Safe                            26 3128          3            
+Acceptable                      57 6705          10           
+Fun                            863 57552         7            
 
 JA3 Host Stats: 
 		 IP Address                  	 # JA3C     

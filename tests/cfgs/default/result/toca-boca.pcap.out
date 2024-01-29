@@ -3,7 +3,7 @@ Guessed flow protos:	4
 DPI Packets (UDP):	21	(1.00 pkts/flow)
 Confidence Match by port    : 4 (flows)
 Confidence DPI              : 17 (flows)
-Num dissector calls: 517 (24.62 diss/flow)
+Num dissector calls: 521 (24.81 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/12/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -25,6 +25,8 @@ Patricia protocols:   42/0 (search/found)
 Patricia protocols IPv6: 0/0 (search/found)
 
 TocaBoca	77	15576	21
+
+Fun                             77 15576         21           
 
 	1	UDP 192.168.2.100:55544 <-> 92.38.154.49:5055 [proto: 155/TocaBoca][IP: 0/Unknown][ClearText][Confidence: DPI][DPI packets: 1][cat: Game/8][8 pkts/1266 bytes <-> 7 pkts/1556 bytes][Goodput ratio: 73/81][1.22 sec][bytes ratio: -0.103 (Mixed)][IAT c2s/s2c min/avg/max/stddev: 5/11 35/31 48/47 14/15][Pkt Len c2s/s2c min/avg/max/stddev: 66/66 158/222 458/522 120/185][PLAIN TEXT (HlvlwYJ)][Plen Bins: 13,27,27,0,13,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	2	UDP 192.168.2.100:50173 <-> 91.199.81.225:5055 [proto: 155/TocaBoca][IP: 0/Unknown][ClearText][Confidence: DPI][DPI packets: 1][cat: Game/8][7 pkts/1134 bytes <-> 8 pkts/1327 bytes][Goodput ratio: 74/75][2.41 sec][bytes ratio: -0.078 (Mixed)][IAT c2s/s2c min/avg/max/stddev: 46/31 256/383 982/1078 363/465][Pkt Len c2s/s2c min/avg/max/stddev: 66/66 162/166 458/428 127/122][PLAIN TEXT (AstGDGW)][Plen Bins: 13,41,13,0,13,0,0,6,0,0,0,0,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]

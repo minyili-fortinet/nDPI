@@ -4,7 +4,7 @@ DPI Packets (TCP):	100	(3.33 pkts/flow)
 DPI Packets (UDP):	43	(3.07 pkts/flow)
 Confidence Match by port    : 21 (flows)
 Confidence DPI              : 23 (flows)
-Num dissector calls: 561 (12.75 diss/flow)
+Num dissector calls: 573 (13.02 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/63/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -32,6 +32,10 @@ QUIC	23	4118	2
 Sina	335	220149	11
 Alibaba	8	877	3
 SinaWeibo	84	37928	5
+
+Safe                            23 1578          15           
+Acceptable                      56 7900          13           
+Fun                            419 258077        16           
 
 JA3 Host Stats: 
 		 IP Address                  	 # JA3C     

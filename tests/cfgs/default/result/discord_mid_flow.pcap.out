@@ -1,6 +1,6 @@
 DPI Packets (UDP):	3	(3.00 pkts/flow)
 Confidence DPI              : 1 (flows)
-Num dissector calls: 160 (160.00 diss/flow)
+Num dissector calls: 161 (161.00 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -22,5 +22,7 @@ Patricia protocols:   2/1 (search/found)
 Patricia protocols IPv6: 0/0 (search/found)
 
 Discord	40	4040	1
+
+Fun                             40 4040          1            
 
 	1	UDP 66.22.242.132:50001 <-> 5.36.141.228:54935 [VLAN: 1][proto: 58/Discord][IP: 58/Discord][Encrypted][Confidence: DPI][DPI packets: 3][cat: Collaborative/15][30 pkts/3110 bytes <-> 10 pkts/930 bytes][Goodput ratio: 43/37][24.00 sec][bytes ratio: 0.540 (Upload)][IAT c2s/s2c min/avg/max/stddev: 42/77 846/1740 1000/4217 343/1555][Pkt Len c2s/s2c min/avg/max/stddev: 72/68 104/93 110/118 14/25][Plen Bins: 25,75,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]

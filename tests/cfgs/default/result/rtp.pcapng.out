@@ -1,6 +1,6 @@
 DPI Packets (UDP):	9	(3.00 pkts/flow)
 Confidence DPI              : 3 (flows)
-Num dissector calls: 448 (149.33 diss/flow)
+Num dissector calls: 451 (150.33 diss/flow)
 LRU cache ookla:      0/0/0 (insert/search/found)
 LRU cache bittorrent: 0/0/0 (insert/search/found)
 LRU cache zoom:       0/0/0 (insert/search/found)
@@ -23,6 +23,9 @@ Patricia protocols IPv6: 0/0 (search/found)
 
 Discord	30	16092	1
 RTP	45	20619	2
+
+Acceptable                      45 20619         2            
+Fun                             30 16092         1            
 
 	1	UDP 10.204.220.71:6000 -> 10.204.220.171:6000 [proto: 87/RTP][IP: 0/Unknown][Stream Content: Video][ClearText][Confidence: DPI][DPI packets: 3][cat: Media/1][15 pkts/18438 bytes -> 0 pkts/0 bytes][Goodput ratio: 97/0][0.34 sec][bytes ratio: 1.000 (Upload)][IAT c2s/s2c min/avg/max/stddev: 1/0 25/0 77/0 31/0][Pkt Len c2s/s2c min/avg/max/stddev: 66/0 1229/0 1486/0 467/0][Plen Bins: 6,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,6,0,0,0,0,0,0,0,0,0,6,0,0,0,68,0,0]
 	2	UDP 150.219.118.19:54234 <-> 192.113.193.227:50003 [proto: 58/Discord][IP: 0/Unknown][Encrypted][Confidence: DPI][DPI packets: 2][cat: Collaborative/15][11 pkts/1455 bytes <-> 19 pkts/14637 bytes][Goodput ratio: 68/95][0.14 sec][Client IP: 85.154.2.145][bytes ratio: -0.819 (Download)][IAT c2s/s2c min/avg/max/stddev: 0/0 13/6 36/29 11/11][Pkt Len c2s/s2c min/avg/max/stddev: 85/116 132/770 207/1146 54/475][PLAIN TEXT (85.154.2.145)][Plen Bins: 0,20,6,20,3,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,26,13,0,0,0,0,0,0,0,0,0,0,0,0,0]
