@@ -21,6 +21,8 @@
  *
  */
 
+#ifndef __KERNEL__
+
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -28,13 +30,20 @@
 #include <inttypes.h>
 #include <math.h>
 #include <float.h> /* FLT_EPSILON */
+
+#include "ndpi_replace_printf.h"
+
+#else
+  #include <asm/byteorder.h>
+  #include <linux/kernel.h>
+#endif // __KERNEL__
+
 #include "ndpi_api.h"
 #include "ndpi_config.h"
 #include "third_party/include/hll.h"
 
-#include "ndpi_replace_printf.h"
-
 /* ********************************************************************************* */
+#ifndef __KERNEL__
 
 void ndpi_init_data_analysis(struct ndpi_analyze_struct *ret, u_int16_t _max_series_len) {
   u_int32_t len;
@@ -1734,6 +1743,7 @@ double ndpi_pearson_correlation(u_int32_t *values_a, u_int32_t *values_b, u_int1
 
   return(covariance / sqrt(variance_a * variance_b));
 }
+#endif // __KERNEL__
 
 /* ********************************************************************************* */
 /* ********************************************************************************* */
@@ -1841,6 +1851,8 @@ u_int16_t ndpi_crc16_x25(const void* data, size_t n_bytes) {
   }
   return (crc ^ 0xFFFF);
 }
+
+#ifndef __KERNEL__
 
 /* ********************************************************** */
 /*       http://home.thep.lu.se/~bjorn/crc/crc32_fast.c       */
@@ -2056,3 +2068,4 @@ void ndpi_popcount_count(struct ndpi_popcount *h, const u_int8_t *buf, u_int32_t
 
   h->tot_bytes_count += buf_len;
 }
+#endif

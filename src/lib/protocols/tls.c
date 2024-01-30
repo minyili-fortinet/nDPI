@@ -1676,6 +1676,13 @@ static int check_sni_is_numeric_ip(char *sni) {
 /* **************************************** */
 
 static int u_int16_t_cmpfunc(const void * a, const void * b) { return(*(u_int16_t*)a - *(u_int16_t*)b); }
+#ifdef __KERNEL__
+static void u_int16_t_swpfunc(void * a, void * b, int size) {
+	u_int16_t t = *(u_int16_t*)a;
+	*(u_int16_t*)a = *(u_int16_t*)b;
+	*(u_int16_t*)b = t;
+}
+#endif
 
 /* **************************************** */
 
@@ -1759,8 +1766,14 @@ static void ndpi_compute_ja4(struct ndpi_detection_module_struct *ndpi_struct,
   if((rc > 0) && (ja_str_len + rc < JA_STR_LEN)) ja_str_len += rc;
 
   /* Sort ciphers and extensions */
+#ifndef __KERNEL__
   qsort(&ja->client.cipher, ja->client.num_ciphers, sizeof(u_int16_t), u_int16_t_cmpfunc);
   qsort(&ja->client.tls_extension, ja->client.num_tls_extensions, sizeof(u_int16_t), u_int16_t_cmpfunc);
+#else
+#include <linux/sort.h>
+  sort(&ja->client.cipher, ja->client.num_ciphers, sizeof(u_int16_t), u_int16_t_cmpfunc,u_int16_t_swpfunc);
+  sort(&ja->client.tls_extension, ja->client.num_tls_extensions, sizeof(u_int16_t), u_int16_t_cmpfunc,u_int16_t_swpfunc);
+#endif
 
   tmp_str_len = 0;
   for(i=0; i<ja->client.num_ciphers; i++) {
@@ -2648,7 +2661,6 @@ static int _processClientServerHello(struct ndpi_detection_module_struct *ndpi_s
 #endif
 
 		if(version_len == (extension_len-1)) {
-		  u_int8_t j;
 		  u_int16_t vi;
 
 		  s_offset++;

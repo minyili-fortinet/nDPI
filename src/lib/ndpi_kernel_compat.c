@@ -372,6 +372,7 @@ long int atol(const char *buf) {
 	if(kstrtol(buf,0,&ret)) ret = 0;
 	return ret;
 }
+
 int atoi(const char *buf) {
 	return atol(buf);
 }

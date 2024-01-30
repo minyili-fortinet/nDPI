@@ -10,7 +10,9 @@
 #define SHA256_H
 
 /*************************** HEADER FILES ***************************/
+#ifndef __KERNEL__
 #include <stddef.h>
+#endif
 #include "ndpi_typedefs.h"
 
 /****************************** MACROS ******************************/

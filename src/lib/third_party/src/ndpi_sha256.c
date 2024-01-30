@@ -20,6 +20,8 @@
 #include <memory.h>
 #else
 #include <asm/byteorder.h>
+#include <linux/kernel.h>
+#include <linux/version.h>
 #include <linux/types.h>
 #endif
 #include "ndpi_sha256.h"

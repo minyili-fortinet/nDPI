@@ -24,6 +24,7 @@ xt_ndpi-y := main.o ndpi_strcol.o ndpi_proc_parsers.o ndpi_proc_generic.o \
 		ndpi_proc_ipdef.o ../libre/regexp.o \
 		${NDPI_SRC}/lib/third_party/src/ndpi_md5.o \
 		${NDPI_SRC}/lib/third_party/src/ndpi_sha1.o \
+		${NDPI_SRC}/lib/third_party/src/ndpi_sha256.o \
 		${NDPI_SRC}/lib/third_party/src/ahocorasick.o \
 		${NDPI_SRC}/lib/third_party/src/libcache.o \
 		${NDPI_SRC}/lib/third_party/src/ndpi_patricia.o \
@@ -36,6 +37,7 @@ xt_ndpi-y := main.o ndpi_strcol.o ndpi_proc_parsers.o ndpi_proc_generic.o \
 		${NDPI_SRC}/lib/ndpi_serializer.o \
 		${NDPI_SRC}/lib/ndpi_geoip.o \
 		${NDPI_SRC}/lib/ndpi_hash.o \
+		${NDPI_SRC}/lib/ndpi_analyze.o \
 		$(patsubst %.c,%.o, $(NDPI_PROTO_SRC))
 
 all:	modules

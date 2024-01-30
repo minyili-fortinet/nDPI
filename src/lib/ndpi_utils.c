@@ -3094,6 +3094,9 @@ int64_t ndpi_strtonum(const char *numstr, int64_t minval, int64_t maxval, const 
 {
   int64_t val = 0;
   char* endptr;
+#ifdef __KERNEL__
+  int errno;
+#endif
 
   if (minval > maxval) {
     *errstrp = "minval > maxval";
@@ -3101,7 +3104,16 @@ int64_t ndpi_strtonum(const char *numstr, int64_t minval, int64_t maxval, const 
   }
 
   errno = 0;    /* To distinguish success/failure after call */
+#ifndef __KERNEL__
   val = (int64_t)strtoll(numstr, &endptr, base);
+#else
+  endptr = NULL;
+  errno = kstrtoll(numstr,base,&val);
+  if(errno == -EINVAL) {
+    *errstrp = "No digits were found";
+    return 0;
+  }
+#endif
 
   if((val == LLONG_MIN && errno == ERANGE) || (val < minval)) {
     *errstrp = "value too small";

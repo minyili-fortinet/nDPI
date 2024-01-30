@@ -1191,8 +1191,8 @@ extern "C" {
 
   int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
 			   const char *path, u_int16_t protocol_id);
-#ifndef __KERNEL__    
   const char* ndpi_cipher2str(u_int32_t cipher, char unknown_cipher[8]);
+#ifndef __KERNEL__    
   const char* ndpi_tunnel2str(ndpi_packet_tunnel tt);
   int ndpi_has_human_readeable_string(struct ndpi_detection_module_struct *ndpi_struct,
 				      char *buffer, u_int buffer_size,
@@ -1820,12 +1820,6 @@ extern "C" {
   /* ******************************* */
 
   void ndpi_md5(const u_char *data, size_t data_len, u_char hash[16]);
-  void ndpi_sha256(const u_char *data, size_t data_len, u_int8_t sha_hash[32]);
-  
-  u_int16_t ndpi_crc16_ccit(const void* data, size_t n_bytes);
-  u_int16_t ndpi_crc16_ccit_false(const void *data, size_t n_bytes);
-  u_int16_t ndpi_crc16_xmodem(const void *data, size_t n_bytes);
-  u_int16_t ndpi_crc16_x25(const void* data, size_t n_bytes);
   u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
   u_int32_t ndpi_nearest_power_of_two(u_int32_t x);
 
@@ -1869,6 +1863,13 @@ extern "C" {
                             ndpi_confidence_t confidence,
                             ndpi_protocol l7_protocol);
 #endif /* KERNEL */
+  void ndpi_sha256(const u_char *data, size_t data_len, u_int8_t sha_hash[32]);
+  
+  u_int16_t ndpi_crc16_ccit(const void* data, size_t n_bytes);
+  u_int16_t ndpi_crc16_ccit_false(const void *data, size_t n_bytes);
+  u_int16_t ndpi_crc16_xmodem(const void *data, size_t n_bytes);
+  u_int16_t ndpi_crc16_x25(const void* data, size_t n_bytes);
+
   u_int32_t ndpi_quick_hash(const unsigned char *str, u_int str_len);
   const char* ndpi_risk2str(ndpi_risk_enum risk);
   const char* ndpi_severity2str(ndpi_risk_severity s);

@@ -4144,9 +4144,11 @@ void ndpi_exit_detection_module(struct ndpi_detection_module_struct *ndpi_str) {
     if(ndpi_str->callback_buffer_tcp_payload)
       ndpi_free(ndpi_str->callback_buffer_tcp_payload);
 
+#ifndef __KERNEL__
     if(ndpi_str->public_domain_suffixes)
       ndpi_domain_classify_free(ndpi_str->public_domain_suffixes);
-  
+#endif
+
     ndpi_free(ndpi_str);
   }
 

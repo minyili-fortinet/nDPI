@@ -37,6 +37,9 @@ E * ndpi_typedefs.h
 #include "ndpi_protocol_ids.h"
 
 /* Used by both nDPI core and patricia code under third-party */
+#ifdef __KERNEL__
+#include <linux/in6.h>
+#endif
 #include "ndpi_patricia_typedefs.h"
 
 #ifndef __KERNEL__
