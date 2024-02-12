@@ -169,14 +169,25 @@ typedef struct {
 } nbpf_filter;
 #endif
 
+#define CFG_MAX_LEN	256
+
+struct ndpi_detection_module_config_struct {
+  int max_packets_to_process;
+
+  char filename_config[CFG_MAX_LEN];
+
+  /* Protocols */
+
+  int tls_sha1_fingerprint_enabled;
+};
+
 struct ndpi_detection_module_struct {
   NDPI_PROTOCOL_BITMASK detection_bitmask;
 
   u_int32_t ticks_per_second;
   u_int64_t current_ts;
-  u_int16_t max_packets_to_process;
   u_int16_t num_tls_blocks_to_follow;
-  u_int8_t skip_tls_blocks_until_change_cipher:1, _notused:7;
+  u_int8_t skip_tls_blocks_until_change_cipher:1, finalized:1, _notused:6;
   u_int8_t tls_certificate_expire_in_x_days;
 
   void *user_data;
@@ -264,6 +275,8 @@ struct ndpi_detection_module_struct {
   /* BT_ANNOUNCE */
   struct bt_announce *bt_ann;
   int    bt_ann_len;
+
+  struct ndpi_detection_module_config_struct cfg;
 
   /* NDPI_PROTOCOL_TINC */
   struct cache *tinc_cache;
