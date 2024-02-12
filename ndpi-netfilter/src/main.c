@@ -1145,6 +1145,32 @@ static u_int8_t is_ndpi_proto(struct nf_ct_ext_ndpi *ct_ndpi, u_int16_t id) {
            || ct_ndpi->proto.app_protocol == id ? 1:0;
 }
 
+static char *ndpi_safe_hostname(const char *name) {
+    /* sizeof host_server_name = 80 */
+    char buf[160];
+
+    size_t hlen = ndpi_min(strlen(name),sizeof(buf)/2-1);
+    int i, j, need_q = 0;
+
+    buf[0]= '\0';
+    for(i=0; i < hlen; i++) {
+	if(name[i] == '"' || name[i] <= ' ') {
+		need_q = 1;
+		break;
+	}
+    }
+    if(!need_q) return kstrndup(name,hlen,GFP_ATOMIC);
+    buf[j++] = '"';
+    for(i=0; i < hlen; i++) {
+	char c = name[i];
+	if(c < ' ') c = '.';
+	if(c == '"') buf[j++] = '\\';
+	buf[j++] = c;
+    }
+    buf[j++] = '"'; buf[j] = '\0';
+    return kstrndup(buf,j,GFP_ATOMIC);
+}
+
 static void ndpi_host_info(struct nf_ct_ext_ndpi *ct_ndpi) {
 
     const struct ndpi_flow_struct *flow;
@@ -1156,11 +1182,9 @@ static void ndpi_host_info(struct nf_ct_ext_ndpi *ct_ndpi) {
     if(!ct_ndpi->host) {
 	const char *name = flow->host_server_name;
 	if(*name) {
-		ct_ndpi->host = kstrndup(name,
-				sizeof(flow->host_server_name)-1, GFP_ATOMIC);
-
+		ct_ndpi->host = ndpi_safe_hostname(name);
 		if(_DBG_TRACE_HOSTNM)
-		    pr_info("%s: set hostname %s\n", __func__,name);
+		    pr_info("%s: set hostname %s\n", __func__,ct_ndpi->host ? ct_ndpi->host:"(null)");
 	}
     }
 
