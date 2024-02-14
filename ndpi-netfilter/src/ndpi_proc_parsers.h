@@ -28,3 +28,4 @@ int parse_ndpi_hostdef(struct ndpi_net *n,char *cmd);
 int parse_ndpi_proto(struct ndpi_net *n,char *cmd);
 int parse_ndpi_debug(struct ndpi_net *n,char *cmd);
 int parse_ndpi_risk(struct ndpi_net *n,char *cmd);
+int parse_ndpi_cfg(struct ndpi_net *n,char *cmd);

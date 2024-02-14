@@ -40,8 +40,13 @@ int nrisk_proc_open(struct inode *inode, struct file *file);
 
 ssize_t nrisk_proc_read(struct file *file, char __user *buf,
                      size_t count, loff_t *ppos);
-
 ssize_t nrisk_proc_write(struct file *file, const char __user *buffer,
-		                     size_t length, loff_t *loff);
-
+		     size_t length, loff_t *loff);
 int nrisk_proc_close(struct inode *inode, struct file *file);
+
+int ncfg_proc_open(struct inode *inode, struct file *file);
+ssize_t ncfg_proc_read(struct file *file, char __user *buf,
+                     size_t count, loff_t *ppos);
+ssize_t ncfg_proc_write(struct file *file, const char __user *buffer,
+                     size_t length, loff_t *loff);
+int ncfg_proc_close(struct inode *inode, struct file *file);

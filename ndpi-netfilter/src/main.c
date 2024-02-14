@@ -102,6 +102,7 @@ static char ann_name[]="announce";
 static char proto_name[]="proto";
 static char debug_name[]="debug";
 static char risk_name[]="risks";
+static char cfg_name[]="cfg";
 
 #ifdef CONFIG_NF_CONNTRACK_DESTROY_HOOK
 #define USE_NF_CONNTRACK_DESTROY_HOOK
@@ -1745,7 +1746,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 			if(proto.app_protocol == NDPI_PROTOCOL_UNKNOWN) {
 			    u_int8_t proto_guessed;
 			    ndpi_protocol p_old = proto;
-			    proto = ndpi_detection_giveup(n->ndpi_struct, flow, 1, &proto_guessed);
+			    proto = ndpi_detection_giveup(n->ndpi_struct, flow, &proto_guessed);
 			    if(_DBG_TRACE_DPI &&
 			           (p_old.app_protocol != proto.app_protocol ||
 				    p_old.master_protocol != proto.master_protocol ||
@@ -2794,6 +2795,7 @@ int np,nh,err=0;
 PROC_OPS(nproto_proc_fops, ninfo_proc_open,nproto_proc_read,nproto_proc_write,noop_llseek,nproto_proc_close);
 PROC_OPS(ndebug_proc_fops, ninfo_proc_open,ndebug_proc_read,ndebug_proc_write,noop_llseek,ndebug_proc_close);
 PROC_OPS(nrisk_proc_fops, nrisk_proc_open,nrisk_proc_read,nrisk_proc_write,noop_llseek,nrisk_proc_close);
+PROC_OPS(ncfg_proc_fops,  ncfg_proc_open, ncfg_proc_read, ncfg_proc_write, noop_llseek,ncfg_proc_close);
 PROC_OPS(ninfo_proc_fops, ninfo_proc_open,ninfo_proc_read,ninfo_proc_write,noop_llseek,ninfo_proc_close);
 PROC_OPS(nflow_proc_fops, nflow_proc_open,nflow_proc_read,nflow_proc_write,nflow_proc_llseek,nflow_proc_close);
 
@@ -2902,6 +2904,8 @@ static void __net_exit ndpi_net_exit(struct net *net)
 			remove_proc_entry(debug_name, n->pde);
 		if(n->pe_risk)
 			remove_proc_entry(risk_name, n->pde);
+		if(n->pe_cfg)
+			remove_proc_entry(cfg_name, n->pde);
 		if(n->pe_proto)
 			remove_proc_entry(proto_name, n->pde);
 		if(n->pe_flow)
@@ -2962,15 +2966,15 @@ static int __net_init ndpi_net_init(struct net *net)
 	ndpi_debug_level_init = ndpi_lib_trace;
 #endif
 	/* init global detection structure */
-	n->ndpi_struct = ndpi_init_detection_module(ndpi_no_prefs);
+	n->ndpi_struct = ndpi_init_detection_module();
 	if (n->ndpi_struct == NULL) {
 		pr_err("xt_ndpi: global structure initialization failed.\n");
                 return -ENOMEM;
 	}
 	n->flow_h = NULL;
-	n->ndpi_struct->direction_detect_disable = 1;
-	n->ndpi_struct->stun_cache_num_entries = ndpi_stun_cache_enable ? 1024:0;
-	n->ndpi_struct->ookla_cache_num_entries = 0;
+	n->ndpi_struct->cfg.direction_detect_enabled = 0;
+	n->ndpi_struct->cfg.stun_cache_num_entries = ndpi_stun_cache_enable ? 1024:0;
+	n->ndpi_struct->cfg.ookla_cache_num_entries = 0;
 	/* enable all protocols */
 	NDPI_BITMASK_SET_ALL(n->protocols_bitmask);
 	ndpi_set_protocol_detection_bitmask2(n->ndpi_struct, &n->protocols_bitmask);
@@ -2983,7 +2987,7 @@ static int __net_init ndpi_net_init(struct net *net)
         }
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
 //	pr_info("ndpi_lib_trace %s\n",ndpi_lib_trace ? "Enabled":"Disabled");
-	n->ndpi_struct->ndpi_log_level = ndpi_lib_trace;
+	n->ndpi_struct->cfg.log_level = ndpi_lib_trace;
 	set_ndpi_debug_function(n->ndpi_struct, ndpi_lib_trace ? debug_printf:NULL);
 #endif
 	if(tls_buf_size < 2) tls_buf_size = 2;
@@ -3062,6 +3066,12 @@ static int __net_init ndpi_net_init(struct net *net)
 					 n->pde, &nrisk_proc_fops, n);
 		if(!n->pe_risk) {
 			pr_err("xt_ndpi: cant create net/%s/%s\n",dir_name,risk_name);
+			break;
+		}
+		n->pe_cfg = proc_create_data(cfg_name, S_IRUGO,
+					 n->pde, &ncfg_proc_fops, n);
+		if(!n->pe_cfg) {
+			pr_err("xt_ndpi: cant create net/%s/%s\n",dir_name,cfg_name);
 			break;
 		}
 #ifdef BT_ANNOUNCE

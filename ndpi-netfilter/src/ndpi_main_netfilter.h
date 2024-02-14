@@ -26,6 +26,7 @@ typedef enum write_buf_id {
 	W_BUF_FLOW,
 	W_BUF_DEBUG,
 	W_BUF_RISK,
+	W_BUF_CFG,
 	W_BUF_LAST
 } write_buf_id_t;
 
@@ -60,6 +61,7 @@ struct ndpi_net {
 				*pe_proto,
 				*pe_debug,
 				*pe_risk,
+				*pe_cfg,
 				*pe_hostdef,
 				*pe_ipdef;
 
@@ -90,6 +92,9 @@ struct ndpi_net {
 	char			*risk_names;
 	size_t			risk_names_len;
 	ndpi_risk		risk_mask;
+
+	char                    *cfg_dump;
+	size_t                  cfg_dump_len;
 	
 	char			*str_buf;	// buffer for nflow_read
 	int			str_buf_len,	// nflow_read data length

@@ -93,7 +93,7 @@ static char* domain_to_check = NULL;
 static char* ip_port_to_check = NULL;
 static u_int8_t ignore_vlanid = 0;
 /** User preferences **/
-u_int8_t enable_realtime_output = 0, enable_protocol_guess = 1, enable_payload_analyzer = 0, num_bin_clusters = 0, extcap_exit = 0;
+u_int8_t enable_realtime_output = 0, enable_protocol_guess = NDPI_GIVEUP_GUESS_BY_PORT | NDPI_GIVEUP_GUESS_BY_IP, enable_payload_analyzer = 0, num_bin_clusters = 0, extcap_exit = 0;
 u_int8_t verbose = 0, enable_flow_stats = 0;
 
 struct cfg {
@@ -105,12 +105,9 @@ struct cfg {
 static struct cfg cfgs[MAX_NUM_CFGS];
 static int num_cfgs = 0;
 
-int nDPI_LogLevel = 0;
-char *_debug_protocols = NULL;
+int reader_log_level = 0;
 char *_disabled_protocols = NULL;
-int aggressiveness[NDPI_MAX_SUPPORTED_PROTOCOLS];
 static u_int8_t stats_flag = 0;
-ndpi_init_prefs init_prefs = ndpi_no_prefs | ndpi_enable_tcp_ack_payload_heuristic;
 u_int8_t human_readeable_string_len = 5;
 u_int8_t max_num_udp_dissected_pkts = 24 /* 8 is enough for most protocols, Signal and SnapchatCall require more */, max_num_tcp_dissected_pkts = 80 /* due to telnet */;
 static u_int32_t pcap_analysis_duration = (u_int32_t)-1;
@@ -143,9 +140,6 @@ struct ndpi_bin malloc_bins;
 int enable_malloc_bins = 0;
 int max_malloc_bins = 14;
 int malloc_size_stats = 0;
-
-static int lru_cache_sizes[NDPI_LRUCACHE_MAX];
-static int lru_cache_ttls[NDPI_LRUCACHE_MAX];
 
 struct flow_info {
   struct ndpi_flow_info *flow;
@@ -336,7 +330,7 @@ void ndpiCheckHostStringMatch(char *testChar) {
   if(!testChar)
     return;
 
-  ndpi_str = ndpi_init_detection_module(init_prefs);
+  ndpi_str = ndpi_init_detection_module();
   ndpi_finalize_initialization(ndpi_str);
 
   testRes =  ndpi_match_string_subprotocol(ndpi_str,
@@ -381,7 +375,7 @@ static void ndpiCheckIPMatch(char *testChar) {
   if(!testChar)
     return;
 
-  ndpi_str = ndpi_init_detection_module(init_prefs);
+  ndpi_str = ndpi_init_detection_module();
   NDPI_BITMASK_SET_ALL(all);
   ndpi_set_protocol_detection_bitmask2(ndpi_str, &all);
 
@@ -564,9 +558,8 @@ static void help(u_int long_help) {
          "                            | 0 - List known protocols\n"
          "                            | 1 - List known categories\n"
          "                            | 2 - List known risks\n"
-         "  -d                        | Disable protocol guess and use only DPI\n"
+         "  -d                        | Disable protocol guess (by ip and by port) and use only DPI. It is a shortcut to --cfg=,NULL,guess_on_giveup,0\n"
          "  -e <len>                  | Min human readeable string match len. Default %u\n"
-	 "  -E                        | Track flow payload\n"
          "  -q                        | Quiet mode\n"
          "  -F                        | Enable flow stats\n"
          "  -t                        | Dissect GTP/TZSP tunnels\n"
@@ -593,9 +586,9 @@ static void help(u_int long_help) {
          "                            | 2 = very verbose\n"
          "                            | 3 = port stats\n"
          "                            | 4 = hash stats\n"
-         "  -V <1-4>                  | nDPI logging level\n"
-         "                            | 1 - trace, 2 - debug, 3 - full debug\n"
-         "                            | >3 - full debug + log enabled for all protocols (i.e. '-u all')\n"
+         "  -V <0-4>                  | nDPI logging level\n"
+         "                            | 0 - error, 1 - trace, 2 - debug, 3 - extra debug\n"
+         "                            | >3 - extra debug + log enabled for all protocols (i.e. '-u all')\n"
          "  -u all|proto|num[,...]    | Enable logging only for such protocol(s)\n"
          "                            | If this flag is present multiple times (directly, or via '-V'),\n"
          "                            | only the last instance will be considered\n"
@@ -607,19 +600,14 @@ static void help(u_int long_help) {
          "  -I                        | Ignore VLAN id for flow hash calculation\n"
          "  -A                        | Dump internal statistics (LRU caches / Patricia trees / Ahocarasick automas / ...\n"
          "  -M                        | Memory allocation stats on data-path (only by the library). It works only on single-thread configuration\n"
-         "  -Z proto:value            | Set this value of aggressiveness for this protocol (0 to disable it). This flag can be used multiple times\n"
-         "  --lru-cache-size=NAME:size       | Specify the size for this LRU cache (0 to disable it). This flag can be used multiple times\n"
-         "  --lru-cache-ttl=NAME:size        | Specify the TTL [in seconds] for this LRU cache (0 to disable it). This flag can be used multiple times\n"
          "  --cfg=proto,param,value          | Configure the specific attribute of this protocol\n"
          ,
          human_readeable_string_len,
          min_pattern_len, max_pattern_len, max_num_packets_per_flow, max_packet_payload_dissection,
          max_num_reported_top_payloads, max_num_tcp_dissected_pkts, max_num_udp_dissected_pkts);
 
-  printf("\nLRU Cache names: ookla, bittorrent, zoom, stun, tls_cert, mining, msteams, stun_zoom\n");
-
   NDPI_PROTOCOL_BITMASK all;
-  struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module(init_prefs);
+  struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module();
   NDPI_BITMASK_SET_ALL(all);
   ndpi_set_protocol_detection_bitmask2(ndpi_info_mod, &all);
   ndpi_finalize_initialization(ndpi_info_mod);
@@ -664,9 +652,6 @@ static void help(u_int long_help) {
 }
 
 
-#define OPTLONG_VALUE_LRU_CACHE_SIZE	1000
-#define OPTLONG_VALUE_LRU_CACHE_TTL	1001
-
 #define OPTLONG_VALUE_CFG		3000
 
 static struct option longopts[] = {
@@ -709,9 +694,6 @@ static struct option longopts[] = {
   { "payload-analysis", required_argument, NULL, 'P'},
   { "result-path", required_argument, NULL, 'w'},
   { "quiet", no_argument, NULL, 'q'},
-
-  { "lru-cache-size", required_argument, NULL, OPTLONG_VALUE_LRU_CACHE_SIZE},
-  { "lru-cache-ttl", required_argument, NULL, OPTLONG_VALUE_LRU_CACHE_TTL},
 
   { "cfg", required_argument, NULL, OPTLONG_VALUE_CFG},
 
@@ -785,7 +767,7 @@ void extcap_config() {
   ndpi_proto_defaults_t *proto_defaults;
 #endif
 
-  struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module(init_prefs);
+  struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module();
 #if 0
   ndpi_num_supported_protocols = ndpi_get_ndpi_num_supported_protocols(ndpi_info_mod);
   proto_defaults = ndpi_get_proto_defaults(ndpi_info_mod);
@@ -904,52 +886,6 @@ void printCSVHeader() {
   fprintf(csv_fp, "\n");
 }
 
-static int cache_idx_from_name(const char *name)
-{
-  if(strcmp(name, "ookla") == 0)
-    return NDPI_LRUCACHE_OOKLA;
-  if(strcmp(name, "bittorrent") == 0)
-    return NDPI_LRUCACHE_BITTORRENT;
-  if(strcmp(name, "zoom") == 0)
-    return NDPI_LRUCACHE_ZOOM;
-  if(strcmp(name, "stun") == 0)
-    return NDPI_LRUCACHE_STUN;
-  if(strcmp(name, "tls_cert") == 0)
-    return NDPI_LRUCACHE_TLS_CERT;
-  if(strcmp(name, "mining") == 0)
-    return NDPI_LRUCACHE_MINING;
-  if(strcmp(name, "msteams") == 0)
-    return NDPI_LRUCACHE_MSTEAMS;
-  if(strcmp(name, "stun_zoom") == 0)
-    return NDPI_LRUCACHE_STUN_ZOOM;
-  return -1;
-}
-
-static int parse_cache_param(char *param, int *cache_idx, int *param_value)
-{
-  char *saveptr, *tmp_str, *cache_str, *param_str;
-  int idx;
-
-  tmp_str = ndpi_strdup(param);
-  if(tmp_str) {
-    cache_str = strtok_r(tmp_str, ":", &saveptr);
-    if(cache_str) {
-      param_str = strtok_r(NULL, ":", &saveptr);
-      if(param_str) {
-        idx = cache_idx_from_name(cache_str);
-        if(idx >= 0) {
-          *cache_idx = idx;
-          *param_value = atoi(param_str);
-          ndpi_free(tmp_str);
-	  return 0;
-	}
-      }
-    }
-  }
-  ndpi_free(tmp_str);
-  return -1;
-}
-
 static int parse_two_unsigned_integer(char *param, u_int32_t *num1, u_int32_t *num2)
 {
   char *saveptr, *tmp_str, *num1_str, *num2_str;
@@ -1041,7 +977,7 @@ int reader_add_cfg(char *proto, char *param, char *value, int dup)
  */
 static void parseOptions(int argc, char **argv) {
   int option_idx = 0;
-  int opt, i;
+  int opt;
 #ifndef USE_DPDK
   char *__pcap_file = NULL;
   int thread_id, do_capture = 0;
@@ -1050,7 +986,6 @@ static void parseOptions(int argc, char **argv) {
   u_int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
 #endif
-  int cache_idx, cache_size, cache_ttl;
   char *s1, *s2, *s3;
 
 #ifdef USE_DPDK
@@ -1064,16 +999,8 @@ static void parseOptions(int argc, char **argv) {
   }
 #endif
 
-  for(i = 0; i < NDPI_MAX_SUPPORTED_PROTOCOLS; i++)
-    aggressiveness[i] = -1; /* Use the default value */
-
-  for(i = 0; i < NDPI_LRUCACHE_MAX; i++) {
-    lru_cache_sizes[i] = -1; /* Use the default value */
-    lru_cache_ttls[i] = -1; /* Use the default value */
-  }
-
   while((opt = getopt_long(argc, argv,
-			   "a:Ab:B:e:Ec:C:dDFf:g:G:i:Ij:k:K:S:hHp:pP:l:r:Rs:tu:v:V:n:rp:x:X:w:Z:q0123:456:7:89:m:MT:U:",
+			   "a:Ab:B:e:c:C:dDFf:g:G:i:Ij:k:K:S:hHp:pP:l:r:Rs:tu:v:V:n:rp:x:X:w:q0123:456:7:89:m:MT:U:",
                            longopts, &option_idx)) != EOF) {
 #ifdef DEBUG_TRACE
     if(trace) fprintf(trace, " #### Handling option -%c [%s] #### \n", opt, optarg ? optarg : "");
@@ -1095,6 +1022,10 @@ static void parseOptions(int argc, char **argv) {
 
     case 'd':
       enable_protocol_guess = 0;
+      if(reader_add_cfg(NULL, "guess_on_giveup", "0", 1) == 1) {
+        printf("Invalid parameter [%s] [num:%d/%d]\n", optarg, num_cfgs, MAX_NUM_CFGS);
+        exit(1);
+      }
       break;
 
     case 'D':
@@ -1103,10 +1034,6 @@ static void parseOptions(int argc, char **argv) {
 
     case 'e':
       human_readeable_string_len = atoi(optarg);
-      break;
-
-    case 'E':
-      init_prefs |= ndpi_track_flow_payload;
       break;
 
     case 'i':
@@ -1194,54 +1121,65 @@ static void parseOptions(int argc, char **argv) {
       break;
 
     case 'V':
-      nDPI_LogLevel  = atoi(optarg);
-      if(nDPI_LogLevel < NDPI_LOG_ERROR) nDPI_LogLevel = NDPI_LOG_ERROR;
-      if(nDPI_LogLevel > NDPI_LOG_DEBUG_EXTRA) {
-        nDPI_LogLevel = NDPI_LOG_DEBUG_EXTRA;
-        ndpi_free(_debug_protocols);
-        _debug_protocols = ndpi_strdup("all");
+    {
+      char buf[12];
+      int log_level;
+      const char *errstrp;
+
+      /* (Internals) log levels are 0-3, but ndpiReader allows 0-4, where with 4
+          we also enable all protocols */
+      log_level = ndpi_strtonum(optarg, NDPI_LOG_ERROR, NDPI_LOG_DEBUG_EXTRA + 1, &errstrp, 10);
+      if(errstrp != NULL) {
+        printf("Invalid log level %s: %s\n", optarg, errstrp);
+        exit(1);
       }
+      if(log_level > NDPI_LOG_DEBUG_EXTRA) {
+        log_level = NDPI_LOG_DEBUG_EXTRA;
+        if(reader_add_cfg("all", "log.enable", "1", 1) == 1) {
+          printf("Invalid cfg [num:%d/%d]\n", num_cfgs, MAX_NUM_CFGS);
+          exit(1);
+        }
+      }
+      snprintf(buf, sizeof(buf), "%d", log_level);
+      if(reader_add_cfg(NULL, "log.level", buf, 1) == 1) {
+        printf("Invalid log level [%s] [num:%d/%d]\n", buf, num_cfgs, MAX_NUM_CFGS);
+        exit(1);
+      }
+      reader_log_level = log_level;
       break;
+    }
 
     case 'u':
-      ndpi_free(_debug_protocols);
-      _debug_protocols = ndpi_strdup(optarg);
+    {
+      char *n;
+      char *str = ndpi_strdup(optarg);
+      int inverted_logic;
+
+      /* Reset any previous call to this knob */
+      if(reader_add_cfg("all", "log.enable", "0", 1) == 1) {
+        printf("Invalid cfg [num:%d/%d]\n", num_cfgs, MAX_NUM_CFGS);
+        exit(1);
+      }
+
+      for(n = strtok(str, ","); n && *n; n = strtok(NULL, ",")) {
+        inverted_logic = 0;
+        if(*n == '-') {
+          inverted_logic = 1;
+          n++;
+        }
+        if(reader_add_cfg(n, "log.enable", inverted_logic ? "0" : "1", 1) == 1) {
+          printf("Invalid parameter [%s] [num:%d/%d]\n", n, num_cfgs, MAX_NUM_CFGS);
+          exit(1);
+        }
+      }
+      ndpi_free(str);
       break;
+    }
 
     case 'B':
       ndpi_free(_disabled_protocols);
       _disabled_protocols = ndpi_strdup(optarg);
       break;
-
-    case 'Z': /* proto_name:aggr_value */
-      {
-        struct ndpi_detection_module_struct *module_tmp;
-        NDPI_PROTOCOL_BITMASK all;
-        char *saveptr, *tmp_str, *proto_str, *aggr_str;
-
-        /* Use a temporary module with all protocols enabled */
-        module_tmp = ndpi_init_detection_module(0);
-        if(!module_tmp)
-          break;
-
-        NDPI_BITMASK_SET_ALL(all);
-        ndpi_set_protocol_detection_bitmask2(module_tmp, &all);
-        ndpi_finalize_initialization(module_tmp);
-
-        tmp_str = ndpi_strdup(optarg);
-        if(tmp_str) {
-          proto_str = strtok_r(tmp_str, ":", &saveptr);
-          if(proto_str) {
-            aggr_str = strtok_r(NULL, ":", &saveptr);
-            if(aggr_str) {
-              aggressiveness[ndpi_get_protocol_id(module_tmp, proto_str)] = atoi(aggr_str);
-            }
-          }
-        }
-        ndpi_free(tmp_str);
-        ndpi_exit_detection_module(module_tmp);
-        break;
-      }
 
     case 'h':
       help(0);
@@ -1322,7 +1260,11 @@ static void parseOptions(int argc, char **argv) {
 
     case 'q':
       quiet_mode = 1;
-      nDPI_LogLevel = 0;
+      if(reader_add_cfg(NULL, "log.level", "0", 1) == 1) {
+        printf("Invalid cfg [num:%d/%d]\n", num_cfgs, MAX_NUM_CFGS);
+        exit(1);
+      }
+      reader_log_level = 0;
       break;
 
       /* Extcap */
@@ -1354,7 +1296,7 @@ static void parseOptions(int argc, char **argv) {
 
     case '9':
     {
-      struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module(init_prefs);
+      struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module();
       extcap_packet_filter = ndpi_get_proto_by_name(ndpi_info_mod, optarg);
       if(extcap_packet_filter == NDPI_PROTOCOL_UNKNOWN) extcap_packet_filter = atoi(optarg);
       ndpi_exit_detection_module(ndpi_info_mod);
@@ -1379,23 +1321,7 @@ static void parseOptions(int argc, char **argv) {
       max_num_udp_dissected_pkts = atoi(optarg);
       break;
 
-    case OPTLONG_VALUE_LRU_CACHE_SIZE:
-      if(parse_cache_param(optarg, &cache_idx, &cache_size) == -1) {
-        printf("Invalid parameter [%s]\n", optarg);
-        exit(1);
-      }
-      lru_cache_sizes[cache_idx] = cache_size;
-      break;
-
-    case OPTLONG_VALUE_LRU_CACHE_TTL:
-      if(parse_cache_param(optarg, &cache_idx, &cache_ttl) == -1) {
-        printf("Invalid parameter [%s]\n", optarg);
-        exit(1);
-      }
-      lru_cache_ttls[cache_idx] = cache_ttl;
-      break;
-
-   case OPTLONG_VALUE_CFG:
+    case OPTLONG_VALUE_CFG:
       if(parse_three_strings(optarg, &s1, &s2, &s3) == -1 ||
         reader_add_cfg(s1, s2, s3, 0) == -1) {
         printf("Invalid parameter [%s] [num:%d/%d]\n", optarg, num_cfgs, MAX_NUM_CFGS);
@@ -2260,7 +2186,7 @@ static void node_proto_guess_walker(const void *node, ndpi_VISIT which, int dept
 
       malloc_size_stats = 1;
       flow->detected_protocol = ndpi_detection_giveup(ndpi_thread_info[0].workflow->ndpi_struct,
-                                                      flow->ndpi_flow, enable_protocol_guess, &proto_guessed);
+                                                      flow->ndpi_flow, &proto_guessed);
       malloc_size_stats = 0;
 
       if(proto_guessed) ndpi_thread_info[thread_id].workflow->stats.guessed_flow_protocols++;
@@ -2724,7 +2650,7 @@ static void debug_printf(u_int32_t protocol, void *id_struct,
   va_list va_ap;
   struct tm result;
 
-  if((int)log_level <= nDPI_LogLevel) {
+  if((int)log_level <= reader_log_level) {
     char buf[8192+32], out_buf[8192];
     char theDate[32];
     const char *extra_msg = "";
@@ -2833,7 +2759,7 @@ static void on_protocol_discovered(struct ndpi_workflow * workflow,
 static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
   NDPI_PROTOCOL_BITMASK enabled_bitmask;
   struct ndpi_workflow_prefs prefs;
-  int i;
+  int i, ret;
   ndpi_cfg_error rc;
 
   memset(&prefs, 0, sizeof(prefs));
@@ -2908,26 +2834,7 @@ static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
   if(_protoFilePath != NULL)
     ndpi_load_protocols_file(ndpi_thread_info[thread_id].workflow->ndpi_struct, _protoFilePath);
 
-//  set_ndpi_debug_function(ndpi_thread_info[thread_id].workflow->ndpi_struct, debug_printf);
-  /* Enable/disable/configure LRU caches size here */
-  for(i = 0; i < NDPI_LRUCACHE_MAX; i++) {
-    if(lru_cache_sizes[i] != -1)
-      ndpi_set_lru_cache_size(ndpi_thread_info[thread_id].workflow->ndpi_struct,
-			      i, lru_cache_sizes[i]);
-  }
-
-  /* Enable/disable LRU caches TTL here */
-  for(i = 0; i < NDPI_LRUCACHE_MAX; i++) {
-    if(lru_cache_ttls[i] != -1)
-      ndpi_set_lru_cache_ttl(ndpi_thread_info[thread_id].workflow->ndpi_struct,
-			     i, lru_cache_ttls[i]);
-  }
-
-  /* Set aggressiveness here */
-  for(i = 0; i < NDPI_MAX_SUPPORTED_PROTOCOLS; i++) {
-    if(aggressiveness[i] != -1)
-      ndpi_set_protocol_aggressiveness(ndpi_thread_info[thread_id].workflow->ndpi_struct, i, aggressiveness[i]);
-  }
+  ndpi_set_config(ndpi_thread_info[thread_id].workflow->ndpi_struct, NULL, "tcp_ack_payload_heuristic.enable", "1");
 
   for(i = 0; i < num_cfgs; i++) {
     rc = ndpi_set_config(ndpi_thread_info[thread_id].workflow->ndpi_struct,
@@ -2937,11 +2844,14 @@ static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
 	      cfgs[i].proto, cfgs[i].param, cfgs[i].value, rc);
   }
 
-
-  ndpi_finalize_initialization(ndpi_thread_info[thread_id].workflow->ndpi_struct);
-
   if(enable_doh_dot_detection)
-    ndpi_set_detection_preferences(ndpi_thread_info[thread_id].workflow->ndpi_struct, ndpi_pref_enable_tls_block_dissection, 1);
+    ndpi_set_config(ndpi_thread_info[thread_id].workflow->ndpi_struct, "tls", "application_blocks_tracking.enable", "1");
+
+  ret = ndpi_finalize_initialization(ndpi_thread_info[thread_id].workflow->ndpi_struct);
+  if(ret != 0) {
+    fprintf(stderr, "Error ndpi_finalize_initialization: %d\n", ret);
+    exit(-1);
+  }
 }
 
 /* *********************************************** */
@@ -4923,7 +4833,7 @@ static void dgaUnitTest() {
   };
   int debug = 0, i;
   NDPI_PROTOCOL_BITMASK all;
-  struct ndpi_detection_module_struct *ndpi_str = ndpi_init_detection_module(init_prefs);
+  struct ndpi_detection_module_struct *ndpi_str = ndpi_init_detection_module();
 
   assert(ndpi_str != NULL);
 
@@ -5766,7 +5676,7 @@ void outlierUnitTest() {
 
 void domainsUnitTest() {
   NDPI_PROTOCOL_BITMASK all;
-  struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module(init_prefs);
+  struct ndpi_detection_module_struct *ndpi_info_mod = ndpi_init_detection_module();
   const char *lists_path = "../lists/public_suffix_list.dat";
   struct stat st;
 
@@ -5961,7 +5871,6 @@ int main(int argc, char **argv) {
   if(enable_malloc_bins) ndpi_free_bin(&malloc_bins);
   if(csv_fp)        fclose(csv_fp);
 
-  ndpi_free(_debug_protocols);
   ndpi_free(_disabled_protocols);
 
   for(i = 0; i < num_cfgs; i++) {
