@@ -84,7 +84,7 @@ static int ndpi_confidence_level(ndpi_confidence_t confidence)
     return 1;
   case NDPI_CONFIDENCE_MATCH_BY_IP:
     return 2;
-  case NDPI_CONFIDENCE_USERDEF:
+  case NDPI_CONFIDENCE_CUSTOM_RULE:
     return 3;
   case NDPI_CONFIDENCE_DPI_PARTIAL:
     return 4;

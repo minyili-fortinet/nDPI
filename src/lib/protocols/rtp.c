@@ -147,8 +147,8 @@ int is_rtp_or_rtcp(struct ndpi_detection_module_struct *ndpi_struct,
 static void ndpi_rtp_search(struct ndpi_detection_module_struct *ndpi_struct,
 			    struct ndpi_flow_struct *flow) {
   u_int8_t is_rtp;
-  u_int16_t d_port = ntohs(ndpi_struct->packet.udp->dest);
   struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
+  u_int16_t d_port = ntohs(packet->udp->dest);
   const u_int8_t *payload = packet->payload;
 
   NDPI_LOG_DBG(ndpi_struct, "search RTP\n");

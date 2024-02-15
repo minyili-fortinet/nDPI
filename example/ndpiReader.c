@@ -4054,7 +4054,7 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
 	NDPI_CONFIDENCE_DPI,
 	NDPI_CONFIDENCE_DPI_AGGRESSIVE,
 	NDPI_CONFIDENCE_MATCH_BY_IP,
-	NDPI_CONFIDENCE_USERDEF };
+	NDPI_CONFIDENCE_CUSTOM_RULE };
     for(i = 0; i < sizeof(cumulative_stats.flow_confidence)/sizeof(cumulative_stats.flow_confidence[0]); i++) {
       ndpi_confidence_t c = configence_order[i];
       if(cumulative_stats.flow_confidence[c] != 0)

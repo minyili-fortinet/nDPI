@@ -974,7 +974,7 @@ static int check_known_ipv4_service( struct ndpi_net *n,
 	    if(protocol == IPPROTO_UDP || protocol == IPPROTO_TCP) {
 		app_protocol = ndpi_check_ipport(node,port,protocol == IPPROTO_TCP);
 		if(app_protocol != NDPI_PROTOCOL_UNKNOWN) {
-		    *l_conf = app_protocol & 0x8000 ? NDPI_CONFIDENCE_DPI:NDPI_CONFIDENCE_USERDEF;
+		    *l_conf = app_protocol & 0x8000 ? NDPI_CONFIDENCE_DPI:NDPI_CONFIDENCE_CUSTOM_RULE;
 		    app_protocol &= 0x7fff;
 		}
 	    }

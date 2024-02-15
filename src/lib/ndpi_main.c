@@ -9351,7 +9351,7 @@ void ndpi_category_set_name(struct ndpi_detection_module_struct *ndpi_str,
     break;
   }
 }
-
+#endif
 /* ****************************************************** */
 
 const char *ndpi_confidence_get_name(ndpi_confidence_t confidence)
@@ -9393,6 +9393,7 @@ const char *ndpi_confidence_get_name(ndpi_confidence_t confidence)
 }
 
 /* ****************************************************** */
+#ifndef __KERNEL__
 
 const char *ndpi_category_get_name(struct ndpi_detection_module_struct *ndpi_str,
 				   ndpi_protocol_category_t category) {

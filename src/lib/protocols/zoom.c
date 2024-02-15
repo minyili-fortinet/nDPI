@@ -131,7 +131,7 @@ static int zoom_search_again(struct ndpi_detection_module_struct *ndpi_struct,
 
 static void ndpi_search_zoom(struct ndpi_detection_module_struct *ndpi_struct,
 			     struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int8_t tomatch[] = { 0x01, 0x00, 0x03 };  /* Usually first pkt from the client */
   u_int8_t tomatch_a[] = { 0x01, 0x00, 0x02 };  /* Other first pkt from the client */
   u_int8_t tomatch2[] = { 0x02, 0x00, 0x03 }; /* Usually first pkt from the server: useful with asymmetric traffic */
