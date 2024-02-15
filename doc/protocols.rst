@@ -41,6 +41,14 @@ Google Meet is a video conferencing service from Google.
 References: `Main site: <https://meet.google.com/>`_
 
 
+.. _Proto 235:
+
+`NDPI_PROTOCOL_VALVE_SDR`
+===========================
+Steam Datagram Relay (SDR) is Valve's virtual private gaming network. Used in all modern games from Valve, but can also be used by developers via the Steamworks SDK for their games.
+
+References: `Main site: <https://partner.steamgames.com/doc/features/multiplayer/steamdatagramrelay>`_
+
 .. _Proto 338:
 
 `NDPI_PROTOCOL_SRTP`
@@ -492,3 +500,43 @@ References: `Main site <https://www.privateinternetaccess.com/>`_
 KCP - A Fast and Reliable ARQ Protocol. It provides TCP-like stream support with low latency at the cost of bandwidth usage - used by lot's of Open Source / Third Party applications.
 
 References: `Protocol Specs: <https://github.com/skywind3000/kcp/blob/master/protocol.txt>`_
+
+
+.. _Proto 386:
+
+`NDPI_PROTOCOL_DOTA2`
+=========================
+Dota 2 is an extremely popular multiplayer MOBA game from Valve.
+
+References: `Main site <https://www.dota2.com/>`_
+
+
+.. _Proto 387:
+
+`NDPI_PROTOCOL_MUMBLE`
+=========================
+Mumble is a free, open source, low latency, high quality voice chat application.
+
+References: `Main site <https://www.mumble.info/>`_
+
+
+.. _Proto 388:
+
+`NDPI_PROTOCOL_YOJIMBO`
+=======================
+Yojimbo (netcode) is a secure connection-based client/server protocol built on top of UDP.
+
+References: `Protocol Specs: <https://github.com/mas-bandwidth/netcode/blob/main/STANDARD.md>`_
+
+
+.. _Proto 389:
+
+`NDPI_PROTOCOL_ELECTRONICARTS`
+=========================
+Electronic Arts is a leading publisher of games on Console, PC and Mobile.
+
+References: `Main site <https://www.ea.com/>`_
+
+Notes:
+
+- Almost all of that traffic is related to their EA Origin game store.

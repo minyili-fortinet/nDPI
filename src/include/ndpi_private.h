@@ -354,8 +354,6 @@ struct ndpi_detection_module_struct {
 
   /* NDPI_PROTOCOL_ZOOM */
   struct ndpi_lru_cache *zoom_cache;
-  u_int32_t zoom_cache_num_entries;
-  u_int32_t zoom_cache_ttl;
 
   /* NDPI_PROTOCOL_STUN and subprotocols */
   struct ndpi_lru_cache *stun_cache;
@@ -493,6 +491,7 @@ int load_categories_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE 
 int load_malicious_sha1_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
 int load_malicious_ja3_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
 int load_risk_domain_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
+int load_config_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
 #endif
 
 /* TLS */
@@ -782,6 +781,10 @@ void init_hl7_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int3
 void init_ceph_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_roughtime_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_kcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_valve_sdr_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_mumble_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_zoom_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_yojimbo_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

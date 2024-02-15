@@ -250,6 +250,7 @@ typedef enum {
   NDPI_CFG_NOT_FOUND = -2,
   NDPI_CFG_INVALID_PARAM = -3,
   NDPI_CFG_CONTEXT_ALREADY_INITIALIZED = -4,
+  NDPI_CFG_CALLBACK_ERROR = -5,
 
   NDPI_CFG_OK = 0,
 } ndpi_cfg_error;
@@ -995,10 +996,6 @@ struct ndpi_flow_udp_struct {
   u_int8_t *quic_reasm_buf_bitmap;
   u_int32_t quic_reasm_buf_last_pos;
 
-  /* NDPI_PROTOCOL_CSGO */
-  u_int8_t csgo_strid[18],csgo_state,csgo_s2;
-  u_int32_t csgo_id2;
-
   /* NDPI_PROTOCOL_RDP */
   u_int8_t rdp_to_srv[3], rdp_from_srv[3], rdp_to_srv_pkts, rdp_from_srv_pkts;   
 
@@ -1012,6 +1009,10 @@ struct ndpi_flow_udp_struct {
   /* NDPI_PROTOCOL_TFTP */
   u_int16_t tftp_data_num;
   u_int16_t tftp_ack_num;
+
+  /* NDPI_PROTOCOL_MUMBLE */
+  u_int8_t mumble_stage:1;
+  u_int64_t mumble_ident;
 };
 
 /* ************************************************** */
@@ -1529,9 +1530,6 @@ struct ndpi_flow_struct {
 
   /* NDPI_PROTOCOL_RTMP */
   u_int8_t rtmp_stage:2;
-
-  /* NDPI_PROTOCOL_STEAM */
-  u_int16_t steam_stage:3, steam_stage1:3, steam_stage2:2, steam_stage3:2;
 
   /* NDPI_PROTOCOL_STARCRAFT */
   u_int8_t starcraft_udp_stage : 3;	// 0-7

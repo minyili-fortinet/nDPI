@@ -1857,8 +1857,8 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Nintendo", NDPI_PROTOCOL_CATEGORY_GAME,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
-  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_CSGO,
-			  "CSGO", NDPI_PROTOCOL_CATEGORY_GAME,
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_VALVE_SDR,
+			  "SteamDatagramRelay", NDPI_PROTOCOL_CATEGORY_GAME,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_AJP,
@@ -1959,7 +1959,7 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0)); /* UDP */
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_CASSANDRA,
 			  "Cassandra", NDPI_PROTOCOL_CATEGORY_DATABASE,
-			  ndpi_build_default_ports(ports_a, 9042, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_a, 7000, 9042, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_FACEBOOK_VOIP,
 			  "FacebookVoip", NDPI_PROTOCOL_CATEGORY_VOIP,
@@ -2291,6 +2291,14 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  ndpi_build_default_ports(ports_b, 2002, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_KCP,
 			  "KCP", NDPI_PROTOCOL_CATEGORY_NETWORK,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_MUMBLE,
+			  "Mumble", NDPI_PROTOCOL_CATEGORY_VOIP,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_YOJIMBO,
+			  "Yojimbo", NDPI_PROTOCOL_CATEGORY_GAME,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
@@ -4728,12 +4736,12 @@ int load_config_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd)
       value = strtok_r(NULL, ",", &saveptr);
       if(value) {
         rc = ndpi_set_config(ndpi_str, proto, param, value);
-	if(rc < NDPI_CFG_OK) {
+        if(rc != NDPI_CFG_OK) {
           NDPI_LOG_ERR(ndpi_str, "Error ndpi_set_config [%s/%s/%s]: %d\n",
                        proto, param, value, rc);
           return rc;
-	}
-	continue;
+        }
+        continue;
       }
     }
     NDPI_LOG_ERR(ndpi_str, "Error parsing [%s]\n", line);
@@ -5748,8 +5756,8 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* AMQP */
   init_amqp_dissector(ndpi_str, &a);
 
-  /* CSGO */
-  init_csgo_dissector(ndpi_str, &a);
+  /* Steam Datagram Relay */
+  init_valve_sdr_dissector(ndpi_str, &a);
 
   /* LISP */
   init_lisp_dissector(ndpi_str, &a);
@@ -6014,6 +6022,15 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
 
   /* KCP */
   init_kcp_dissector(ndpi_str, &a);
+
+  /* Mumble */
+  init_mumble_dissector(ndpi_str, &a);
+
+  /* Zoom */
+  init_zoom_dissector(ndpi_str, &a);
+
+  /* Yojimbo */
+  init_yojimbo_dissector(ndpi_str, &a);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
@@ -10815,7 +10832,7 @@ static u_int16_t __get_proto_id(const char *proto_name_or_id)
   /* Use a temporary module with all protocols enabled */
   module = ndpi_init_detection_module();
   if(!module)
-    return -1;
+    return NDPI_PROTOCOL_UNKNOWN;
   NDPI_BITMASK_SET_ALL(all);
   ndpi_set_protocol_detection_bitmask2(module, &all);
   /* Try to be fast: we need only the protocol name -> protocol id mapping! */
@@ -10871,8 +10888,6 @@ static ndpi_cfg_error _set_param_int(struct ndpi_detection_module_struct *ndpi_s
     return NDPI_CFG_INVALID_PARAM;
   }
 
-  *variable = val;
-
   /* Min and max values are set in the code, so we can convert them
      to integers without too many checks...*/
   if(min_value && max_value &&
@@ -10883,6 +10898,8 @@ static ndpi_cfg_error _set_param_int(struct ndpi_detection_module_struct *ndpi_s
 #endif
      )
     return NDPI_CFG_INVALID_PARAM;
+
+  *variable = val;
 
   return NDPI_CFG_OK;
 }
@@ -11028,6 +11045,7 @@ typedef ndpi_cfg_error (*cfg_set)(struct ndpi_detection_module_struct *ndpi_str,
                                   const char *min_value, const char *max_value,
                                   const char *proto);
 typedef char *(*cfg_get)(void *_variable, const char *proto, char *buf, int buf_len);
+typedef int (*cfg_calback)(struct ndpi_detection_module_struct *ndpi_str, void *_variable, const char *proto, const char *param);
 
 static const struct cfg_op {
   enum cfg_param_type type;
@@ -11052,83 +11070,84 @@ static const struct cfg_param {
   char *max_value;
   enum cfg_param_type type;
   int offset;
+  cfg_calback fn_callback;
   int nonlocked;
 } cfg_params[] = {
   /* Per-protocol parameters */
 
-  { "tls",           "mem_buf_size_limit",                      "16384", "0", "32768", CFG_PARAM_INT, __OFF(tls_buf_size_limit), 1 },
-  { "tls",           "certificate_expiration_threshold",        "30", "0", "365", CFG_PARAM_INT, __OFF(tls_certificate_expire_in_x_days), 1 },
-  { "tls",           "application_blocks_tracking.enable",      "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_app_blocks_tracking_enabled), 0 },
-  { "tls",           "metadata.sha1_fingerprint.enable",        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_sha1_fingerprint_enabled), 1 },
+  { "tls",           "mem_buf_size_limit",                      "16384", "0", "32768", CFG_PARAM_INT, __OFF(tls_buf_size_limit), NULL, 1 },
+  { "tls",           "certificate_expiration_threshold",        "30", "0", "365", CFG_PARAM_INT, __OFF(tls_certificate_expire_in_x_days), NULL, 1 },
+  { "tls",           "application_blocks_tracking",             "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_app_blocks_tracking_enabled), NULL, 0 },
+  { "tls",           "metadata.sha1_fingerprint",               "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_sha1_fingerprint_enabled), NULL, 1 },
 
-  { "smtp",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled), 1 },
+  { "smtp",          "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled), NULL,1 },
 
-  { "imap",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(imap_opportunistic_tls_enabled), 1 },
+  { "imap",          "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(imap_opportunistic_tls_enabled), NULL, 1 },
 
-  { "pop",           "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled), 1 },
+  { "pop",           "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled), NULL, 1 },
 
-  { "ftp",           "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), 1 },
+  { "ftp",           "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), NULL, 1 },
 
-  { "stun",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), 1 },
+  { "stun",          "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
 
-  { "dns",           "subclassification.enable",                "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), 1 },
-  { "dns",           "process_response.enable",                 "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), 1 },
+  { "dns",           "subclassification",                       "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), NULL, 1 },
+  { "dns",           "process_response",                        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), NULL, 1 },
 
-  { "http",          "process_response.enable",                 "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), 1 },
+  { "http",          "process_response",                        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), NULL, 1 },
 
-  { "ookla",         "aggressiveness",                          "0x01", "0", "1", CFG_PARAM_INT, __OFF(ookla_aggressiveness), 1 },
+  { "ookla",         "dpi.aggressiveness",                      "0x01", "0", "1", CFG_PARAM_INT, __OFF(ookla_aggressiveness), NULL, 1 },
 
-  { "$PROTO_NAME_OR_ID", "log.enable",                          "0", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(debug_bitmask), 1 },
-  { "$PROTO_NAME_OR_ID", "ip_list.load",                        "1", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(ip_list_bitmask), 0 },
+  { "$PROTO_NAME_OR_ID", "log",                                 "0", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(debug_bitmask), NULL, 1 },
+  { "$PROTO_NAME_OR_ID", "ip_list.load",                        "1", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(ip_list_bitmask), NULL, 0 },
 
   /* Global parameters */
 
-  { NULL,            "packets_limit_per_flow",                  "32", "0", "255", CFG_PARAM_INT, __OFF(max_packets_to_process), 1 },
-  { NULL,            "flow.direction_detection.enable",         "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(direction_detect_enabled), 0 },
-  { NULL,            "flow.track_payload.enable",               "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(track_payload_enabled), 0 }, // FIXME
-  { NULL,            "tcp_ack_payload_heuristic.enable",        "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tcp_ack_paylod_heuristic), 1 },
-  { NULL,            "fully_encrypted_heuristic.enable",        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fully_encrypted_heuristic), 1 },
-  { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_CONST_FLAG,     __OFF(libgcrypt_init), 0 },
-  { NULL,            "guess_on_giveup",                         "0x3", "0", "3", CFG_PARAM_INT, __OFF(guess_on_giveup), 1 },
+  { NULL,            "packets_limit_per_flow",                  "32", "0", "255", CFG_PARAM_INT, __OFF(max_packets_to_process), NULL, 1 },
+  { NULL,            "flow.direction_detection",                "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(direction_detect_enabled), NULL, 0 },
+  { NULL,            "flow.track_payload",                      "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(track_payload_enabled), NULL, 0 }, // FIXME
+  { NULL,            "tcp_ack_payload_heuristic",               "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tcp_ack_paylod_heuristic), NULL, 1 },
+  { NULL,            "fully_encrypted_heuristic",               "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fully_encrypted_heuristic), NULL, 1 },
+  { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_CONST_FLAG,     __OFF(libgcrypt_init), NULL, 0 },
+  { NULL,            "dpi.guess_on_giveup",                     "0x3", "0", "3", CFG_PARAM_INT, __OFF(guess_on_giveup), NULL, 1 },
 
-  { NULL,            "flow_risk_lists.load",                    "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(flow_risk_lists_enabled), 0 },
+  { NULL,            "flow_risk_lists.load",                    "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(flow_risk_lists_enabled), NULL, 0 },
 
-  { NULL,            "flow_risk.anonymous_subscriber.list.icloudprivaterelay.load", "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_anonymous_subscriber_list_icloudprivaterelay_enabled), 0 },
-  { NULL,            "flow_risk.anonymous_subscriber.list.protonvpn.load",          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_anonymous_subscriber_list_protonvpn_enabled), 0 },
-  { NULL,            "flow_risk.crawler_bot.list.load",                             "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_crawler_bot_list_enabled), 0 },
+  { NULL,            "flow_risk.anonymous_subscriber.list.icloudprivaterelay.load", "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_anonymous_subscriber_list_icloudprivaterelay_enabled), NULL, 0 },
+  { NULL,            "flow_risk.anonymous_subscriber.list.protonvpn.load",          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_anonymous_subscriber_list_protonvpn_enabled), NULL, 0 },
+  { NULL,            "flow_risk.crawler_bot.list.load",                             "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_crawler_bot_list_enabled), NULL, 0 },
 
-  { NULL,            "filename.config",                         NULL, NULL, NULL, CFG_PARAM_FILENAME_CONFIG, __OFF(filename_config) },
+  { NULL,            "filename.config",                         NULL, NULL, NULL, CFG_PARAM_FILENAME_CONFIG, __OFF(filename_config), NULL, 1 },
 
-  { NULL,            "log.level",                               "0", "0", "3", CFG_PARAM_INT, __OFF(log_level) },
+  { NULL,            "log.level",                               "0", "0", "3", CFG_PARAM_INT, __OFF(log_level), NULL, 1 },
 
   /* LRU caches */
 
-  { NULL,            "lru.ookla.size",                          "1024", "0", "16777215", CFG_PARAM_INT, __OFF(ookla_cache_num_entries), 0 },
-  { NULL,            "lru.ookla.ttl",                           "120", "0", "16777215", CFG_PARAM_INT, __OFF(ookla_cache_ttl), 0 },
+  { NULL,            "lru.ookla.size",                          "1024", "0", "16777215", CFG_PARAM_INT, __OFF(ookla_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.ookla.ttl",                           "120", "0", "16777215", CFG_PARAM_INT, __OFF(ookla_cache_ttl), NULL, 0 },
 
-  { NULL,            "lru.bittorrent.size",                     "32768", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_num_entries), 0 },
-  { NULL,            "lru.bittorrent.ttl",                      "0", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_ttl), 0 },
+  { NULL,            "lru.bittorrent.size",                     "32768", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.bittorrent.ttl",                      "0", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_ttl), NULL, 0 },
 
-  { NULL,            "lru.zoom.size",                           "512", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_num_entries), 0 },
-  { NULL,            "lru.zoom.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_ttl), 0 },
+  { NULL,            "lru.zoom.size",                           "512", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.zoom.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_ttl), NULL, 0 },
 
-  { NULL,            "lru.stun.size",                           "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_num_entries), 0 },
-  { NULL,            "lru.stun.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_ttl), 0 },
+  { NULL,            "lru.stun.size",                           "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.stun.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_ttl), NULL, 0 },
 
-  { NULL,            "lru.tls_cert.size",                       "1024", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_num_entries), 0 },
-  { NULL,            "lru.tls_cert.ttl",                        "0", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_ttl), 0 },
+  { NULL,            "lru.tls_cert.size",                       "1024", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.tls_cert.ttl",                        "0", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_ttl), NULL, 0 },
 
-  { NULL,            "lru.mining.size",                         "1024", "0", "16777215", CFG_PARAM_INT, __OFF(mining_cache_num_entries), 0 },
-  { NULL,            "lru.mining.ttl",                          "0", "0", "16777215", CFG_PARAM_INT, __OFF(mining_cache_ttl), 0 },
+  { NULL,            "lru.mining.size",                         "1024", "0", "16777215", CFG_PARAM_INT, __OFF(mining_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.mining.ttl",                          "0", "0", "16777215", CFG_PARAM_INT, __OFF(mining_cache_ttl), NULL, 0 },
 
-  { NULL,            "lru.msteams.size",                        "1024", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_num_entries), 0 },
-  { NULL,            "lru.msteams.ttl",                         "60", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_ttl), 0 },
+  { NULL,            "lru.msteams.size",                        "1024", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.msteams.ttl",                         "60", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_ttl), NULL, 0 },
 
-  { NULL,            "lru.stun_zoom.size",                      "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_num_entries), 0 },
-  { NULL,            "lru.stun_zoom.ttl",                       "60", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_ttl), 0 },
+  { NULL,            "lru.stun_zoom.size",                      "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.stun_zoom.ttl",                       "60", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_ttl), NULL, 0 },
 
 
-  { NULL, NULL, NULL, NULL, NULL, 0, -1 , 0 },
+  { NULL, NULL, NULL, NULL, NULL, 0, -1 , NULL, 0 },
 };
 
 #undef __OFF
@@ -11148,6 +11167,7 @@ ndpi_cfg_error ndpi_set_config(struct ndpi_detection_module_struct *ndpi_str,
 {
   const struct cfg_param *c;
   ndpi_cfg_error rc;
+  int ret;
 
   if(!ndpi_str || !param || !value)
     return NDPI_CFG_INVALID_CONTEXT;
@@ -11168,6 +11188,14 @@ ndpi_cfg_error ndpi_set_config(struct ndpi_detection_module_struct *ndpi_str,
 	      return NDPI_CFG_INVALID_PARAM;
       rc = cfg_ops[c->type].fn_set(ndpi_str, (void *)((char *)&ndpi_str->cfg + c->offset),
                                    value, c->min_value, c->max_value, proto);
+      if(rc == NDPI_CFG_OK && c->fn_callback) {
+        ret = c->fn_callback(ndpi_str, (void *)((char *)&ndpi_str->cfg + c->offset),
+                             proto, param);
+        if(ret < 0)
+          rc = NDPI_CFG_CALLBACK_ERROR;
+        else
+          rc = ret;
+      }
       return rc;
     }
   }
@@ -11182,7 +11210,7 @@ char *ndpi_get_config(struct ndpi_detection_module_struct *ndpi_str,
   if(!ndpi_str || !param || !buf || buf_len <= 0)
     return NULL;
 
-  NDPI_LOG_ERR(ndpi_str, "Get [%s][%s]\n", proto, param);
+  NDPI_LOG_DBG(ndpi_str, "Get [%s][%s]\n", proto, param);
 
   for(c = &cfg_params[0]; c && c->param; c++) {
     if(((proto == NULL && c->proto == NULL) ||

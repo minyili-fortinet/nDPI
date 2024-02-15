@@ -2273,6 +2273,9 @@ extern "C" {
 
   /* ******************************* */
 
+  const char *ndpi_lru_cache_idx_to_name(lru_cache_type idx);
+
+
 #ifdef __cplusplus
 }
 #endif

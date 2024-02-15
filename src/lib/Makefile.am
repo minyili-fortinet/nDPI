@@ -69,7 +69,6 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/corba.c \
 		     protocols/crossfire.c \
 		     protocols/crynet.c \
-		     protocols/csgo.c \
 		     protocols/dcerpc.c \
 		     protocols/dhcp.c \
 		     protocols/dhcpv6.c \
@@ -149,6 +148,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/mpegdash.c \
 		     protocols/mqtt.c \
 		     protocols/mssql_tds.c \
+		     protocols/mumble.c \
 		     protocols/munin.c \
 		     protocols/mysql.c \
 		     protocols/natpmp.c \
@@ -208,6 +208,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/ssh.c \
 		     protocols/starcraft.c \
 		     protocols/steam.c \
+		     protocols/steam_datagram_relay.c \
 		     protocols/stun.c \
 		     protocols/syncthing.c \
 		     protocols/syslog.c \
@@ -246,8 +247,10 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/xbox.c \
 		     protocols/xdmcp.c \
 		     protocols/xiaomi.c \
+		     protocols/yojimbo.c \
 		     protocols/zattoo.c \
 		     protocols/zeromq.c \
+		     protocols/zoom.c \
 		     protocols/smpp.c \
 		     protocols/tinc.c \
 		     protocols/someip.c \
