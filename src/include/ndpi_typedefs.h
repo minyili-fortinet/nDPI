@@ -945,6 +945,9 @@ struct ndpi_flow_tcp_struct {
 
   /* NDPI_PROTOCOL_NEST_LOG_SINK */
   u_int8_t nest_log_sink_matches;
+
+  /* NDPI_PROTOCOL_RADMIN */
+  u_int32_t radmin_stage:1;
 };
 
 /* ************************************************** */
@@ -995,6 +998,9 @@ struct ndpi_flow_udp_struct {
   u_int8_t *quic_reasm_buf;
   u_int8_t *quic_reasm_buf_bitmap;
   u_int32_t quic_reasm_buf_last_pos;
+  /* DCID of the first Initial sent by the client */
+  u_int8_t quic_orig_dest_conn_id[20]; /* Max length is 20 on all QUIC versions */
+  u_int8_t quic_orig_dest_conn_id_len;
 
   /* NDPI_PROTOCOL_RDP */
   u_int8_t rdp_to_srv[3], rdp_from_srv[3], rdp_to_srv_pkts, rdp_from_srv_pkts;   
@@ -1493,9 +1499,6 @@ struct ndpi_flow_struct {
   /* for kernel mode */
   uint16_t ipdef_proto; /* protocol by ip/port + ip_port_finished */
   ndpi_confidence_t ipdef_proto_level;
-
-  /* NDPI_PROTOCOL_REDIS */
-  u_int8_t redis_s2d_first_char, redis_d2s_first_char;
 
   /* Only packets with L5 data (ie no TCP SYN, pure ACKs, ...) */
   u_int16_t packet_counter;		      // can be 0 - 65000

@@ -61,6 +61,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/cassandra.c \
 		     protocols/ceph.c \
 		     protocols/checkmk.c \
+		     protocols/cip.c \
 		     protocols/ciscovpn.c \
 		     protocols/citrix.c \
 		     protocols/cpha.c \
@@ -177,9 +178,11 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/qq.c \
 		     protocols/quic.c \
 		     protocols/radius.c \
+		     protocols/radmin.c \
+		     protocols/raft.c \
 		     protocols/raknet.c \
 		     protocols/rdp.c \
-		     protocols/redis_net.c \
+		     protocols/resp.c \
 		     protocols/rmcp.c \
 		     protocols/roughtime.c \
 		     protocols/rsh.c \
@@ -209,6 +212,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/starcraft.c \
 		     protocols/steam.c \
 		     protocols/steam_datagram_relay.c \
+		     protocols/stomp.c \
 		     protocols/stun.c \
 		     protocols/syncthing.c \
 		     protocols/syslog.c \

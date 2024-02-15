@@ -210,7 +210,7 @@ typedef enum {
   NDPI_PROTOCOL_EBAY                  = 179,
   NDPI_PROTOCOL_CNN                   = 180,
   NDPI_PROTOCOL_MEGACO                = 181,
-  NDPI_PROTOCOL_REDIS                 = 182,
+  NDPI_PROTOCOL_RESP                  = 182,
   NDPI_PROTOCOL_PINTEREST             = 183,
   NDPI_PROTOCOL_VHUA                  = 184,
   NDPI_PROTOCOL_TELEGRAM              = 185,
@@ -418,6 +418,10 @@ typedef enum {
   NDPI_PROTOCOL_MUMBLE                = 387,
   NDPI_PROTOCOL_YOJIMBO               = 388,
   NDPI_PROTOCOL_ELECTRONICARTS        = 389,
+  NDPI_PROTOCOL_STOMP                 = 390,
+  NDPI_PROTOCOL_RADMIN                = 391,
+  NDPI_PROTOCOL_RAFT                  = 392,
+  NDPI_PROTOCOL_CIP                   = 393,
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_protocol_ids.h"

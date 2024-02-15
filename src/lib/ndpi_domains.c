@@ -29,7 +29,6 @@ int ndpi_load_domain_suffixes(struct ndpi_detection_module_struct *ndpi_str,
 			      char *public_suffix_list_path) {
   char buf[256], *line;
   FILE *fd;
-  bool do_trace = false;
   u_int num_domains = 0;
   
   if(public_suffix_list_path == NULL)
@@ -48,6 +47,10 @@ int ndpi_load_domain_suffixes(struct ndpi_detection_module_struct *ndpi_str,
 
   while((line = fgets(buf, sizeof(buf), fd)) != NULL) {
     u_int offset, len;
+
+    /* Skip private domains */
+    if(strstr(line, "// ===END ICANN DOMAINS==="))
+      break;
     
     /* Skip empty lines or comments */
     if((line[0] == '\0') || (line[0] == '/') || (line[0] == '\n') || (line[0] == '\r'))
@@ -64,16 +67,18 @@ int ndpi_load_domain_suffixes(struct ndpi_detection_module_struct *ndpi_str,
 
     if(!ndpi_domain_classify_add(ndpi_str->public_domain_suffixes,
 				 1 /* dummy */, &line[offset])) {
-      if(do_trace) NDPI_LOG_ERR(ndpi_str, "Error while processing domain %s\n", &line[offset]);
+      NDPI_LOG_ERR(ndpi_str, "Error while processing domain %s\n", &line[offset]);
     } else
       num_domains++;
   }
 
   if(!ndpi_domain_classify_finalize(ndpi_str->public_domain_suffixes)) {
-    if(do_trace) NDPI_LOG_ERR(ndpi_str, "Error while finalizing domain processing\n");
+    NDPI_LOG_ERR(ndpi_str, "Error while finalizing domain processing\n");
   }
 
-  if(do_trace) NDPI_LOG_ERR(ndpi_str, "Loaded %u domains\n", num_domains);
+  if(num_domains > 0) {
+    NDPI_LOG_DBG(ndpi_str, "Loaded %u domains\n", num_domains);
+  }
   
   return(0);
 }
@@ -82,6 +87,8 @@ int ndpi_load_domain_suffixes(struct ndpi_detection_module_struct *ndpi_str,
 
 const char* ndpi_get_host_domain_suffix(struct ndpi_detection_module_struct *ndpi_str,
 					const char *hostname) {
+  if(!ndpi_str)
+    return NULL;
   if(ndpi_str->public_domain_suffixes == NULL)
     return(hostname);
   else {
@@ -96,6 +103,8 @@ const char* ndpi_get_host_domain_suffix(struct ndpi_detection_module_struct *ndp
 
 const char* ndpi_get_host_domain(struct ndpi_detection_module_struct *ndpi_str,
 				 const char *hostname) {
+  if(!ndpi_str)
+    return NULL;
   if(ndpi_str->public_domain_suffixes == NULL)
     return(hostname);
   else {

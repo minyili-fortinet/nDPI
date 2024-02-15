@@ -293,7 +293,6 @@ struct ndpi_detection_module_struct {
   u_int ndpi_num_supported_protocols;
   u_int ndpi_num_custom_protocols;
 
-  int ac_automa_finalized;
   /* HTTP/DNS/HTTPS/QUIC host matching */
   ndpi_automa host_automa,                     /* Used for DNS/HTTPS */
     risky_domain_automa, tls_cert_subject_automa,
@@ -427,7 +426,7 @@ char *strptime(const char *s, const char *format, struct tm *tm);
 u_int8_t iph_is_valid_and_not_fragmented(const struct ndpi_iphdr *iph, const u_int16_t ipsize);
 
 int current_pkt_from_client_to_server(struct ndpi_detection_module_struct *ndpi_str, const struct ndpi_flow_struct *flow);
-//int current_pkt_from_server_to_client(struct ndpi_detection_module_struct *ndpi_str, const struct ndpi_flow_struct *flow);
+int current_pkt_from_server_to_client(struct ndpi_detection_module_struct *ndpi_str, const struct ndpi_flow_struct *flow);
 
 int ndpi_seen_flow_beginning(const struct ndpi_flow_struct *flow);
 
@@ -471,9 +470,6 @@ u_int8_t ips_match(u_int32_t src, u_int32_t dst,
 u_int8_t ends_with(struct ndpi_detection_module_struct *ndpi_struct,
                    char *str, char *ends);
 
-u_int16_t check_for_email_address(struct ndpi_detection_module_struct *ndpi_struct,
-                                  u_int16_t counter);
-
 u_int ndpi_search_tcp_or_udp_raw(struct ndpi_detection_module_struct *ndpi_struct,
 				 struct ndpi_flow_struct *flow,
 				 u_int8_t protocol,
@@ -492,6 +488,8 @@ int load_malicious_sha1_file_fd(struct ndpi_detection_module_struct *ndpi_str, F
 int load_malicious_ja3_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
 int load_risk_domain_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
 int load_config_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd);
+int load_category_file_fd(struct ndpi_detection_module_struct *ndpi_str,
+			  FILE *fd, ndpi_protocol_category_t category_id);
 #endif
 
 /* TLS */
@@ -629,7 +627,7 @@ void init_quake_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_in
 void init_quic_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_radius_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_rdp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_redis_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_resp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_rsync_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_rtcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_rtmp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -785,6 +783,10 @@ void init_valve_sdr_dissector(struct ndpi_detection_module_struct *ndpi_struct, 
 void init_mumble_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_zoom_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_yojimbo_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_stomp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_radmin_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_raft_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_cip_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

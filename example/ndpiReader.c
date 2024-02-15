@@ -136,9 +136,9 @@ extern u_int32_t max_num_packets_per_flow, max_packet_payload_dissection, max_nu
 extern u_int16_t min_pattern_len, max_pattern_len;
 u_int8_t dump_internal_stats;
 
-struct ndpi_bin malloc_bins;
-int enable_malloc_bins = 0;
-int max_malloc_bins = 14;
+static struct ndpi_bin malloc_bins;
+static int enable_malloc_bins = 0;
+static int max_malloc_bins = 14;
 int malloc_size_stats = 0;
 
 struct flow_info {
@@ -253,7 +253,7 @@ typedef struct ndpi_id {
 } ndpi_id_t;
 
 // used memory counters
-u_int32_t current_ndpi_memory = 0, max_ndpi_memory = 0;
+static u_int32_t current_ndpi_memory = 0, max_ndpi_memory = 0;
 #ifdef USE_DPDK
 static int dpdk_port_id = 0, dpdk_run_capture = 1;
 #endif
@@ -271,7 +271,45 @@ extern int parse_proto_name_list(char *str, NDPI_PROTOCOL_BITMASK *bitmask, int 
 FILE *trace = NULL;
 #endif
 
-/* ********************************** */
+/* ***************************************************** */
+
+static u_int32_t reader_slot_malloc_bins(u_int64_t v)
+{
+  int i;
+
+  /* 0-2,3-4,5-8,9-16,17-32,33-64,65-128,129-256,257-512,513-1024,1025-2048,2049-4096,4097-8192,8193- */
+  for(i=0; i < max_malloc_bins - 1; i++)
+    if((1ULL << (i + 1)) >= v)
+      return i;
+  return i;
+}
+
+/**
+ * @brief ndpi_malloc wrapper function
+ */
+static void *ndpi_malloc_wrapper(size_t size) {
+  current_ndpi_memory += size;
+
+  if(current_ndpi_memory > max_ndpi_memory)
+    max_ndpi_memory = current_ndpi_memory;
+
+  if(enable_malloc_bins && malloc_size_stats)
+    ndpi_inc_bin(&malloc_bins, reader_slot_malloc_bins(size), 1);
+
+  return(malloc(size)); /* Don't change to ndpi_malloc !!!!! */
+}
+
+/* ***************************************************** */
+
+/**
+ * @brief free wrapper function
+ */
+static void free_wrapper(void *freeable) {
+  free(freeable); /* Don't change to ndpi_free !!!!! */
+}
+
+/* ***************************************************** */
+
 
 #define NUM_DOH_BINS 2
 
@@ -558,7 +596,8 @@ static void help(u_int long_help) {
          "                            | 0 - List known protocols\n"
          "                            | 1 - List known categories\n"
          "                            | 2 - List known risks\n"
-         "  -d                        | Disable protocol guess (by ip and by port) and use only DPI. It is a shortcut to --cfg=dpi.guess_on_giveup,0\n"
+         "  -d                        | Disable protocol guess (by ip and by port) and use only DPI.\n"
+	 "                            | It is a shortcut to --cfg=dpi.guess_on_giveup,0\n"
          "  -e <len>                  | Min human readeable string match len. Default %u\n"
          "  -q                        | Quiet mode\n"
          "  -F                        | Enable flow stats\n"
@@ -599,8 +638,9 @@ static void help(u_int long_help) {
          "  -x <domain>               | Check domain name [Test only]\n"
          "  -I                        | Ignore VLAN id for flow hash calculation\n"
          "  -A                        | Dump internal statistics (LRU caches / Patricia trees / Ahocarasick automas / ...\n"
-         "  -M                        | Memory allocation stats on data-path (only by the library). It works only on single-thread configuration\n"
-         "  --cfg=proto,param,value          | Configure the specific attribute of this protocol\n"
+         "  -M                        | Memory allocation stats on data-path (only by the library).\n"
+	 "                            | It works only on single-thread configuration\n"
+         "  --cfg=proto,param,value   | Configure the specific attribute of this protocol\n"
          ,
          human_readeable_string_len,
          min_pattern_len, max_pattern_len, max_num_packets_per_flow, max_packet_payload_dissection,
@@ -2825,16 +2865,6 @@ static void setupDetection(u_int16_t thread_id, pcap_t * pcap_handle) {
   ndpi_bittorrent_init(ndpi_thread_info[thread_id].workflow->ndpi_struct,9*1024,2100,0);
 #endif
 
-  // clear memory for results
-  memset(ndpi_thread_info[thread_id].workflow->stats.protocol_counter, 0,
-         sizeof(ndpi_thread_info[thread_id].workflow->stats.protocol_counter));
-  memset(ndpi_thread_info[thread_id].workflow->stats.protocol_counter_bytes, 0,
-         sizeof(ndpi_thread_info[thread_id].workflow->stats.protocol_counter_bytes));
-  memset(ndpi_thread_info[thread_id].workflow->stats.protocol_flows, 0,
-         sizeof(ndpi_thread_info[thread_id].workflow->stats.protocol_flows));
-  memset(ndpi_thread_info[thread_id].workflow->stats.flow_confidence, 0,
-         sizeof(ndpi_thread_info[thread_id].workflow->stats.flow_confidence));
-
   if(_protoFilePath != NULL)
     ndpi_load_protocols_file(ndpi_thread_info[thread_id].workflow->ndpi_struct, _protoFilePath);
 
@@ -4650,6 +4680,9 @@ void test_lib() {
   long thread_id;
 #endif
 
+  set_ndpi_malloc(ndpi_malloc_wrapper), set_ndpi_free(free_wrapper);
+  set_ndpi_flow_malloc(NULL), set_ndpi_flow_free(NULL);
+
 #ifdef DEBUG_TRACE
   if(trace) fprintf(trace, "Num threads: %d\n", num_threads);
 #endif
@@ -5691,7 +5724,7 @@ void domainsUnitTest() {
     ndpi_set_protocol_detection_bitmask2(ndpi_info_mod, &all);
 
     assert(ndpi_load_domain_suffixes(ndpi_info_mod, "../lists/public_suffix_list.dat") == 0);
-
+    
     assert(strcmp(ndpi_get_host_domain_suffix(ndpi_info_mod, "www.chosei.chiba.jp"), "chosei.chiba.jp") == 0);
     assert(strcmp(ndpi_get_host_domain_suffix(ndpi_info_mod, "www.unipi.it"), "it") == 0);
     assert(strcmp(ndpi_get_host_domain_suffix(ndpi_info_mod, "mail.apple.com"), "com") == 0);
@@ -5701,6 +5734,7 @@ void domainsUnitTest() {
     assert(strcmp(ndpi_get_host_domain(ndpi_info_mod, "www.unipi.it"), "unipi.it") == 0);
     assert(strcmp(ndpi_get_host_domain(ndpi_info_mod, "mail.apple.com"), "apple.com") == 0);
     assert(strcmp(ndpi_get_host_domain(ndpi_info_mod, "www.bbc.co.uk"), "bbc.co.uk") == 0);
+    assert(strcmp(ndpi_get_host_domain(ndpi_info_mod, "zy1ssnfwwl.execute-api.eu-north-1.amazonaws.com"), "amazonaws.com") == 0);
   }
 
   ndpi_exit_detection_module(ndpi_info_mod);

@@ -32,6 +32,14 @@ A Remote Procedure Call protocol over HTTP from Microsoft.
 References: `Protocol Specs: <https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rpch/c0f4c9c5-1a61-4d10-b8e2-005378d1d212`_
 
 
+.. _Proto 182:
+
+`NDPI_PROTOCOL_RESP`
+=======================
+Redis Serialization Protocol
+
+References: `Protocol Specs: <https://redis.io/docs/reference/protocol-spec/`_
+
 .. _Proto 201:
 
 `NDPI_PROTOCOL_GOOGLE_MEET`
@@ -540,3 +548,30 @@ References: `Main site <https://www.ea.com/>`_
 Notes:
 
 - Almost all of that traffic is related to their EA Origin game store.
+
+
+.. _Proto 390:
+
+`NDPI_PROTOCOL_STOMP`
+========================
+STOMP is a simple interoperable protocol designed for asynchronous message passing between clients via mediating servers. Supported in ActiveMQ and RabbitMQ.
+
+References: `Protocol Specs: <https://stomp.github.io/stomp-specification-1.2.html>`_
+
+
+.. _Proto 391:
+
+`NDPI_PROTOCOL_RADMIN`
+=========================
+Radmin is remote access software for the Microsoft Windows platform.
+
+References: `Main site <https://www.radmin.com/>`_
+
+
+.. _Proto 392:
+
+`NDPI_PROTOCOL_RAFT`
+====================
+Raft is a consensus algorithm and protocol for managing a replicated log.
+
+References: `C implementation <https://github.com/canonical/raft>`_ and `Paper <https://raft.github.io/raft.pdf>`_
