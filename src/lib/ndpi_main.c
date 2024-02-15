@@ -10835,18 +10835,27 @@ static ndpi_cfg_error _set_param_enable_disable(struct ndpi_detection_module_str
 {
   int *variable = (int *)_variable;
 
-  if(strcmp(value, "1") == 0 ||
+  if(strcmp(value, "1") == 0 || strcmp(value, "on") == 0 ||
      strcmp(value, "enable") == 0) {
     *variable = 1;
     return NDPI_CFG_OK;
   }
-  if(strcmp(value, "0") == 0 ||
+  if(strcmp(value, "0") == 0 || strcmp(value, "off") == 0 ||
      strcmp(value, "disable") == 0) {
     *variable = 0;
     return NDPI_CFG_OK;
   }
   return NDPI_CFG_INVALID_PARAM;
 }
+
+static ndpi_cfg_error _set_param_const_flag(struct ndpi_detection_module_struct *ndpi_str,
+                                                void *_variable, const char *value,
+                                                const char *min_value, const char *max_value,
+                                                const char *proto)
+{
+  return NDPI_CFG_INVALID_PARAM;
+}
+
 
 static ndpi_cfg_error _set_param_int(struct ndpi_detection_module_struct *ndpi_str,
                                      void *_variable, const char *value,
@@ -10877,6 +10886,15 @@ static ndpi_cfg_error _set_param_int(struct ndpi_detection_module_struct *ndpi_s
 
   return NDPI_CFG_OK;
 }
+
+static ndpi_cfg_error _set_param_const_int(struct ndpi_detection_module_struct *ndpi_str,
+                                                void *_variable, const char *value,
+                                                const char *min_value, const char *max_value,
+                                                const char *proto)
+{
+  return NDPI_CFG_INVALID_PARAM;
+}
+
 
 static char *_get_param_int(void *_variable, const char *proto, char *buf, int buf_len)
 {
@@ -11001,6 +11019,8 @@ enum cfg_param_type {
   CFG_PARAM_INT,
   CFG_PARAM_PROTOCOL_ENABLE_DISABLE,
   CFG_PARAM_FILENAME_CONFIG, /* We call ndpi_set_config() immediately for each row in it */
+  CFG_PARAM_CONST_INT,
+  CFG_PARAM_CONST_FLAG,
 };
 
 typedef ndpi_cfg_error (*cfg_set)(struct ndpi_detection_module_struct *ndpi_str,
@@ -11018,6 +11038,8 @@ static const struct cfg_op {
   { CFG_PARAM_INT,                     _set_param_int,                     _get_param_int },
   { CFG_PARAM_PROTOCOL_ENABLE_DISABLE, _set_param_protocol_enable_disable, _get_param_protocol_enable_disable },
   { CFG_PARAM_FILENAME_CONFIG,         _set_param_filename_config,         _get_param_string },
+  { CFG_PARAM_CONST_INT,               _set_param_const_int,               _get_param_int },
+  { CFG_PARAM_CONST_FLAG,              _set_param_const_flag,              _get_param_int },
 };
 
 #define __OFF(a)	offsetof(struct ndpi_detection_module_config_struct, a)
@@ -11030,48 +11052,50 @@ static const struct cfg_param {
   char *max_value;
   enum cfg_param_type type;
   int offset;
+  int nonlocked;
 } cfg_params[] = {
   /* Per-protocol parameters */
 
-  { "tls",           "certificate_expiration_threshold",        "30", "0", "365", CFG_PARAM_INT, __OFF(tls_certificate_expire_in_x_days) },
-  { "tls",           "application_blocks_tracking.enable",      "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_app_blocks_tracking_enabled) },
-  { "tls",           "metadata.sha1_fingerprint.enable",        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_sha1_fingerprint_enabled) },
+  { "tls",           "mem_buf_size_limit",                      "16384", "0", "32768", CFG_PARAM_INT, __OFF(tls_buf_size_limit), 1 },
+  { "tls",           "certificate_expiration_threshold",        "30", "0", "365", CFG_PARAM_INT, __OFF(tls_certificate_expire_in_x_days), 1 },
+  { "tls",           "application_blocks_tracking.enable",      "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_app_blocks_tracking_enabled), 0 },
+  { "tls",           "metadata.sha1_fingerprint.enable",        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_sha1_fingerprint_enabled), 1 },
 
-  { "smtp",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled) },
+  { "smtp",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled), 1 },
 
-  { "imap",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(imap_opportunistic_tls_enabled) },
+  { "imap",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(imap_opportunistic_tls_enabled), 1 },
 
-  { "pop",           "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled) },
+  { "pop",           "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled), 1 },
 
-  { "ftp",           "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled) },
+  { "ftp",           "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), 1 },
 
-  { "stun",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled) },
+  { "stun",          "tls_dissection.enable",                   "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), 1 },
 
-  { "dns",           "subclassification.enable",                "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled) },
-  { "dns",           "process_response.enable",                 "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled) },
+  { "dns",           "subclassification.enable",                "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), 1 },
+  { "dns",           "process_response.enable",                 "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), 1 },
 
-  { "http",          "process_response.enable",                 "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled) },
+  { "http",          "process_response.enable",                 "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), 1 },
 
-  { "ookla",         "aggressiveness",                          "0x01", "0", "1", CFG_PARAM_INT, __OFF(ookla_aggressiveness) },
+  { "ookla",         "aggressiveness",                          "0x01", "0", "1", CFG_PARAM_INT, __OFF(ookla_aggressiveness), 1 },
 
-  { "$PROTO_NAME_OR_ID", "log.enable",                          "0", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(debug_bitmask) },
-  { "$PROTO_NAME_OR_ID", "ip_list.load",                        "1", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(ip_list_bitmask) },
+  { "$PROTO_NAME_OR_ID", "log.enable",                          "0", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(debug_bitmask), 1 },
+  { "$PROTO_NAME_OR_ID", "ip_list.load",                        "1", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(ip_list_bitmask), 0 },
 
   /* Global parameters */
 
-  { NULL,            "packets_limit_per_flow",                  "32", "0", "255", CFG_PARAM_INT, __OFF(max_packets_to_process) },
-  { NULL,            "flow.direction_detection.enable",         "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(direction_detect_enabled) },
-  { NULL,            "flow.track_payload.enable",               "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(track_payload_enabled), },
-  { NULL,            "tcp_ack_payload_heuristic.enable",        "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tcp_ack_paylod_heuristic) },
-  { NULL,            "fully_encrypted_heuristic.enable",        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fully_encrypted_heuristic) },
-  { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(libgcrypt_init), },
-  { NULL,            "guess_on_giveup",                         "0x3", "0", "3", CFG_PARAM_INT, __OFF(guess_on_giveup) },
+  { NULL,            "packets_limit_per_flow",                  "32", "0", "255", CFG_PARAM_INT, __OFF(max_packets_to_process), 1 },
+  { NULL,            "flow.direction_detection.enable",         "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(direction_detect_enabled), 0 },
+  { NULL,            "flow.track_payload.enable",               "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(track_payload_enabled), 0 }, // FIXME
+  { NULL,            "tcp_ack_payload_heuristic.enable",        "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tcp_ack_paylod_heuristic), 1 },
+  { NULL,            "fully_encrypted_heuristic.enable",        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fully_encrypted_heuristic), 1 },
+  { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_CONST_FLAG,     __OFF(libgcrypt_init), 0 },
+  { NULL,            "guess_on_giveup",                         "0x3", "0", "3", CFG_PARAM_INT, __OFF(guess_on_giveup), 1 },
 
-  { NULL,            "flow_risk_lists.load",                    "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(flow_risk_lists_enabled)},
+  { NULL,            "flow_risk_lists.load",                    "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(flow_risk_lists_enabled), 0 },
 
-  { NULL,            "flow_risk.anonymous_subscriber.list.icloudprivaterelay.load", "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_anonymous_subscriber_list_icloudprivaterelay_enabled)},
-  { NULL,            "flow_risk.anonymous_subscriber.list.protonvpn.load",          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_anonymous_subscriber_list_protonvpn_enabled)},
-  { NULL,            "flow_risk.crawler_bot.list.load",                             "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_crawler_bot_list_enabled)},
+  { NULL,            "flow_risk.anonymous_subscriber.list.icloudprivaterelay.load", "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_anonymous_subscriber_list_icloudprivaterelay_enabled), 0 },
+  { NULL,            "flow_risk.anonymous_subscriber.list.protonvpn.load",          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_anonymous_subscriber_list_protonvpn_enabled), 0 },
+  { NULL,            "flow_risk.crawler_bot.list.load",                             "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(risk_crawler_bot_list_enabled), 0 },
 
   { NULL,            "filename.config",                         NULL, NULL, NULL, CFG_PARAM_FILENAME_CONFIG, __OFF(filename_config) },
 
@@ -11079,32 +11103,32 @@ static const struct cfg_param {
 
   /* LRU caches */
 
-  { NULL,            "lru.ookla.size",                          "1024", "0", "16777215", CFG_PARAM_INT, __OFF(ookla_cache_num_entries)},
-  { NULL,            "lru.ookla.ttl",                           "120", "0", "16777215", CFG_PARAM_INT, __OFF(ookla_cache_ttl)},
+  { NULL,            "lru.ookla.size",                          "1024", "0", "16777215", CFG_PARAM_INT, __OFF(ookla_cache_num_entries), 0 },
+  { NULL,            "lru.ookla.ttl",                           "120", "0", "16777215", CFG_PARAM_INT, __OFF(ookla_cache_ttl), 0 },
 
-  { NULL,            "lru.bittorrent.size",                     "32768", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_num_entries)},
-  { NULL,            "lru.bittorrent.ttl",                      "0", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_ttl)},
+  { NULL,            "lru.bittorrent.size",                     "32768", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_num_entries), 0 },
+  { NULL,            "lru.bittorrent.ttl",                      "0", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_ttl), 0 },
 
-  { NULL,            "lru.zoom.size",                           "512", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_num_entries)},
-  { NULL,            "lru.zoom.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_ttl)},
+  { NULL,            "lru.zoom.size",                           "512", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_num_entries), 0 },
+  { NULL,            "lru.zoom.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_ttl), 0 },
 
-  { NULL,            "lru.stun.size",                           "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_num_entries)},
-  { NULL,            "lru.stun.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_ttl)},
+  { NULL,            "lru.stun.size",                           "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_num_entries), 0 },
+  { NULL,            "lru.stun.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_ttl), 0 },
 
-  { NULL,            "lru.tls_cert.size",                       "1024", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_num_entries)},
-  { NULL,            "lru.tls_cert.ttl",                        "0", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_ttl)},
+  { NULL,            "lru.tls_cert.size",                       "1024", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_num_entries), 0 },
+  { NULL,            "lru.tls_cert.ttl",                        "0", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_ttl), 0 },
 
-  { NULL,            "lru.mining.size",                         "1024", "0", "16777215", CFG_PARAM_INT, __OFF(mining_cache_num_entries)},
-  { NULL,            "lru.mining.ttl",                          "0", "0", "16777215", CFG_PARAM_INT, __OFF(mining_cache_ttl)},
+  { NULL,            "lru.mining.size",                         "1024", "0", "16777215", CFG_PARAM_INT, __OFF(mining_cache_num_entries), 0 },
+  { NULL,            "lru.mining.ttl",                          "0", "0", "16777215", CFG_PARAM_INT, __OFF(mining_cache_ttl), 0 },
 
-  { NULL,            "lru.msteams.size",                        "1024", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_num_entries)},
-  { NULL,            "lru.msteams.ttl",                         "60", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_ttl)},
+  { NULL,            "lru.msteams.size",                        "1024", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_num_entries), 0 },
+  { NULL,            "lru.msteams.ttl",                         "60", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_ttl), 0 },
 
-  { NULL,            "lru.stun_zoom.size",                      "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_num_entries)},
-  { NULL,            "lru.stun_zoom.ttl",                       "60", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_ttl)},
+  { NULL,            "lru.stun_zoom.size",                      "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_num_entries), 0 },
+  { NULL,            "lru.stun_zoom.ttl",                       "60", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_ttl), 0 },
 
 
-  { NULL, NULL, NULL, NULL, NULL, 0, -1 },
+  { NULL, NULL, NULL, NULL, NULL, 0, -1 , 0 },
 };
 
 #undef __OFF
@@ -11127,8 +11151,6 @@ ndpi_cfg_error ndpi_set_config(struct ndpi_detection_module_struct *ndpi_str,
 
   if(!ndpi_str || !param || !value)
     return NDPI_CFG_INVALID_CONTEXT;
-  if(ndpi_str->finalized)
-    return NDPI_CFG_CONTEXT_ALREADY_INITIALIZED;
 
   NDPI_LOG_DBG(ndpi_str, "Set [%s][%s][%s]\n", proto, param, value);
 
@@ -11139,7 +11161,11 @@ ndpi_cfg_error ndpi_set_config(struct ndpi_detection_module_struct *ndpi_str,
        (proto && c->proto &&
 	strcmp(c->proto, "$PROTO_NAME_OR_ID") == 0 &&
 	strcmp(param, c->param) == 0)) {
-
+      if(!c->nonlocked && ndpi_str->finalized)
+	return NDPI_CFG_CONTEXT_ALREADY_INITIALIZED;
+      if(c->type == CFG_PARAM_CONST_FLAG || 
+	 c->type == CFG_PARAM_CONST_INT)
+	      return NDPI_CFG_INVALID_PARAM;
       rc = cfg_ops[c->type].fn_set(ndpi_str, (void *)((char *)&ndpi_str->cfg + c->offset),
                                    value, c->min_value, c->max_value, proto);
       return rc;
@@ -11169,7 +11195,7 @@ char *ndpi_get_config(struct ndpi_detection_module_struct *ndpi_str,
   return NULL;
 }
 
-static const char *config_header = " Protocol (empty/NULL for global knobs), parameter, value, [default value], [min value, max_value]\n";
+static const char *config_header = "#Protocol (empty/NULL for global knobs), parameter, value, [default value], [min value, max_value], type\n";
 char *ndpi_dump_config_str(struct ndpi_detection_module_struct *ndpi_str,
 		       char *output, int *size)
 {
@@ -11195,6 +11221,8 @@ char *ndpi_dump_config_str(struct ndpi_detection_module_struct *ndpi_str,
     switch(c->type) {
     case CFG_PARAM_ENABLE_DISABLE:
     case CFG_PARAM_INT:
+    case CFG_PARAM_CONST_FLAG:
+    case CFG_PARAM_CONST_INT:
       if(c->proto)
 	 la = snprintf(lbuf,sizeof(lbuf)-2,"%s ",c->proto);
       la += snprintf(&lbuf[la],sizeof(lbuf)-la-2,"%s: %s [%s]",
@@ -11203,7 +11231,12 @@ char *ndpi_dump_config_str(struct ndpi_detection_module_struct *ndpi_str,
 	      c->default_value);
       if(c->min_value && c->max_value)
         la += snprintf(&lbuf[la], sizeof(lbuf)-2-la, " [%s-%s]", c->min_value, c->max_value);
-      lbuf[la++] = '\n';
+
+      if(c->type == CFG_PARAM_CONST_FLAG || c->type == CFG_PARAM_CONST_INT)
+          la += snprintf(&lbuf[la], sizeof(lbuf)-2-la, " [const]\n");
+        else
+          la += snprintf(&lbuf[la], sizeof(lbuf)-2-la, " [%s]\n",
+		      c->nonlocked ? "var": ( ndpi_str->finalized ? "final" : "var"));
       break;
     case CFG_PARAM_FILENAME_CONFIG:
 #ifndef __KERNEL__
@@ -11219,10 +11252,13 @@ char *ndpi_dump_config_str(struct ndpi_detection_module_struct *ndpi_str,
     case CFG_PARAM_PROTOCOL_ENABLE_DISABLE:
       if(c->proto)
 	 la = snprintf(lbuf,sizeof(lbuf)-2,"%s ",c->proto);
-      la += snprintf(&lbuf[la],sizeof(lbuf)-la-2, "%s: %s [all %s]\n",
+      la += snprintf(&lbuf[la],sizeof(lbuf)-la-2, "%s: %s [all %s]",
               c->param,
               /* TODO */ _get_param_protocol_enable_disable((void *)((char *)&ndpi_str->cfg + c->offset), "any", buf, sizeof(buf)),
 	      c->default_value);
+      la += snprintf(&lbuf[la], sizeof(lbuf)-2-la, " [%s]\n",
+	      ndpi_str->finalized ? "final" : "var");
+      
       break;
     }
     if(!la) continue;
@@ -11259,6 +11295,8 @@ char *ndpi_dump_config(struct ndpi_detection_module_struct *ndpi_str,
     switch(c->type) {
     case CFG_PARAM_ENABLE_DISABLE:
     case CFG_PARAM_INT:
+    case CFG_PARAM_CONST_FLAG:
+    case CFG_PARAM_CONST_INT:
       fprintf(fd, " *) %s %s: %s [%s]",
               c->proto ? c->proto : "NULL",
               c->param,
@@ -11266,10 +11304,14 @@ char *ndpi_dump_config(struct ndpi_detection_module_struct *ndpi_str,
 	      c->default_value);
       if(c->min_value && c->max_value)
         fprintf(fd, " [%s-%s]", c->min_value, c->max_value);
-      fprintf(fd, "\n");
+      if(c->type == CFG_PARAM_CONST_FLAG || c->type == CFG_PARAM_CONST_INT)
+          fprintf(fd, " [const]\n");
+        else
+          fprintf(fd, " [%s]\n",
+		      c->nonlocked ? "var": ( ndpi_str->finalized ? "final" : "var"));
       break;
     case CFG_PARAM_FILENAME_CONFIG:
-      fprintf(fd, " *) %s %s: %s [%s]",
+      fprintf(fd, " *) %s %s: %s [%s] [const]",
               c->proto ? c->proto : "NULL",
               c->param,
 	      _get_param_string((void *)((char *)&ndpi_str->cfg + c->offset), c->proto, buf, sizeof(buf)),
@@ -11278,12 +11320,12 @@ char *ndpi_dump_config(struct ndpi_detection_module_struct *ndpi_str,
       break;
     /* TODO */
     case CFG_PARAM_PROTOCOL_ENABLE_DISABLE:
-      fprintf(fd, " *) %s %s: %s [all %s]",
+      fprintf(fd, " *) %s %s: %s [all %s] ",
               c->proto ? c->proto : "NULL",
               c->param,
               /* TODO */ _get_param_protocol_enable_disable((void *)((char *)&ndpi_str->cfg + c->offset), "any", buf, sizeof(buf)),
 	      c->default_value);
-      fprintf(fd, "\n");
+      fprintf(fd, " [%s]\n", ndpi_str->finalized ? "final" : "var");
       break;
     }
   }

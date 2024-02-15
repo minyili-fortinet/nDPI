@@ -354,7 +354,7 @@ module_param_named(ndpi_enable_flow, ndpi_enable_flow, ulong, 0400);
 MODULE_PARM_DESC(ndpi_enable_flow,"Enable netflow info");
 
 module_param_string(ndpi_flow_opt, ndpi_flow_opt, NDPI_FLOW_OPT_MAX , 0600);
-MODULE_PARM_DESC(ndpi_enable_flow,"Enable flow info option. 'S' - JA3S, 'C' - JA3C, 'F' - tls fingerprint sha1, 'L' - level, 'R' - risks");
+MODULE_PARM_DESC(ndpi_enable_flow,"Enable flow info option. 'S' - JA3S, 'C' - JA3C, 'c' - ja4, 'F' - tls fingerprint sha1, 'L' - level, 'R' - risks");
 
 module_param_named(ndpi_stun_cache,ndpi_stun_cache_opt,ulong,0600);
 MODULE_PARM_DESC(ndpi_stun_cache,"STUN cache control (0-1). Disabled by default.");
@@ -892,6 +892,10 @@ ndpi_enable_protocols (struct ndpi_net *n)
 		}
 		ndpi_set_protocol_detection_bitmask2(n->ndpi_struct,
 				&n->protocols_bitmask);
+		ndpi_bittorrent_init(n->ndpi_struct,
+			bt_hash_size*1024,bt6_hash_size*1024,
+			bt_hash_tmo,bt_log_size);
+		ndpi_finalize_initialization(n->ndpi_struct);
 	}
 	spin_unlock_bh (&n->ipq_lock);
 }
@@ -1220,6 +1224,12 @@ static void ndpi_host_info(struct nf_ct_ext_ndpi *ct_ndpi) {
 			  flow->protos.tls_quic.ja3_client);
 	    buf[l++] = 0;
 	}
+	if(flow->protos.tls_quic.ja4_client[0]) {
+	    ct_ndpi->ja4c = l+1;
+	    l += snprintf(&buf[l],sizeof(buf)-1-l,"%s",
+			  flow->protos.tls_quic.ja4_client);
+	    buf[l++] = 0;
+	}
 	if(flow->protos.tls_quic.fingerprint_set) {
 	    uint32_t * sha1 = (uint32_t *)flow->protos.tls_quic.sha1_certificate_fingerprint;
 	    ct_ndpi->tlsfp = l+1;
@@ -1239,10 +1249,11 @@ static void ndpi_host_info(struct nf_ct_ext_ndpi *ct_ndpi) {
 	}
 
         if(_DBG_TRACE_JA3)
- 	    pr_info("%s: TLS ja3s %s, ja3c %s, tlsfp %s, tlsv %s\n",
+ 	    pr_info("%s: TLS ja3s %s, ja3c %s, ja4c %s, tlsfp %s, tlsv %s\n",
 		__func__,
 		ct_ndpi->ja3s  ? buf+ct_ndpi->ja3s-1 : "",
 		ct_ndpi->ja3c  ? buf+ct_ndpi->ja3c-1 : "",
+		ct_ndpi->ja4c  ? buf+ct_ndpi->ja4c-1 : "",
 		ct_ndpi->tlsfp ? buf+ct_ndpi->tlsfp-1 : "",
 		ct_ndpi->tlsv  ? buf+ct_ndpi->tlsv-1  : "");
        	if(_DBG_TRACE_TLS)
@@ -1328,7 +1339,7 @@ static bool ndpi_j3_match(struct ndpi_detection_module_struct *ndpi_struct,
 static void ndpi_check_opt(struct ndpi_detection_module_struct *ndpi_struct,
 	const struct xt_ndpi_mtinfo *info,
 	struct nf_ct_ext_ndpi *ct_ndpi,
-	bool *host_matched, bool *ja3s_matched, bool *ja3c_matched,
+	bool *host_matched, bool *ja3s_matched, bool *ja3c_matched,bool *ja4c_matched,
 	bool *tlsfp_matched, bool *tlsv_matched)
 {
 	if(info->host && info->hostname[0])
@@ -1338,15 +1349,19 @@ static void ndpi_check_opt(struct ndpi_detection_module_struct *ndpi_struct,
 		  *ja3s_matched = ndpi_j3_match(ndpi_struct,info,"JA3S_",ct_ndpi->flow_opt+ct_ndpi->ja3s-1);
 	    if(info->ja3c && ct_ndpi->ja3c)
 		  *ja3c_matched = ndpi_j3_match(ndpi_struct,info,"JA3C_",ct_ndpi->flow_opt+ct_ndpi->ja3c-1);
+	    if(info->ja4c && ct_ndpi->ja4c)
+		  *ja4c_matched = ndpi_j3_match(ndpi_struct,info,"JA4C_",ct_ndpi->flow_opt+ct_ndpi->ja4c-1);
 	    if(info->tlsfp && ct_ndpi->tlsfp)
 		  *tlsfp_matched = ndpi_j3_match(ndpi_struct,info,"TLSFP_",ct_ndpi->flow_opt+ct_ndpi->tlsfp-1);
 	    if(info->tlsv && ct_ndpi->tlsv)
 		  *tlsv_matched = ndpi_j3_match(ndpi_struct,info,"TLSV_",ct_ndpi->flow_opt+ct_ndpi->tlsv-1);
-	    if(_DBG_TRACE_JA3) pr_info("%s: flow_opt %c%s, %c%s, %c%s, %c%s\n",__func__,
+	    if(_DBG_TRACE_JA3) pr_info("%s: flow_opt %c%s, %c%s, %c%s, %c%s, %c%s\n",__func__,
 			*ja3s_matched ? '+':'-',
 			 ct_ndpi->ja3s  ? ct_ndpi->flow_opt+ct_ndpi->ja3s-1:"",
 			*ja3c_matched ? '+':'-',
 			 ct_ndpi->ja3c  ? ct_ndpi->flow_opt+ct_ndpi->ja3c-1:"",
+			*ja4c_matched ? '+':'-',
+			 ct_ndpi->ja4c  ? ct_ndpi->flow_opt+ct_ndpi->ja4c-1:"",
 			*tlsfp_matched ? '+':'-',
 			 ct_ndpi->tlsfp ? ct_ndpi->flow_opt+ct_ndpi->tlsfp-1:"",
 			*tlsv_matched ? '+':'-',
@@ -1442,7 +1457,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	ndpi_protocol_bitmask_struct_t excluded_proto;
 	uint8_t l4_proto=0,ct_dir=0,detect_complete=1,untracked=1,confidence=0,tls=0;
 	bool result=false, host_matched = false, is_ipv6=false,
-	     ja3s_matched = false, ja3c_matched = false,
+	     ja3s_matched = false, ja3c_matched = false, ja4c_matched = false,
 	     tlsfp_matched = false, tlsv_matched = false,
 	     ct_create = false, new_packet = false;
 	struct ndpi_net *n;
@@ -1473,6 +1488,9 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	c_proto = skb_get_cproto(skb);
 
     do {
+	if(!n->ndpi_struct || !n->ndpi_struct->finalized)
+		break;
+
 	if(c_proto->magic == NDPI_ID &&
 	   c_proto->proto == NDPI_PROCESS_ERROR) {
 		break;
@@ -1784,17 +1802,17 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
     if(ct_ndpi) {
 	if(proto.app_protocol != NDPI_PROCESS_ERROR)
 		ndpi_check_opt(n->ndpi_struct,info,ct_ndpi, &host_matched, &ja3s_matched,
-				&ja3c_matched, &tlsfp_matched, &tlsv_matched);
+				&ja3c_matched, &ja4c_matched, &tlsfp_matched, &tlsv_matched);
 	spin_unlock_bh (&ct_ndpi->lock);
     }
 
     read_unlock(&n->ndpi_busy);
 
     if(_DBG_TRACE_MATCH2 && !info->error && !info->untracked) {
-	    pr_info(" ndpi_match master %d, app %d, host %d, ja3s %d, ja3c %d, tlsfp %d tlsv %d"
+	    pr_info(" ndpi_match master %d, app %d, host %d, ja3s %d, ja3c %d, ja4c %d, tlsfp %d tlsv %d"
 	    	" excluded %d, master_map %d, app_map %d\n",
 		proto.master_protocol,proto.app_protocol,
-		host_matched,ja3s_matched,ja3c_matched,tlsfp_matched,tlsv_matched,
+		host_matched,ja3s_matched,ja3c_matched,ja3c_matched,tlsfp_matched,tlsv_matched,
 		check_excluded_proto(info,&excluded_proto,tls) != 0,
 		NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags,proto.master_protocol) != 0,
 		NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags,proto.app_protocol) != 0);
@@ -1830,6 +1848,11 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		result &= ja3c_matched;
 		if(_DBG_TRACE_MATCH)
 		    pr_info(" ndpi_match ja3c: %s\n",result ? "yes":"no");
+	 } else
+	 if (info->ja4c) {
+		result &= ja4c_matched;
+		if(_DBG_TRACE_MATCH)
+		    pr_info(" ndpi_match ja4c: %s\n",result ? "yes":"no");
 	 } else
 	  if (info->tlsfp) {
 		result &= tlsfp_matched;
@@ -1918,7 +1941,7 @@ struct xt_ndpi_mtinfo *info = par->matchinfo;
 #if 0
 /*
  *  invert:1,error:1,m_proto:1,p_proto:1,have_master:1,
- *  host:1,re:1,empty:1,proto:1,inprogress:1,ja3s:1,ja3c:1,tlsfp:1,tlsv:1,
+ *  host:1,re:1,empty:1,proto:1,inprogress:1,ja3s:1,ja3c:1,ja4c:1,tlsfp:1,tlsv:1,
  *  untracked:1,clevel:4,clevel_op:2;
  */
 	if(_DBG_TRACE_MATCH_CMD) {
@@ -1938,9 +1961,9 @@ struct xt_ndpi_mtinfo *info = par->matchinfo;
 		pr_info("Rule: invert:%d error:%d untracked:%d inprogress:%d have_master:%d p_proto:%d m_proto:%d\n",
 				info->invert&1, info->error&1, info->untracked&1, info->inprogress&1,info->have_master&1,
 				info->p_proto&1, info->m_proto&1);
-		pr_info("      host:%d re:%d empty:%d proto:%d ja3s:%d ja3c:%d tlsfp:%d tlsv:%d clevel:%d clevel_op:%d\n",
+		pr_info("      host:%d re:%d empty:%d proto:%d ja3s:%d ja3c:%d ja4c:%d tlsfp:%d tlsv:%d clevel:%d clevel_op:%d\n",
 				info->host&1, info->re&1,  info->empty&1, info->proto&1,
-				info->ja3s&1, info->ja3c&1,info->tlsfp&1, info->tlsv&1,
+				info->ja3s&1, info->ja3c&1, info->ja4c&1,info->tlsfp&1, info->tlsv&1,
 				info->clevel&7,info->clevel_op&3);
 		pr_info("      hostname:%s protos:%s\n",info->hostname,cbuf);
 	}
@@ -2993,7 +3016,7 @@ static int __net_init ndpi_net_init(struct net *net)
 	if(tls_buf_size < 2) tls_buf_size = 2;
 	if(tls_buf_size > 16) tls_buf_size = 16;
 
-	n->ndpi_struct->max_tls_buf = tls_buf_size*1024;
+	n->ndpi_struct->cfg.tls_buf_size_limit = tls_buf_size*1024;
 
 	if(bt_hash_size > 512) bt_hash_size = 512;
 	if(bt6_hash_size > 32) bt6_hash_size = 32;
@@ -3003,11 +3026,11 @@ static int __net_init ndpi_net_init(struct net *net)
 #else
 	bt_log_size = 0;
 #endif
-	ndpi_bittorrent_init(n->ndpi_struct,
+	/* ndpi_bittorrent_init(n->ndpi_struct,
 			bt_hash_size*1024,bt6_hash_size*1024,
-			bt_hash_tmo,bt_log_size);
+			bt_hash_tmo,bt_log_size); */
 
-	ndpi_finalize_initialization(n->ndpi_struct);
+	//ndpi_finalize_initialization(n->ndpi_struct);
 
 	n->risk_names_len = risk_names(n,NULL,0);
 	n->risk_mask = ~(0ULL);

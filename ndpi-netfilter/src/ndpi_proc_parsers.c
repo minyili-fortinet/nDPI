@@ -980,13 +980,13 @@ int parse_ndpi_cfg(struct ndpi_net *n,char *cmd) {
 	if(i == 2) {
 		rc = ndpi_set_config(n->ndpi_struct, NULL, word[0], word[1]);
 		if(rc != NDPI_CFG_OK)
-			pr_err("NDPI: bad config options %s = %s\n",word[0], word[1]);
+			pr_err("NDPI: bad config rc:%d options %s = %s\n",(int)rc, word[0], word[1]);
 		return rc != NDPI_CFG_OK;
 	}
 	if(i == 3) {
 		rc = ndpi_set_config(n->ndpi_struct, word[0], word[1], word[2]);
 		if(rc != NDPI_CFG_OK)
-			pr_err("NDPI: bad config options [%s] %s = %s\n",word[0], word[1], word[2]);
+			pr_err("NDPI: bad config rc:%d options [%s] %s = %s\n",(int)rc, word[0], word[1], word[2]);
 		return rc != NDPI_CFG_OK;
 	}
 	pr_err("NDPI: bad config options %s\n",cmd);

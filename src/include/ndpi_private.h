@@ -222,6 +222,8 @@ struct ndpi_detection_module_config_struct {
   int tls_certificate_expire_in_x_days;
   int tls_app_blocks_tracking_enabled;
   int tls_sha1_fingerprint_enabled;
+  /* Limit for tls buffer size */
+  int tls_buf_size_limit;
 
   int smtp_opportunistic_tls_enabled;
 
@@ -334,8 +336,6 @@ struct ndpi_detection_module_struct {
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
   struct hash_ip4p_table *bt6_ht;
 #endif
-  /* Limit for tls buffer size */
-  size_t max_tls_buf;
 
   /* BT_ANNOUNCE */
   struct bt_announce *bt_ann;

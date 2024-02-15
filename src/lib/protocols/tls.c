@@ -217,7 +217,7 @@ static int ndpi_search_tls_memory(struct ndpi_detection_module_struct *ndpi_stru
   if(avail_bytes < payload_len) {
     void *newbuf;
     u_int new_len = message->buffer_len + payload_len - avail_bytes + 1;
-    if(new_len >= ndpi_struct->max_tls_buf) return -1;
+    if(new_len >= ndpi_struct->cfg.tls_buf_size_limit) return -1;
     newbuf  = ndpi_realloc(message->buffer,
 				 message->buffer_len, new_len);
     if(!newbuf) return -1;
@@ -3006,7 +3006,7 @@ static void ndpi_search_tls_wrapper(struct ndpi_detection_module_struct *ndpi_st
 void init_tls_dissector(struct ndpi_detection_module_struct *ndpi_struct,
 			u_int32_t *id) {
 
-  ndpi_struct->max_tls_buf = NDPI_MAX_TLS_REQUEST_SIZE;
+  ndpi_struct->cfg.tls_buf_size_limit = NDPI_MAX_TLS_REQUEST_SIZE;
 
   ndpi_set_bitmask_protocol_detection("TLS", ndpi_struct, *id,
 				      NDPI_PROTOCOL_TLS,

@@ -177,6 +177,12 @@ size_t ndpi_dump_opt(char *buf, size_t bufsize,
 			    flag |= 2;
 			}
 			break;
+		case 'c':
+			if(!(flag & 0x40) && ct->ja4c) {
+			    l += add_opt_str(buf,l,bufsize,'c',&ct->flow_opt[ct->ja4c-1]);
+			    flag |= 0x40;
+			}
+			break;
 		case 'F':
 			if(!(flag & 4) && ct->tlsfp) {
 			    l += add_opt_str(buf,l,bufsize,'F',&ct->flow_opt[ct->tlsfp-1]);
