@@ -1035,6 +1035,7 @@ typedef enum {
   NDPI_CONFIDENCE_DPI_CACHE,                /* Classification results based on some LRU cache (i.e. correlation among sessions) */
   NDPI_CONFIDENCE_DPI,                      /* Deep packet inspection */
   NDPI_CONFIDENCE_DPI_AGGRESSIVE,           /* Aggressive DPI: it might be a false positive */
+  NDPI_CONFIDENCE_CUSTOM_RULE,              /* Matching a custom rules */
 
   /*
     IMPORTANT
