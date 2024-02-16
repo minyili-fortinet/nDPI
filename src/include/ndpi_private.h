@@ -522,6 +522,9 @@ char* ndpi_intoav4(unsigned int addr, char* buf, u_int16_t bufLen);
 
 u_int16_t icmp4_checksum(u_int8_t const * const buf, size_t len);
 
+ndpi_risk_enum ndpi_network_risk_ptree_match(struct ndpi_detection_module_struct *ndpi_str,
+					     struct in_addr *pin /* network byte order */);
+
 #ifndef __KERNEL__
 int load_protocols_file_fd(struct ndpi_detection_module_struct *ndpi_mod, FILE *fd);
 int load_categories_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd, void *user_data);
@@ -830,6 +833,7 @@ void init_raft_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int
 void init_cip_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_gearman_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_tencent_games_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_gaijin_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

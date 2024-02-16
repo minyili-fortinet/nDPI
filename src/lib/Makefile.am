@@ -93,6 +93,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/fix.c \
 		     protocols/ftp_control.c \
 		     protocols/ftp_data.c \
+		     protocols/gaijin_entertainment.c \
+		     protocols/gearman.c \
 		     protocols/genshin_impact.c \
 		     protocols/git.c \
 		     protocols/gnutella.c \
@@ -222,6 +224,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/teamviewer.c \
 		     protocols/telegram.c \
 		     protocols/telnet.c \
+		     protocols/tencent_games.c \
 		     protocols/tftp.c \
 		     protocols/thrift.c \
 		     protocols/tls.c \
