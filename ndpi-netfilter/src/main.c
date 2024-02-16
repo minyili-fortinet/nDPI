@@ -875,10 +875,57 @@ ndpi_alloc_flow (struct nf_ct_ext_ndpi *ct_ndpi)
 
 /*****************************************************************/
 
-static void
+static int ndpi_init_host_ac(struct ndpi_net *n) {
+	ndpi_protocol_match *hm;
+        int i,i2;
+
+	n->host_ac = ndpi_init_automa();
+	if(!n->host_ac) {
+		pr_err("xt_ndpi: cant alloc host_ac\n");
+		return 0;
+	}
+	ac_automata_feature(n->host_ac,AC_FEATURE_LC);
+	ac_automata_name(n->host_ac,"host",AC_FEATURE_DEBUG);
+	for(hm = host_match; hm->string_to_match ; hm++) {
+		size_t sml;
+		ndpi_protocol_match_result s_ret;
+		i = hm->protocol_id;
+		if(i >= NDPI_NUM_BITS) {
+			pr_err("xt_ndpi: bad proto num %d \n",i);
+			continue;
+		}
+		sml = strlen(hm->string_to_match);
+		/* Beginning checking for duplicates */
+		i2 = ndpi_match_string_subprotocol(n->ndpi_struct,
+							hm->string_to_match,sml,&s_ret);
+		if(i2 == NDPI_PROTOCOL_UNKNOWN || i != i2) {
+			pr_err("xt_ndpi: Warning! Hostdef missmatch '%s' proto_id %u, subproto %u, p:%u. Skipping.\n",
+					hm->string_to_match,i,i2,s_ret.protocol_id
+					);
+			continue;
+		}
+		if(str_collect_look(n->hosts->p[i],hm->string_to_match,sml) >= 0) {
+			pr_err("xt_ndpi: Warning! Hostdef '%s' duplicated! Skipping.\n",
+					hm->string_to_match);
+			continue;
+		}
+		/* Ending checking for duplicates */
+		if(str_collect_add(&n->hosts->p[i],hm->string_to_match,sml) == NULL) {
+			hm = NULL; // error
+			break;
+		}
+	}
+	if(hm && str_coll_to_automata(n->ndpi_struct,n->host_ac,n->hosts)) hm = NULL;
+	if(!hm) return 0;
+	ac_automata_release(n->ndpi_struct->host_automa.ac_automa,1);
+	n->ndpi_struct->host_automa.ac_automa = n->host_ac;
+	n->host_ac = NULL;
+	return 1;
+}
+static int
 ndpi_enable_protocols (struct ndpi_net *n)
 {
-        int i,c=0;
+        int i,c=0, ret = 1;
 
         spin_lock_bh (&n->ipq_lock);
 	if(atomic64_inc_return(&n->protocols_cnt[0]) == 1) {
@@ -896,8 +943,10 @@ ndpi_enable_protocols (struct ndpi_net *n)
 			bt_hash_size*1024,bt6_hash_size*1024,
 			bt_hash_tmo,bt_log_size);
 		ndpi_finalize_initialization(n->ndpi_struct);
+		ret = ndpi_init_host_ac(n);
 	}
 	spin_unlock_bh (&n->ipq_lock);
+	return ret;
 }
 
 
@@ -2007,8 +2056,7 @@ struct xt_ndpi_mtinfo *info = par->matchinfo;
 		}
 	}
 #endif
-	ndpi_enable_protocols (ndpi_pernet(par->net));
-	return 0;
+	return ndpi_enable_protocols (ndpi_pernet(par->net)) ? 0:-EINVAL;
 }
 
 static void
@@ -3046,8 +3094,6 @@ static int __net_init ndpi_net_init(struct net *net)
 		return -ENOMEM;
 	}
 	do {
-		ndpi_protocol_match *hm;
-		int i2;
 
 		n->pe_info = NULL;
 		n->pe_flow = NULL;
@@ -3128,49 +3174,6 @@ static int __net_init ndpi_net_init(struct net *net)
 			pr_err("xt_ndpi: cant create net/%s/%s\n",dir_name,hostdef_name);
 			break;
 		}
-		n->host_ac = ndpi_init_automa();
-		if(!n->host_ac) {
-			pr_err("xt_ndpi: cant alloc host_ac\n");
-			break;
-		}
-		ac_automata_feature(n->host_ac,AC_FEATURE_LC);
-		ac_automata_name(n->host_ac,"host",AC_FEATURE_DEBUG);
-		for(hm = host_match; hm->string_to_match ; hm++) {
-			size_t sml;
-			ndpi_protocol_match_result s_ret;
-			i = hm->protocol_id;
-			if(i >= NDPI_NUM_BITS) {
-				pr_err("xt_ndpi: bad proto num %d \n",i);
-				continue;
-			}
-			sml = strlen(hm->string_to_match);
-			/* Beginning checking for duplicates */
-			i2 = ndpi_match_string_subprotocol(n->ndpi_struct,
-								hm->string_to_match,sml,&s_ret);
-			if(i2 == NDPI_PROTOCOL_UNKNOWN || i != i2) {
-				pr_err("xt_ndpi: Warning! Hostdef missmatch '%s' proto_id %u, subproto %u, p:%u. Skipping.\n",
-						hm->string_to_match,i,i2,s_ret.protocol_id
-						);
-				continue;
-			}
-			if(str_collect_look(n->hosts->p[i],hm->string_to_match,sml) >= 0) {
-				pr_err("xt_ndpi: Warning! Hostdef '%s' duplicated! Skipping.\n",
-						hm->string_to_match);
-				continue;
-			}
-			/* Ending checking for duplicates */
-			if(str_collect_add(&n->hosts->p[i],hm->string_to_match,sml) == NULL) {
-				hm = NULL; // error
-				break;
-			}
-		}
-		if(hm && str_coll_to_automata(n->ndpi_struct,n->host_ac,n->hosts)) hm = NULL;
-		if(hm) {
-			ac_automata_release(n->ndpi_struct->host_automa.ac_automa,1);
-			n->ndpi_struct->host_automa.ac_automa = n->host_ac;
-			n->host_ac = NULL;
-		} else break;
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 		init_timer(&n->gc);
 		n->gc.data = (unsigned long)n;
