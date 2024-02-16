@@ -35,7 +35,9 @@ E * ndpi_typedefs.h
 #ifdef USE_GLOBAL_CONTEXT
 #include "ndpi_config.h"
 #define HAVE_STRUCT_TIMESPEC
+#ifndef __KERNEL__
 #include <pthread.h>
+#endif
 #endif
 #endif
 
@@ -849,8 +851,10 @@ struct ndpi_lru_cache {
   u_int32_t num_entries;
   u_int32_t ttl : 31, shared : 1;
 #ifndef NDPI_CFFI_PREPROCESSING
+#ifndef __KERNEL__
 #ifdef USE_GLOBAL_CONTEXT
   pthread_mutex_t mutex;
+#endif
 #endif
 #endif
   struct ndpi_lru_cache_stats stats;

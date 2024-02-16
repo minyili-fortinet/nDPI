@@ -2989,7 +2989,7 @@ static int __net_init ndpi_net_init(struct net *net)
 	ndpi_debug_level_init = ndpi_lib_trace;
 #endif
 	/* init global detection structure */
-	n->ndpi_struct = ndpi_init_detection_module();
+	n->ndpi_struct = ndpi_init_detection_module(NULL);
 	if (n->ndpi_struct == NULL) {
 		pr_err("xt_ndpi: global structure initialization failed.\n");
                 return -ENOMEM;

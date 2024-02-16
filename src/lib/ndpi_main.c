@@ -10147,12 +10147,14 @@ struct ndpi_lru_cache *ndpi_lru_cache_init(u_int32_t num_entries, u_int32_t ttl,
   c->ttl = ttl & 0x7FFFFFFF;
   c->shared = !!shared;
 #ifdef USE_GLOBAL_CONTEXT
+#ifndef __KERNEL__
   if(c->shared) {
     if(pthread_mutex_init(&c->mutex, NULL) != 0) {
       ndpi_free(c);
       return(NULL);
     }
   }
+#endif
 #endif
   c->entries = (struct ndpi_lru_cache_entry *) ndpi_calloc(num_entries, sizeof(struct ndpi_lru_cache_entry));
 
@@ -10173,18 +10175,22 @@ void ndpi_lru_free_cache(struct ndpi_lru_cache *c) {
 static void __lru_cache_lock(struct ndpi_lru_cache *c)
 {
 #ifdef USE_GLOBAL_CONTEXT
+#ifndef __KERNEL__
   if(c->shared) {
     pthread_mutex_lock(&c->mutex);
   }
+#endif
 #endif
 }
 
 static void __lru_cache_unlock(struct ndpi_lru_cache *c)
 {
 #ifdef USE_GLOBAL_CONTEXT
+#ifndef __KERNEL__
   if(c->shared) {
     pthread_mutex_unlock(&c->mutex);
   }
+#endif
 #endif
 }
 
