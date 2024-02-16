@@ -1465,7 +1465,7 @@ void process_chlo(struct ndpi_detection_module_struct *ndpi_struct,
 #endif
     if(memcmp(tag, "SNI\0", 4) == 0) {
 
-      ndpi_hostname_sni_set(flow, &crypto_data[tag_offset_start + prev_offset], len);
+      ndpi_hostname_sni_set(flow, &crypto_data[tag_offset_start + prev_offset], len, NDPI_HOSTNAME_NORM_ALL);
 
       NDPI_LOG_DBG2(ndpi_struct, "SNI: [%s]\n",
                     flow->host_server_name);
@@ -1478,8 +1478,8 @@ void process_chlo(struct ndpi_detection_module_struct *ndpi_struct,
       ndpi_check_dga_name(ndpi_struct, flow,
                           flow->host_server_name, 1, 0);
 
-      if(ndpi_is_valid_hostname(flow->host_server_name,
-				strlen(flow->host_server_name)) == 0) {
+      if(ndpi_is_valid_hostname((char *)&crypto_data[tag_offset_start + prev_offset],
+				len) == 0) {
 	char str[128];
 
 	snprintf(str, sizeof(str), "Invalid host %s", flow->host_server_name);

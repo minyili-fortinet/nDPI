@@ -32,8 +32,8 @@ E * ndpi_typedefs.h
 #endif
 
 #ifndef NDPI_CFFI_PREPROCESSING
-#include "ndpi_config.h"
 #ifdef USE_GLOBAL_CONTEXT
+#include "ndpi_config.h"
 #define HAVE_STRUCT_TIMESPEC
 #include <pthread.h>
 #endif

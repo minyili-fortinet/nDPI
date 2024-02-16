@@ -2316,6 +2316,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Gearman", NDPI_PROTOCOL_CATEGORY_RPC,
 			  ndpi_build_default_ports(ports_a, 4730, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_TENCENTGAMES,
+			  "TencentGames", NDPI_PROTOCOL_CATEGORY_GAME,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -6181,6 +6185,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* Gearman */
   init_gearman_dissector(ndpi_str, &a);
 
+  /* Tencent Games */
+  init_tencent_games_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -8894,6 +8901,13 @@ static void parse_single_packet_line(struct ndpi_detection_module_struct *ndpi_s
       if(h->line->len == 0)
         h->line->ptr = NULL;
 
+      /* Stripping trailing spaces */
+      while(h->line->len > 0 && h->line->ptr[h->line->len - 1] == ' ') {
+        h->line->len--;
+      }
+      if(h->line->len == 0)
+        h->line->ptr = NULL;
+
       break;
     }
   }
@@ -10213,7 +10227,7 @@ int ndpi_get_lru_cache_stats(struct ndpi_global_context *g_ctx,
 			     struct ndpi_lru_cache_stats *stats)
 {
   int scope, is_local = 1;
-  char param[64], buf[8];
+  char param[64], buf[8], *rc;
 
   if(!stats || (!ndpi_struct && !g_ctx))
     return -1;
@@ -10221,7 +10235,9 @@ int ndpi_get_lru_cache_stats(struct ndpi_global_context *g_ctx,
     is_local = 0;
   } else {
     snprintf(param, sizeof(param), "lru.%s.scope", ndpi_lru_cache_idx_to_name(cache_type));
-    ndpi_get_config(ndpi_struct, NULL, param, buf, sizeof(buf));
+    rc = ndpi_get_config(ndpi_struct, NULL, param, buf, sizeof(buf));
+    if(rc == NULL)
+      return -1;
     scope = atoi(buf);
     if(scope == NDPI_LRUCACHE_SCOPE_GLOBAL) {
       is_local = 0;
@@ -10837,16 +10853,38 @@ ndpi_get_packet_struct(struct ndpi_detection_module_struct *ndpi_mod) {
 /* ******************************************************************** */
 
 char *ndpi_hostname_sni_set(struct ndpi_flow_struct *flow,
-			    const u_int8_t *value, size_t value_len) {
+			    const u_int8_t *value, size_t value_len,
+			    int normalize) {
   char *dst;
   size_t len, i;
 
   len = ndpi_min(value_len, sizeof(flow->host_server_name) - 1);
   dst = flow->host_server_name;
 
-  for(i = 0; i < len; i++)
-    dst[i] = tolower(value[value_len - len + i]);
-  dst[i] = '\0';
+  if(!normalize) {
+    memcpy(dst,&value[value_len - len],len);
+    dst[len] = '\0';
+  } else {
+    for(i = 0; i < len; i++) {
+      char c = value[value_len - len + i];
+      if(!c) break;
+      if(normalize & NDPI_HOSTNAME_NORM_LC) c = tolower(c);
+      if(normalize & NDPI_HOSTNAME_NORM_REPLACE_IC) {
+        if (c == '\t') c = ' ';
+        if (ndpi_isprint(c) == 0)
+            c = '?';
+      }
+      dst[i] = c;
+    }
+
+    dst[i] = '\0';
+    if(normalize & NDPI_HOSTNAME_NORM_STRIP_EOLSP) {
+      /* Removing spaces at the end of a line */
+      while(i > 0 && dst[i-1] == ' ')
+        dst[--i] = '\0';
+    }
+  }
+
 
   return dst;
 }

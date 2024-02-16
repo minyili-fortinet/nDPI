@@ -453,6 +453,10 @@ struct ndpi_detection_module_struct {
 #define NDPI_PROTOCOL_NO_MORE_SUBPROTOCOLS (-1)
 #define NDPI_PROTOCOL_MATCHED_BY_CONTENT (-2)
 
+#define NDPI_HOSTNAME_NORM_LC 1
+#define NDPI_HOSTNAME_NORM_REPLACE_IC 2
+#define NDPI_HOSTNAME_NORM_STRIP_EOLSP 4
+#define NDPI_HOSTNAME_NORM_ALL (NDPI_HOSTNAME_NORM_LC | NDPI_HOSTNAME_NORM_REPLACE_IC | NDPI_HOSTNAME_NORM_STRIP_EOLSP)
 
 
 
@@ -486,7 +490,7 @@ void change_category(struct ndpi_detection_module_struct *ndpi_struct,
 		     ndpi_protocol_category_t protocol_category);
 
 
-char *ndpi_hostname_sni_set(struct ndpi_flow_struct *flow, const u_int8_t *value, size_t value_len);
+char *ndpi_hostname_sni_set(struct ndpi_flow_struct *flow, const u_int8_t *value, size_t value_len, int normalize);
 char *ndpi_user_agent_set(struct ndpi_flow_struct *flow, const u_int8_t *value, size_t value_len);
 
 void ndpi_parse_packet_line_info(struct ndpi_detection_module_struct *ndpi_struct,
@@ -825,6 +829,7 @@ void init_radmin_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_i
 void init_raft_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_cip_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_gearman_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_tencent_games_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 
