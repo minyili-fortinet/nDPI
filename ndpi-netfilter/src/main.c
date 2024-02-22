@@ -2360,7 +2360,7 @@ static unsigned int ndpi_nat_do_chain(void *priv,
 static struct xt_match
 ndpi_mt_reg __read_mostly = {
 	.name = "ndpi",
-	.revision = 0,
+	.revision = 1,
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
         .family = NFPROTO_UNSPEC,
 #else
@@ -2375,7 +2375,7 @@ ndpi_mt_reg __read_mostly = {
 
 static struct xt_target ndpi_tg_reg __read_mostly = {
         .name           = "NDPI",
-        .revision       = 0,
+        .revision       = 1,
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
         .family         = NFPROTO_UNSPEC,
 #else
