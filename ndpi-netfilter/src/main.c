@@ -2929,8 +2929,11 @@ static void __net_exit ndpi_net_exit(struct net *net)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 	net->ct.label_words = n->labels_word;
-#endif
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	net->ct.labels_used--;
+#else
+	atomic_dec(&net->ct.labels_used);
+#endif
 
 #if   LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 	struct nf_ct_iter_data iter_data = {
@@ -3190,8 +3193,11 @@ static int __net_init ndpi_net_init(struct net *net)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 		n->labels_word = ACCESS_ONCE(net->ct.label_words);
 		net->ct.label_words = 2;
-#endif
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 		net->ct.labels_used++;
+#else
+		atomic_inc(&net->ct.labels_used);
+#endif
 #endif
 		if( ndpi_enable_flow &&
 		    nf_register_net_hooks(net, nf_nat_ipv4_ops,
