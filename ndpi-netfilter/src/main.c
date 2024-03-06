@@ -955,8 +955,12 @@ ndpi_enable_protocols (struct ndpi_net *n)
 
 
 static char *ct_info(const struct nf_conn * ct,char *buf,size_t buf_size,int dir) {
- const struct nf_conntrack_tuple *t =
-	 &ct->tuplehash[!dir ? IP_CT_DIR_ORIGINAL: IP_CT_DIR_REPLY].tuple;
+ const struct nf_conntrack_tuple *t;
+ if(!ct) {
+	 strncpy(buf," null ",buf_size-1);
+	 return buf;
+ }
+ t = &ct->tuplehash[!dir ? IP_CT_DIR_ORIGINAL: IP_CT_DIR_REPLY].tuple;
  if(t->src.l3num == AF_INET6)
  	snprintf(buf,buf_size, "proto %u %u %pI6c.%hu -> %pI6c.%hu %s",
 		t->src.l3num,
