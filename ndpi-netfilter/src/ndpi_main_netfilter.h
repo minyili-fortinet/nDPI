@@ -21,6 +21,7 @@ typedef struct ndpi_proto_nf {
 
 typedef enum write_buf_id {
 	W_BUF_IP=0,
+	W_BUF_IP6,
 	W_BUF_HOST,
 	W_BUF_PROTO,
 	W_BUF_FLOW,
@@ -52,6 +53,7 @@ struct ndpi_net {
 	struct proc_dir_entry   *pde,
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
 				*pe_info6,
+				*pe_ip6def,
 #endif
 #ifdef BT_ANNOUNCE
 				*pe_ann,

@@ -239,6 +239,12 @@ extern "C" {
   struct ndpi_detection_module_struct *ndpi_init_detection_module(struct ndpi_global_context *g_ctx);
 
   /**
+   * Loading ip lists
+   *
+   */
+  void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str);
+
+  /**
    * Completes the initialization (2nd step)
    *
    * @par ndpi_str = the struct created for the protocol detection

@@ -3195,6 +3195,7 @@ _Static_assert(sizeof(categories) / sizeof(char *) == NDPI_PROTOCOL_NUM_CATEGORI
 /* *********************************************** */
 
 static void free_ptree_data(void *data) {
+#ifndef __KERNEL__
   struct patricia_uv16_list *item = (struct patricia_uv16_list *)data;
 
   while(item != NULL) {
@@ -3203,6 +3204,9 @@ static void free_ptree_data(void *data) {
     ndpi_free(item);
     item = next;
   }
+#else
+    ndpi_free(data);
+#endif
 }
 
 struct ndpi_global_context *ndpi_global_init(void) {
@@ -3493,27 +3497,7 @@ static int is_ip_list_enabled(struct ndpi_detection_module_struct *ndpi_str, int
   return 1;
 }
 
-int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) {
-  u_int i;
-
-  if(!ndpi_str)
-    return -1;
-  if(ndpi_str->finalized) /* Already finalized */
-    return 0;
-
-  if(ndpi_str->cfg.libgcrypt_init) {
-    if(!gcry_control(GCRYCTL_INITIALIZATION_FINISHED_P,0)) {
-      const char *gcrypt_ver = gcry_check_version(NULL);
-      if(!gcrypt_ver) {
-        NDPI_LOG_ERR(ndpi_str, "Error initializing libgcrypt\n");
-      }
-      NDPI_LOG_DBG(ndpi_str, "Libgcrypt %s\n", gcrypt_ver);
-      /* Tell Libgcrypt that initialization has completed. */
-      gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
-    }
-  } else {
-    NDPI_LOG_DBG(ndpi_str, "Libgcrypt initialization skipped\n");
-  }
+void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str) {
 
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_AMAZON_AWS)) {
     ndpi_init_ptree_ipv4(ndpi_str, ndpi_str->protocols_ptree, ndpi_protocol_amazon_aws_protocol_list);
@@ -3716,7 +3700,7 @@ int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) 
     if((ndpi_str->ip_risk_ptree = ndpi_patricia_new(32 /* IPv4 */)) == NULL ||
        (ndpi_str->ip_risk_ptree6 = ndpi_patricia_new(128 /* IPv6 */)) == NULL) {
       NDPI_LOG_ERR(ndpi_str, "[NDPI] Error allocating risk tree\n");
-      return -1;
+      return;
     }
 
     if(ndpi_str->cfg.risk_anonymous_subscriber_list_icloudprivaterelay_enabled) {
@@ -3732,6 +3716,31 @@ int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) 
       ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk_ptree6, ndpi_http_crawler_bot_protocol_list_6);
     }
   }
+}
+
+int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) {
+  u_int i;
+
+  if(!ndpi_str)
+    return -1;
+  if(ndpi_str->finalized) /* Already finalized */
+    return 0;
+
+  if(ndpi_str->cfg.libgcrypt_init) {
+    if(!gcry_control(GCRYCTL_INITIALIZATION_FINISHED_P,0)) {
+      const char *gcrypt_ver = gcry_check_version(NULL);
+      if(!gcrypt_ver) {
+        NDPI_LOG_ERR(ndpi_str, "Error initializing libgcrypt\n");
+      }
+      NDPI_LOG_DBG(ndpi_str, "Libgcrypt %s\n", gcrypt_ver);
+      /* Tell Libgcrypt that initialization has completed. */
+      gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
+    }
+  } else {
+    NDPI_LOG_DBG(ndpi_str, "Libgcrypt initialization skipped\n");
+  }
+
+  ndpi_load_ip_lists(ndpi_str);
 
   ndpi_add_domain_risk_exceptions(ndpi_str);
 
