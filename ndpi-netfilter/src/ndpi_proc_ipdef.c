@@ -72,7 +72,7 @@ static ssize_t _n_ipdef_proc_read(struct file *file, char __user *buf,
 	pt = family == AF_INET ? n->ndpi_struct->protocols_ptree:n->ndpi_struct->protocols_ptree6;
 
 	Xsp = &Xstack[0];
-	node = pt->head;
+	node = pt ? pt->head: NULL;
 	while (node) {
 	    if (node->prefix) {
 		l = cpos ? 0: snprintf(lbuf,sizeof(lbuf),"#ip%s              proto\n",

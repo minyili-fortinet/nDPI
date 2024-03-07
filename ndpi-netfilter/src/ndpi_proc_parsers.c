@@ -479,6 +479,10 @@ static inline void _node_free_data(ndpi_patricia_node_t *node) {
 	node->data = NULL;
 }
 
+static void pt_node_free_data(void *data) {
+	_node_free_data((ndpi_patricia_node_t *)data);
+}
+
 void *ndpi_port_add_one_range(void *data, ndpi_port_range_t *np,int op,
 		ndpi_mod_str_t *ndpi_str)
 {
@@ -522,13 +526,16 @@ return pd;
 }
 
 int parse_ndpi_ipdef_cmd(struct ndpi_net *n, int f_op, ndpi_prefix_t *prefix, char *arg,
-		ndpi_patricia_tree_t *pt) {
+		int family, const char *paddr) {
 char *d1,*d2;
 int f_op2=0;
 int ret = 0;
-
+ndpi_patricia_tree_t *pt;
 ndpi_port_range_t np = { .start=0, .end=0, .l4_proto = 2, .proto = NDPI_PROTOCOL_UNKNOWN };
 ndpi_patricia_node_t *node;
+
+pt = family == AF_INET ? 
+	n->ndpi_struct->protocols_ptree:n->ndpi_struct->protocols_ptree6;
 
 if(*arg == '-') {
 	f_op2=1;
@@ -568,7 +575,24 @@ do {
 node = ndpi_patricia_search_exact(pt,prefix);
 DP(node ? "%s: Found node\n":"%s: Node not found\n");
 if(f_op || f_op2) { // delete
-	if(!node) break;
+	if(!node && np.proto >= NDPI_NUM_BITS && // -xxxx any
+		np.l4_proto == 2 && !np.start && !np.end) {
+		if(!prefix->bitlen && pt->head) {
+			ndpi_Clear_Patricia(pt,NULL,pt_node_free_data);
+			break;
+		}
+		node = ndpi_patricia_lookup(pt, prefix);
+		if(node) {
+			pr_err("prefix len %d node %d\n",prefix->bitlen,node?1:0);
+			ndpi_Clear_Patricia(pt,node,pt_node_free_data);
+			break;
+		}
+		break;
+	}
+	if(!node) {
+		pr_err("Can't delete %s with tcp or udp\n",paddr);
+		break;
+	}
 	// -xxxx any
 	if(np.proto >= NDPI_NUM_BITS && 
 		np.l4_proto == 2 && !np.start && !np.end) {
@@ -635,8 +659,6 @@ char *addr,c;
 ndpi_prefix_t *prefix;
 int res = 0;
 
-ndpi_patricia_tree_t *pt = family == AF_INET ? 
-	n->ndpi_struct->protocols_ptree:n->ndpi_struct->protocols_ptree6;
 
 SKIP_SPACE_C;
 if(*cmd == '#') return 0;
@@ -662,7 +684,7 @@ while(*cmd && !res) {
 	SKIP_NONSPACE_C;
 	if(*cmd) *cmd++ = 0;
 	SKIP_SPACE_C;
-	if(parse_ndpi_ipdef_cmd(n,f_op,prefix,t,pt)) res=1;
+	if(parse_ndpi_ipdef_cmd(n,f_op,prefix,t,family,addr)) res=1;
 }
 
 ndpi_Deref_Prefix(prefix);
