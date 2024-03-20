@@ -2957,13 +2957,14 @@ static void __net_exit ndpi_net_exit(struct net *net)
 			      ARRAY_SIZE(nf_nat_ipv4_ops));
 	}
 
-
+#ifndef NF_CT_CUSTOM
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 	net->ct.label_words = n->labels_word;
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	net->ct.labels_used--;
 #else
 	atomic_dec(&net->ct.labels_used);
+#endif
 #endif
 
 #if   LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
