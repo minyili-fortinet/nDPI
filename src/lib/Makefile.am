@@ -94,6 +94,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/fastcgi.c \
 		     protocols/fins.c \
 		     protocols/fix.c \
+		     protocols/flute.c \
 		     protocols/ftp_control.c \
 		     protocols/ftp_data.c \
 		     protocols/gaijin_entertainment.c \
