@@ -275,6 +275,7 @@ struct ndpi_detection_module_config_struct {
   int ftp_opportunistic_tls_enabled;
 
   int stun_opportunistic_tls_enabled;
+  int stun_max_packets_extra_dissection;
 
   int dns_subclassification_enabled;
   int dns_parse_response_enabled;
@@ -973,6 +974,8 @@ void init_c1222_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_in
 void init_dlep_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_bfd_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_netease_games_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_pathofexile_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_pfcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

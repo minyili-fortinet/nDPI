@@ -1826,7 +1826,11 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0),  /* TCP */
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0)); /* UDP */
   ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_GOOGLE_MEET,
-			  "GoogleMeet", NDPI_PROTOCOL_CATEGORY_VOIP,
+			  "GoogleMeet", NDPI_PROTOCOL_CATEGORY_CHAT,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_GOOGLE_CALL,
+			  "GoogleCall", NDPI_PROTOCOL_CATEGORY_VOIP,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_BJNP,
@@ -2349,6 +2353,14 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "NetEaseGames", NDPI_PROTOCOL_CATEGORY_GAME,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_PATHOFEXILE,
+			  "PathofExile", NDPI_PROTOCOL_CATEGORY_GAME,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_PFCP,
+			  "PFCP", NDPI_PROTOCOL_CATEGORY_NETWORK,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 8805, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -6278,6 +6290,12 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* NetEase Games */
   init_netease_games_dissector(ndpi_str, &a);
 
+  /* Path of Exile */
+  init_pathofexile_dissector(ndpi_str, &a);
+
+  /* Packet Forwarding Control Protocol */
+  init_pfcp_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -7589,7 +7607,7 @@ static void ndpi_reconcile_protocols(struct ndpi_detection_module_struct *ndpi_s
       }
     } else if(flow->guessed_protocol_id_by_ip == NDPI_PROTOCOL_TELEGRAM) {
 	ndpi_int_change_protocol(ndpi_str, flow,
-				 flow->guessed_protocol_id_by_ip, flow->detected_protocol_stack[1],
+				 flow->guessed_protocol_id_by_ip, flow->detected_protocol_stack[0],
 				 NDPI_CONFIDENCE_DPI_PARTIAL);	
       }
     break;
@@ -11368,7 +11386,8 @@ static const struct cfg_param {
 
   { "ftp",           "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), NULL, 1 },
 
-  { "stun",          "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
+  { "stun",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
+  { "stun",          "max_packets_extra_dissection",            "4", "0", "255", CFG_PARAM_INT, __OFF(stun_max_packets_extra_dissection), NULL, 1 },
 
   { "dns",           "subclassification",                       "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), NULL, 1 },
   { "dns",           "process_response",                        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), NULL, 1 },

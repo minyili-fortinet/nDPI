@@ -274,7 +274,7 @@ int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
         NDPI_LOG_DBG(ndpi_struct, "Realm [%s]\n", flow->host_server_name);
 
         if(strstr(flow->host_server_name, "google.com") != NULL) {
-          *app_proto = NDPI_PROTOCOL_GOOGLE_MEET;
+          *app_proto = NDPI_PROTOCOL_GOOGLE_CALL;
           return 1;
         } else if(strstr(flow->host_server_name, "whispersystems.org") != NULL ||
                   strstr(flow->host_server_name, "signal.org") != NULL) {
@@ -307,22 +307,25 @@ int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
       return 1;
 
     case 0xFF03:
-      *app_proto = NDPI_PROTOCOL_GOOGLE_MEET;
+      *app_proto = NDPI_PROTOCOL_GOOGLE_CALL;
       return 1;
 
     case 0x0013:
-      NDPI_LOG_DBG(ndpi_struct, "DATA attribute\n");
+      NDPI_LOG_DBG(ndpi_struct, "DATA attribute (%d/%d)\n",
+                  real_len, payload_length - off - 4);
 
-      orig_payload = packet->payload;
-      orig_payload_length = packet->payload_packet_len;
-      packet->payload = payload + off + 4;
-      packet->payload_packet_len = payload_length - off - 4;
+      if(real_len <= payload_length - off - 4) {
+        orig_payload = packet->payload;
+        orig_payload_length = packet->payload_packet_len;
+        packet->payload = payload + off + 4;
+        packet->payload_packet_len = real_len;
 
-      stun_search_again(ndpi_struct, flow);
-      NDPI_LOG_DBG(ndpi_struct, "End recursion\n");
+        stun_search_again(ndpi_struct, flow);
+        NDPI_LOG_DBG(ndpi_struct, "End recursion\n");
 
-      packet->payload = orig_payload;
-      packet->payload_packet_len = orig_payload_length;
+        packet->payload = orig_payload;
+        packet->payload_packet_len = orig_payload_length;
+      }
 
       break;
 
@@ -424,6 +427,9 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
         if(flow->tls_quic.certificate_processed == 1) {
           NDPI_LOG_DBG(ndpi_struct, "Interesting DTLS stuff already processed. Ignoring\n");
         } else {
+          NDPI_LOG_DBG(ndpi_struct, "Switch to DTLS (%d/%d)\n",
+                       flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
+
           if(flow->stun.maybe_dtls == 0) {
             /* First DTLS packet of the flow */
             first_dtls_pkt = 1;
@@ -440,11 +446,9 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
 
             /* Give room for DTLS handshake, where we might have
                retransmissions and fragments */
-            flow->max_extra_packets_to_check += 10;
+            flow->max_extra_packets_to_check = ndpi_min(255, (int)flow->max_extra_packets_to_check + 10);
             flow->stun.maybe_dtls = 1;
 	  }
-          NDPI_LOG_DBG(ndpi_struct, "Switch to TLS (%d/%d)\n",
-                       flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
 
 	  switch_to_tls(ndpi_struct, flow, first_dtls_pkt);
 
@@ -587,7 +591,7 @@ static void ndpi_int_stun_add_connection(struct ndpi_detection_module_struct *nd
            memcmp(flow->c_address.v6, &pref2, sizeof(pref2)) == 0 ||
            memcmp(flow->s_address.v6, &pref1, sizeof(pref1)) == 0 ||
            memcmp(flow->s_address.v6, &pref2, sizeof(pref2)) == 0) {
-          app_proto = NDPI_PROTOCOL_GOOGLE_MEET;
+          app_proto = NDPI_PROTOCOL_GOOGLE_CALL;
 	}
       } else {
         u_int32_t c_address, s_address;
@@ -598,7 +602,7 @@ static void ndpi_int_stun_add_connection(struct ndpi_detection_module_struct *nd
            (c_address & 0xFFFFFF00) == 0x8efa5200 || /* 142.250.82.0/24 */
            (s_address & 0xFFFFFF00) == 0x4a7dfa00 ||
            (s_address & 0xFFFFFF00) == 0x8efa5200) {
-          app_proto = NDPI_PROTOCOL_GOOGLE_MEET;
+          app_proto = NDPI_PROTOCOL_GOOGLE_CALL;
 	}
       }
     }
@@ -636,19 +640,8 @@ static void ndpi_int_stun_add_connection(struct ndpi_detection_module_struct *nd
     if(flow->detected_protocol_stack[1] == NDPI_PROTOCOL_UNKNOWN /* No-subclassification */ ||
        flow->detected_protocol_stack[0] == NDPI_PROTOCOL_TELEGRAM_VOIP /* Metadata. TODO: other protocols? */) {
       NDPI_LOG_DBG(ndpi_struct, "Enabling extra dissection\n");
-
-      if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_TELEGRAM_VOIP) {
-        flow->max_extra_packets_to_check = 10; /* Looking for metadata. There are no really RTP packets
-						  in Telegram flows, so no need to enable monitoring for them */
-      } else {
-        flow->max_extra_packets_to_check = 4;
-        flow->extra_packets_func = stun_search_again;
-      }
-    }
-  } else {
-    /* Already in extra dissection, but we just sub-classied */
-    if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_TELEGRAM_VOIP) {
-      flow->max_extra_packets_to_check = 10;
+      flow->max_extra_packets_to_check = ndpi_struct->cfg.stun_max_packets_extra_dissection;
+      flow->extra_packets_func = stun_search_again;
     }
   }
 }

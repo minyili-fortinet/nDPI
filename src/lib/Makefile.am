@@ -175,6 +175,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/openvpn.c \
 		     protocols/ookla.c \
 		     protocols/oracle.c \
+		     protocols/path_of_exile.c \
+		     protocols/pfcp.c \
 		     protocols/postgres.c \
 		     protocols/ppstream.c \
 		     protocols/pptp.c \
