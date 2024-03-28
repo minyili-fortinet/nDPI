@@ -2328,6 +2328,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "ANSI_C1222", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 1153, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 1153, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DLEP,
+			  "DLEP", NDPI_PROTOCOL_CATEGORY_NETWORK,
+			  ndpi_build_default_ports(ports_a, 854, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 854, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -6225,6 +6229,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* ANSI C12.22 / IEEE 1703 */
   init_c1222_dissector(ndpi_str, &a);
 
+  /* Dynamic Link Exchange Protocol */
+  init_dlep_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -7534,7 +7541,11 @@ static void ndpi_reconcile_protocols(struct ndpi_detection_module_struct *ndpi_s
 				 NDPI_PROTOCOL_SKYPE_TEAMS, NDPI_PROTOCOL_TLS,
 				 NDPI_CONFIDENCE_DPI_PARTIAL);
       }
-    }
+    } else if(flow->guessed_protocol_id_by_ip == NDPI_PROTOCOL_TELEGRAM) {
+	ndpi_int_change_protocol(ndpi_str, flow,
+				 flow->guessed_protocol_id_by_ip, flow->detected_protocol_stack[1],
+				 NDPI_CONFIDENCE_DPI_PARTIAL);	
+      }
     break;
 
   case NDPI_PROTOCOL_SKYPE_TEAMS:
@@ -8614,6 +8625,7 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 
     flow->risk_checked = 1;
   }
+
   if(!flow->tree_risk_checked) {
     ndpi_risk_enum net_risk = NDPI_NO_RISK;
 
@@ -8635,6 +8647,7 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
       addr = *(struct in6_addr *)&flow->c_address.v6;
       net_risk = ndpi_network_risk_ptree_match6(ndpi_str, &addr);
     }
+
     if(net_risk != NDPI_NO_RISK)
       ndpi_set_risk(ndpi_str, flow, net_risk, NULL);
 
@@ -8651,10 +8664,17 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
   /* ndpi_reconcile_protocols(ndpi_str, flow, &ret); */
 
   /* Zoom cache */
-  if((ret.app_protocol == NDPI_PROTOCOL_ZOOM)
-     && (flow->l4_proto == IPPROTO_TCP))
+  if((ret.app_protocol == NDPI_PROTOCOL_ZOOM) && (flow->l4_proto == IPPROTO_TCP))
     ndpi_add_connection_as_zoom(ndpi_str, flow);
 
+  /*
+    Telegram
+    With MTProto 2.0 telegram is no longr TLS-based (altoug based on TCP/443) so
+    we need to detect it with Telegram IPs
+  */
+  if(ret.protocol_by_ip == NDPI_PROTOCOL_TELEGRAM)
+    ret.app_protocol = NDPI_PROTOCOL_TELEGRAM, flow->confidence = NDPI_CONFIDENCE_MATCH_BY_IP;
+  
   if(ndpi_str->cfg.fully_encrypted_heuristic &&
      ret.app_protocol == NDPI_PROTOCOL_UNKNOWN && /* Only for unknown traffic */
      flow->packet_counter == 1 && packet->payload_packet_len > 0) {
