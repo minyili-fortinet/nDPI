@@ -35,9 +35,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     ndpi_filter.c \
 		     ndpi_geoip.c \
 		     ndpi_binary_bitmap.c \
-		     ndpi_domain_classify.c \
-		     ndpi_bitmap64.c \
-		     ndpi_binary_bitmap.c \
+		     ndpi_bitmap64_fuse.c \
+		     ndpi_bitmap.c \
 		     ndpi_hash.c \
 		     protocols/activision.c \
 		     protocols/afp.c \
@@ -136,6 +135,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/kismet.c \
 		     protocols/kontiki.c \
 		     protocols/ldap.c \
+		     protocols/lol_wild_rift.c \
 		     protocols/lotus_notes.c \
 		     protocols/line.c \
 		     protocols/lisp.c \
@@ -286,6 +286,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     third_party/src/hll/MurmurHash3.c \
 		     third_party/src/hll/hll.c \
 		     third_party/src/gcrypt_light.c \
+		     third_party/src/roaring.c \
 		     third_party/src/ndpi_sha256.c
 
 lib_LIBRARIES = libndpi.a
