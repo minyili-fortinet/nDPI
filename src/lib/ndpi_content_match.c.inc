@@ -400,6 +400,7 @@ ndpi_protocol_match host_match[] =
    { "captive.apple.com",                         "Apple",            NDPI_PROTOCOL_APPLE, NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "captive.apple.com.",                        "Apple",            NDPI_PROTOCOL_APPLE, NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_DEFAULT_LEVEL }, /* apple.com.edgekey.net */
    { "gsp1.apple.com",                            "Apple",            NDPI_PROTOCOL_APPLE, NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+   { "attwifi.apple.com",                         "Apple",            NDPI_PROTOCOL_APPLE, NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { ".push.apple.com",                           "ApplePush",        NDPI_PROTOCOL_APPLE_PUSH, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "push-apple.com",                            "ApplePush",        NDPI_PROTOCOL_APPLE_PUSH, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_SAFE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { ".icloud.com",                               "AppleiCloud",      NDPI_PROTOCOL_APPLE_ICLOUD, NDPI_PROTOCOL_CATEGORY_WEB, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
@@ -567,7 +568,6 @@ ndpi_protocol_match host_match[] =
    { "doh.ffmuc.net", "DoH_DoT", NDPI_PROTOCOL_DOH_DOT, NDPI_PROTOCOL_CATEGORY_NETWORK, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "ns0.fdn.fr", "DoH_DoT", NDPI_PROTOCOL_DOH_DOT, NDPI_PROTOCOL_CATEGORY_NETWORK, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "ns1.fdn.fr", "DoH_DoT", NDPI_PROTOCOL_DOH_DOT, NDPI_PROTOCOL_CATEGORY_NETWORK, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
-
 
    /*
      See https://better.fyi/trackers/
@@ -994,6 +994,8 @@ ndpi_protocol_match host_match[] =
    { "web.telegram.org",                    "Telegram",         NDPI_PROTOCOL_TELEGRAM, NDPI_PROTOCOL_CATEGORY_CHAT, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "tdesktop.com",                              "Telegram",         NDPI_PROTOCOL_TELEGRAM, NDPI_PROTOCOL_CATEGORY_CHAT, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "tupdate.com",                                "Telegram",         NDPI_PROTOCOL_TELEGRAM, NDPI_PROTOCOL_CATEGORY_CHAT, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+   { "t.me",                                       "Telegram",         NDPI_PROTOCOL_TELEGRAM, NDPI_PROTOCOL_CATEGORY_CHAT, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+   { "telegram.me",                                "Telegram",         NDPI_PROTOCOL_TELEGRAM, NDPI_PROTOCOL_CATEGORY_CHAT, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
 
    { ".pastebin.com",                          "Pastebin",         NDPI_PROTOCOL_PASTEBIN, NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT, NDPI_PROTOCOL_POTENTIALLY_DANGEROUS, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "pastebin.com",                             "Pastebin",         NDPI_PROTOCOL_PASTEBIN, NDPI_PROTOCOL_CATEGORY_DOWNLOAD_FT, NDPI_PROTOCOL_POTENTIALLY_DANGEROUS, NDPI_PROTOCOL_DEFAULT_LEVEL },
@@ -1615,8 +1617,10 @@ ndpi_protocol_match host_match[] =
    { "hicloud.com",                      "HuaweiCloud", NDPI_PROTOCOL_HUAWEI_CLOUD, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "dbankcloud.com",                   "HuaweiCloud", NDPI_PROTOCOL_HUAWEI_CLOUD, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "dbankcloud.cn",                    "HuaweiCloud", NDPI_PROTOCOL_HUAWEI_CLOUD, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
-   { "dbankcdn.com",                      "HuaweiCloud", NDPI_PROTOCOL_HUAWEI_CLOUD, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+   { "dbankcdn.com",                     "HuaweiCloud", NDPI_PROTOCOL_HUAWEI_CLOUD, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "myhuaweicloud.com",                "HuaweiCloud", NDPI_PROTOCOL_HUAWEI_CLOUD, NDPI_PROTOCOL_CATEGORY_CLOUD, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DEFAULT_LEVEL },
+
+   { "easebar.com",                      "NetEaseGames", NDPI_PROTOCOL_NETEASE_GAMES, NDPI_PROTOCOL_CATEGORY_GAME, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_DEFAULT_LEVEL },
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_content_match_host_match.c.inc"
@@ -1688,11 +1692,12 @@ static ndpi_category_match category_match[] = {
    { "pcdn.skycdn.",                     NDPI_PROTOCOL_CATEGORY_STREAMING },
 
    /* https://success.tanaza.com/s/article/How-Automatic-Detection-of-Captive-Portal-works */
-   { "thinkdifferent.us",                NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
-   { "airport.us",                       NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
-   { "detectportal.firefox.com",         NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
-   { "connectivitycheck.platform.hicloud.com",    NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
-
+   { "thinkdifferent.us",                      NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
+   { "airport.us",                             NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
+   { "detectportal.firefox.com",               NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
+   { "connectivitycheck.platform.hicloud.com", NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
+   { "nmcheck.gnome.org",                      NDPI_PROTOCOL_CATEGORY_CONNECTIVITY_CHECK },
+   
    { NULL, 0 }
 };
 #endif

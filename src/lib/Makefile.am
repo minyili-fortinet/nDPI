@@ -52,6 +52,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/amqp.c \
 		     protocols/bacnet.c \
 		     protocols/beckhoff_ads.c \
+		     protocols/bfd.c \
 		     protocols/bgp.c \
 		     protocols/bitcoin.c \
 		     protocols/bittorrent.c \
@@ -159,6 +160,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/natpmp.c \
 		     protocols/nats.c \
 		     protocols/nest_log_sink.c \
+		     protocols/netease_games.c \
 		     protocols/netbios.c \
 		     protocols/netflow.c \
 		     protocols/nintendo.c \

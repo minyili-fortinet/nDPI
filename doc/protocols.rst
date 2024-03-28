@@ -638,3 +638,21 @@ References: `Main site <https://cloud.huawei.com/>`_
 The Dynamic Link ExchangeProtocol (DLEP) is a radio aware routing (RAR) protocol.
 
 References: `RFC <https://datatracker.ietf.org/doc/html/rfc8175>`_
+
+
+.. _Proto 401:
+
+`NDPI_PROTOCOL_BFD`
+=====================
+Bidirectional Forwarding Detection is a network protocol that is used to detect faults between two routers or switches.
+
+References: `RFC <https://datatracker.ietf.org/doc/html/rfc5880>`_
+
+
+.. _Proto 402:
+
+`NDPI_PROTOCOL_NETEASE_GAMES`
+============================
+Traffic of various NetEase games.
+
+References: `Main site <https://www.neteasegames.com/>`_
