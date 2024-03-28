@@ -56,6 +56,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/bitcoin.c \
 		     protocols/bittorrent.c \
 		     protocols/bjnp.c \
+		     protocols/c1222.c \
 		     protocols/can.c \
 		     protocols/capwap.c \
 		     protocols/cassandra.c \
@@ -200,7 +201,6 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/sflow.c \
 		     protocols/sip.c \
 		     protocols/skinny.c \
-		     protocols/skype.c \
 		     protocols/slp.c \
 		     protocols/smb.c \
 		     protocols/snmp_proto.c \

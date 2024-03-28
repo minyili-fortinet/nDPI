@@ -610,7 +610,7 @@ struct ndpi_vxlanhdr {
 #define NDPI_GRE_STRICT      ntohs(0x0800)
 #define NDPI_GRE_REC         ntohs(0x0700)
 #define NDPI_GRE_ACK         ntohs(0x0080)
-#define NDPI_GRE_FLAGS       ntohs(0x00f8)
+#define NDPI_GRE_FLAGS       ntohs(0x0078)
 #define NDPI_GRE_VERSION     ntohs(0x0007)
 
 #define NDPI_GRE_IS_CSUM(f)		((f) & NDPI_GRE_CSUM)
@@ -998,9 +998,6 @@ struct ndpi_flow_udp_struct {
 
   /* NDPI_PROTOCOL_RAKNET */
   u_int32_t raknet_custom:1;
-
-  /* NDPI_PROTOCOL_SKYPE */
-  u_int8_t skype_crc[4];
 
   /* NDPI_PROTOCOL_EAQ */
   u_int8_t eaq_pkt_id;

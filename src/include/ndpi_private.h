@@ -260,6 +260,9 @@ struct ndpi_detection_module_config_struct {
   int tls_sha1_fingerprint_enabled;
   /* Limit for tls buffer size */
   int tls_buf_size_limit;
+  int tls_ja3c_fingerprint_enabled;
+  int tls_ja3s_fingerprint_enabled;
+  int tls_ja4c_fingerprint_enabled;
 
   int smtp_opportunistic_tls_enabled;
 
@@ -682,7 +685,6 @@ void init_shoutcast_dissector(struct ndpi_detection_module_struct *ndpi_struct, 
 void init_sip_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_imo_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_skinny_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_skype_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_smb_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_snmp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_socrates_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -834,6 +836,7 @@ void init_cip_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int3
 void init_gearman_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_tencent_games_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_gaijin_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_c1222_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 
