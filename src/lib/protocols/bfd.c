@@ -42,7 +42,7 @@ static void ndpi_int_bfd_add_connection(struct ndpi_detection_module_struct *ndp
 static void ndpi_search_bfd(struct ndpi_detection_module_struct *ndpi_struct,
                             struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
 
   /* BFD echo message */
   if (packet->payload_packet_len == 12 && ntohs(packet->udp->dest) == 3785) {

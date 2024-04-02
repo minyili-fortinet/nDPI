@@ -3033,6 +3033,7 @@ static void __net_exit ndpi_net_exit(struct net *net)
 static int __net_init ndpi_net_init(struct net *net)
 {
 	struct ndpi_net *n;
+	struct ndpi_global_context *g_ctx = NULL;
 	int i;
 
 	/* init global detection structure */
@@ -3065,6 +3066,7 @@ static int __net_init ndpi_net_init(struct net *net)
 
 	n->str_buf = kmalloc(NF_STR_LBUF,GFP_KERNEL);
 	if (n->str_buf == NULL) {
+		str_hosts_done(n->hosts);
 		pr_err("xt_ndpi: alloc str_buf failed\n");
                 return -ENOMEM;
 	}
@@ -3074,7 +3076,16 @@ static int __net_init ndpi_net_init(struct net *net)
 	ndpi_debug_level_init = ndpi_lib_trace;
 #endif
 	/* init global detection structure */
-	n->ndpi_struct = ndpi_init_detection_module(NULL);
+#ifdef USE_GLOBAL_CONTEXT
+	g_ctx = ndpi_calloc(1, sizeof(struct ndpi_global_context));
+	if(!g_ctx) {
+		kfree(n->str_buf);
+		str_hosts_done(n->hosts);
+		pr_err("xt_ndpi: alloc global context failed\n");
+		return -ENOMEM;
+	}
+#endif
+	n->ndpi_struct = ndpi_init_detection_module(g_ctx);
 	if (n->ndpi_struct == NULL) {
 		pr_err("xt_ndpi: global structure initialization failed.\n");
                 return -ENOMEM;
