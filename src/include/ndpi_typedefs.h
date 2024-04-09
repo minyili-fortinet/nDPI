@@ -181,7 +181,8 @@ typedef enum {
   NDPI_FULLY_ENCRYPTED,        /* This (unknown) session is fully encrypted */
   NDPI_TLS_ALPN_SNI_MISMATCH,  /* Invalid ALPN/SNI combination */
   NDPI_MALWARE_HOST_CONTACTED, /* Flow client contacted a malware host */
-				 
+  NDPI_BINARY_TRANSFER_ATTEMPT,/* Attempt to transfer something in binary format */
+  
   /* Leave this as last member */
   NDPI_MAX_RISK /* must be <= 63 due to (**) */
 } ndpi_risk_enum;
@@ -451,7 +452,7 @@ PACK_ON
 struct ndpi_mpls_header
 {
   /* Before using this strcut to parse an MPLS header, you will need to convert
-   * the 4-byte data to the correct endianess with ntohl(). */
+   * the 4-byte data to the correct endianness with ntohl(). */
 #if defined(__LITTLE_ENDIAN__)
   u_int32_t ttl:8, s:1, exp:3, label:20;
 #elif defined(__BIG_ENDIAN__)
@@ -918,6 +919,9 @@ struct ndpi_flow_tcp_struct {
   /* NDPI_PROTOCOL_SSH */
   u_int32_t ssh_stage:3;
 
+  /* NDPI_PROTOCOL_KAFKA */
+  u_int32_t kafka_stage:1;
+
   /* NDPI_PROTOCOL_VNC */
   u_int32_t vnc_stage:2;			// 0 - 3
 
@@ -971,6 +975,9 @@ struct ndpi_flow_tcp_struct {
 
   /* NDPI_PROTOCOL_RADMIN */
   u_int32_t radmin_stage:1;
+
+  /* NDPI_PROTOCOL_KAFKA */
+  u_int32_t kafka_correlation_id;
 };
 
 /* ************************************************** */
@@ -1368,6 +1375,14 @@ struct ndpi_flow_struct {
 
   struct {
     u_int8_t maybe_dtls : 1, is_turn : 1, pad : 6;
+    struct {
+      union {
+        u_int32_t v4;
+        u_int8_t v6[16];
+      } address; /* Network-order */
+      u_int16_t port;
+      u_int16_t is_ipv6: 1, _pad: 15;
+    } mapped_address;
   } stun;
 
   struct {
@@ -1595,8 +1610,8 @@ struct ndpi_flow_struct {
 _Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 256,
                "Size of the struct member protocols increased to more than 256 bytes, "
                "please check if this change is necessary.");
-_Static_assert(sizeof(struct ndpi_flow_struct) <= 1008,
-               "Size of the flow struct increased to more than 1008 bytes, "
+_Static_assert(sizeof(struct ndpi_flow_struct) <= 1032,
+               "Size of the flow struct increased to more than 1032 bytes, "
                "please check if this change is necessary.");
 #endif
 #endif

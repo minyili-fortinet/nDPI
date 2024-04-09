@@ -391,7 +391,7 @@ void ndpiCheckHostStringMatch(char *testChar) {
 	   testChar, match.protocol_id, match.protocol_breed,
 	   match.protocol_category,
 	   appBufStr,
-	   ndpi_get_proto_breed_name( ndpi_str, match.protocol_breed ),
+	   ndpi_get_proto_breed_name( match.protocol_breed ),
 	   ndpi_category_get_name( ndpi_str, match.protocol_category));
   } else
     printf("Match NOT Found for string: %s\n\n", testChar );
@@ -959,27 +959,6 @@ void printCSVHeader() {
   fprintf(csv_fp, "\n");
 }
 
-static int parse_two_unsigned_integer(char *param, u_int32_t *num1, u_int32_t *num2)
-{
-  char *saveptr, *tmp_str, *num1_str, *num2_str;
-
-  tmp_str = ndpi_strdup(param);
-  if(tmp_str) {
-    num1_str = strtok_r(tmp_str, ":", &saveptr);
-    if(num1_str) {
-      num2_str = strtok_r(NULL, ":", &saveptr);
-      if(num2_str) {
-        *num1 = atoi(num1_str);
-        *num2 = atoi(num2_str);
-        ndpi_free(tmp_str);
-	return 0;
-      }
-    }
-  }
-  ndpi_free(tmp_str);
-  return -1;
-}
-
 static int parse_three_strings(char *param, char **s1, char **s2, char **s3)
 {
   char *saveptr, *tmp_str, *s1_str, *s2_str = NULL, *s3_str;
@@ -1479,40 +1458,6 @@ static void parseOptions(int argc, char **argv) {
 
 /* ********************************** */
 
-#if 0
-/**
- * @brief A faster replacement for inet_ntoa().
- */
-char* intoaV4(u_int32_t addr, char* buf, u_int16_t bufLen) {
-  char *cp;
-  int n;
-
-  cp = &buf[bufLen];
-  *--cp = '\0';
-
-  n = 4;
-  do {
-    u_int byte = addr & 0xff;
-
-    *--cp = byte % 10 + '0';
-    byte /= 10;
-    if(byte > 0) {
-      *--cp = byte % 10 + '0';
-      byte /= 10;
-      if(byte > 0)
-        *--cp = byte + '0';
-    }
-    if(n > 1)
-      *--cp = '.';
-    addr >>= 8;
-  } while (--n > 0);
-
-  return(cp);
-}
-#endif
-
-/* ********************************** */
-
 static char* print_cipher(ndpi_cipher_weakness c) {
   switch(c) {
   case ndpi_cipher_insecure:
@@ -1603,8 +1548,7 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
             );
 
     fprintf(csv_fp, "%s,",
-            ndpi_protocol2id(ndpi_thread_info[thread_id].workflow->ndpi_struct,
-                             flow->detected_protocol, buf, sizeof(buf)));
+            ndpi_protocol2id(flow->detected_protocol, buf, sizeof(buf)));
 
     fprintf(csv_fp, "%s,%s,%s,",
             ndpi_protocol2name(ndpi_thread_info[thread_id].workflow->ndpi_struct,
@@ -1733,8 +1677,7 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
       fprintf(out, "%s:", ndpi_tunnel2str(flow->tunnel_type));
 
     fprintf(out, "%s/%s][IP: %u/%s]",
-	    ndpi_protocol2id(ndpi_thread_info[thread_id].workflow->ndpi_struct,
-			     flow->detected_protocol, buf, sizeof(buf)),
+	    ndpi_protocol2id(flow->detected_protocol, buf, sizeof(buf)),
 	    ndpi_protocol2name(ndpi_thread_info[thread_id].workflow->ndpi_struct,
 			       flow->detected_protocol, buf1, sizeof(buf1)),
 	    flow->detected_protocol.protocol_by_ip,
@@ -1929,6 +1872,19 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
       }
     }
 
+    if(flow->stun.mapped_address.port != 0) {
+      char buf[INET6_ADDRSTRLEN];
+
+      if(flow->stun.mapped_address.is_ipv6) {
+        inet_ntop(AF_INET6, &flow->stun.mapped_address.address, buf, sizeof(buf));
+      } else {
+        inet_ntop(AF_INET, &flow->stun.mapped_address.address, buf, sizeof(buf));
+      }
+      fprintf(out, "[Mapped IP/Port: %s:%u]",
+              buf,
+              flow->stun.mapped_address.port);
+    }
+
     if(flow->http.url[0] != '\0') {
       ndpi_risk_enum risk = ndpi_validate_url(flow->http.url);
 
@@ -2074,8 +2030,7 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
   }
 }
 
-static void printFlowSerialized(u_int16_t thread_id,
-                                struct ndpi_flow_info *flow)
+static void printFlowSerialized(struct ndpi_flow_info *flow)
 {
   char *json_str = NULL;
   u_int32_t json_str_len = 0;
@@ -2210,6 +2165,8 @@ static void node_print_unknown_proto_walker(const void *node,
   struct ndpi_flow_info *flow = *(struct ndpi_flow_info**)node;
   u_int16_t thread_id = *((u_int16_t*)user_data);
 
+  (void)depth;
+
   if((flow->detected_protocol.master_protocol != NDPI_PROTOCOL_UNKNOWN)
      || (flow->detected_protocol.app_protocol != NDPI_PROTOCOL_UNKNOWN))
     return;
@@ -2231,6 +2188,8 @@ static void node_print_known_proto_walker(const void *node,
   struct ndpi_flow_info *flow = *(struct ndpi_flow_info**)node;
   u_int16_t thread_id = *((u_int16_t*)user_data);
 
+  (void)depth;
+
   if((flow->detected_protocol.master_protocol == NDPI_PROTOCOL_UNKNOWN)
      && (flow->detected_protocol.app_protocol == NDPI_PROTOCOL_UNKNOWN))
     return;
@@ -2250,6 +2209,8 @@ static void node_print_known_proto_walker(const void *node,
 static void node_proto_guess_walker(const void *node, ndpi_VISIT which, int depth, void *user_data) {
   struct ndpi_flow_info *flow = *(struct ndpi_flow_info **) node;
   u_int16_t thread_id = *((u_int16_t *) user_data), proto;
+
+  (void)depth;
 
   if(flow == NULL) return;
 
@@ -2477,15 +2438,6 @@ static int acceptable(u_int32_t num_pkts) {
 
 /* *********************************************** */
 
-static int receivers_sort(void *_a, void *_b) {
-  struct receiver *a = (struct receiver *)_a;
-  struct receiver *b = (struct receiver *)_b;
-
-  return(b->num_pkts - a->num_pkts);
-}
-
-/* *********************************************** */
-
 static int receivers_sort_asc(void *_a, void *_b) {
   struct receiver *a = (struct receiver *)_a;
   struct receiver *b = (struct receiver *)_b;
@@ -2650,6 +2602,8 @@ static void port_stats_walker(const void *node, ndpi_VISIT which, int depth, voi
     u_int16_t thread_id = *(int *)user_data;
     u_int16_t sport, dport;
     char proto[16];
+
+    (void)depth;
 
     sport = ntohs(flow->src_port), dport = ntohs(flow->dst_port);
 
@@ -3074,6 +3028,9 @@ void printPortStats(struct port_stats *stats) {
 
 static void node_flow_risk_walker(const void *node, ndpi_VISIT which, int depth, void *user_data) {
   struct ndpi_flow_info *f = *(struct ndpi_flow_info**)node;
+
+  (void)depth;
+  (void)user_data;
 
   if((which == ndpi_preorder) || (which == ndpi_leaf)) { /* Avoid walking the same node multiple times */
     if(f->risk) {
@@ -3807,7 +3764,7 @@ static void printFlowsStats() {
 
     for(i=0; i<num_flows; i++)
     {
-      printFlowSerialized(all_flows[i].thread_id, all_flows[i].flow);
+      printFlowSerialized(all_flows[i].flow);
     }
   }
 
@@ -4261,7 +4218,7 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
       if(breed_stats_pkts[i] > 0) {
 	printf("\t%-20s packets: %-13llu bytes: %-13llu "
 	       "flows: %-13llu\n",
-	       ndpi_get_proto_breed_name(ndpi_thread_info[0].workflow->ndpi_struct, i),
+	       ndpi_get_proto_breed_name(i),
 	       breed_stats_pkts[i], breed_stats_bytes[i], breed_stats_flows[i]);
       }
     }
@@ -4271,7 +4228,7 @@ static void printResults(u_int64_t processing_time_usec, u_int64_t setup_time_us
     for(i=0; i < NUM_BREEDS; i++) {
       if(breed_stats_pkts[i] > 0) {
 	fprintf(results_file, "%-20s %13llu %-13llu %-13llu\n",
-	        ndpi_get_proto_breed_name(ndpi_thread_info[0].workflow->ndpi_struct, i),
+	        ndpi_get_proto_breed_name(i),
 	        breed_stats_pkts[i], breed_stats_bytes[i], breed_stats_flows[i]);
       }
     }
@@ -4340,6 +4297,8 @@ void sigproc(int sig) {
 
   static int called = 0;
   int thread_id;
+
+  (void)sig;
 
   if(called) return; else called = 1;
   shutdown_app = 1;

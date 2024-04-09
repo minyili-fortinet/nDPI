@@ -151,8 +151,8 @@ AC_DEFINE_UNQUOTED(NDPI_PATCH_LEVEL,   "${NDPI_PATCH}", [nDPI patch level])
 # .git as directory in a cloned repo
 # .git as file in submodule based integration
 if test -d ".git" || test -r ".git"; then
-     GIT_TAG=`git log -1 --format=%h`
-     GIT_DATE=`git log -1 --format=%cd`
+     GIT_TAG=`git log -1 --abbrev=7 --format=%h`
+     GIT_DATE=`git log -1 --abbrev=7 --format=%cd`
      #
      # On CentOS 6 `git rev-list HEAD --count` does not work
      #
@@ -218,9 +218,7 @@ AS_IF([test "x${enable_tls_sigs}" = "xyes"],[
   HANDLE_TLS_SIGS=""
 ])
 
-NDPI_CFLAGS="-W -Wall -Wno-unused-parameter -Wno-unused-function -Wno-address-of-packed-member ${NDPI_CFLAGS} -Wno-attributes"
-#Workaround for RoaringBitmap with gcc-7
-NDPI_CFLAGS="-Wno-attributes ${NDPI_CFLAGS}"
+NDPI_CFLAGS="-W -Wall -Wno-address-of-packed-member ${NDPI_CFLAGS}"
 
 AS_IF([test "${with_lto_and_gold_linker+set}" = set], [
        NDPI_CFLAGS="${NDPI_CFLAGS} -flto -fuse-ld=gold -Wno-unused-command-line-argument"
