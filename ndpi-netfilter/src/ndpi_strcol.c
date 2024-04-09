@@ -27,7 +27,7 @@ str_collect_t *c;
     if(!num_start)
 	    num_start =  128;
 
-    c = (str_collect_t *)kmalloc(sizeof(str_collect_t) + num_start + 1, GFP_KERNEL);
+    c = (str_collect_t *)kmalloc(sizeof(str_collect_t)-sizeof(c->s) + num_start + 1, GFP_KERNEL);
     if(!c) 
 	return c;
 

@@ -365,6 +365,10 @@ tls_buf_size: The maximum buffer size in kB for the TLS protocol. default 8, ran
   Change settings:
   "echo 'protoname:host[,host...][ protoname:host[,host...]]' >/proc/net/xt_ndpi/host_proto"
 
+  If the hostname begins with a "|" character, a match is checked from the beginning of the line.
+  If the hostname ends with a "|" character, a match is made to the end of the string.
+  "|name|" this is an exact string match.
+
   Delete match:
   "echo '-protoname:host' >/proc/net/xt_ndpi/host_proto"
 

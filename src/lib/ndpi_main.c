@@ -43,6 +43,7 @@
 #include "libcache.h"
 
 #ifdef __KERNEL__
+  #include "ndpi_define.h"
   #include "ndpi_kernel_compat.c"
   #ifdef HAVE_HYPERSCAN
     #error HYPERSCAN
@@ -3774,8 +3775,10 @@ void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str) {
   }
 
   if(ndpi_str->cfg.flow_risk_lists_enabled) {
-    if((ndpi_str->ip_risk_ptree = ndpi_patricia_new(32 /* IPv4 */)) == NULL ||
-       (ndpi_str->ip_risk_ptree6 = ndpi_patricia_new(128 /* IPv6 */)) == NULL) {
+    if(!ndpi_str->ip_risk_ptree) ndpi_str->ip_risk_ptree = ndpi_patricia_new(32 /* IPv4 */);
+    if(!ndpi_str->ip_risk_ptree6) ndpi_str->ip_risk_ptree6 = ndpi_patricia_new(128 /* IPv6 */);
+    if(ndpi_str->ip_risk_ptree == NULL ||
+       ndpi_str->ip_risk_ptree6 == NULL) {
       NDPI_LOG_ERR(ndpi_str, "[NDPI] Error allocating risk tree\n");
       return;
     }
@@ -8364,7 +8367,7 @@ static int ndpi_is_ntop_protocol(ndpi_protocol *ret) {
 static void ndpi_search_elf(struct ndpi_detection_module_struct *ndpi_struct,
                             struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
   static const uint32_t elf_signature = 0x7f454c46; /* [DEL]ELF */
   static const uint32_t max_version = 6;
 
@@ -8393,7 +8396,7 @@ static void ndpi_search_elf(struct ndpi_detection_module_struct *ndpi_struct,
 static void ndpi_search_portable_executable(struct ndpi_detection_module_struct *ndpi_struct,
                                             struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
   static const uint16_t dos_signature = 0x4d5a; /* MZ */
   static const uint32_t pe_signature = 0x50450000; /* PE */
 
@@ -8835,7 +8838,7 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
     ndpi_search_portable_executable(ndpi_str, flow);
     ndpi_search_elf(ndpi_str, flow);
   }
-
+#ifndef __KERNEL__
   if(flow->first_pkt_fully_encrypted == 0 &&
      ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
      NDPI_ENTROPY_ENCRYPTED_OR_RANDOM(flow->entropy) == 0 &&
@@ -8856,6 +8859,7 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
     flow->entropy = 0.0f;
     ndpi_unset_risk(flow, NDPI_SUSPICIOUS_ENTROPY);
   }
+#endif
 
   return(ret);
 }
@@ -10180,7 +10184,7 @@ u_int16_t ndpi_match_host_subprotocol(struct ndpi_detection_module_struct *ndpi_
       len += len2;
       risk_domain_str[len] = '\0';
       if(ndpi_match_string_value(ndpi_str->host_automa.ac_automa, risk_domain_str, len | AC_FEATURE_EXACT, &val) != -1)			 
-	      ndpi_set_risk(ndpi_str, flow, NDPI_RISKY_DOMAIN, &risk_domain_str[len]);
+	      ndpi_set_risk(flow, NDPI_RISKY_DOMAIN, &risk_domain_str[len]);
   }
 #endif
 

@@ -80,7 +80,8 @@ extern ndpi_protocol_match host_match[];
 //#define NDPI_IPPORT_DEBUG
 
 
-#define COUNTER(a) (volatile unsigned long int)(a)++
+#define COUNTER(a) atomic_inc((atomic_t *)&a)
+#define COUNTER_D(a) atomic_dec((atomic_t *)&a)
 
 #define NDPI_PROCESS_ERROR (NDPI_NUM_BITS+1)
 #ifndef IPPROTO_OSPF
@@ -295,7 +296,6 @@ static unsigned long  ndpi_falloc=0;
 static unsigned long  ndpi_nskb=0;
 static unsigned long  ndpi_lskb=0;
 static unsigned long  ndpi_flow_c=0;
-static unsigned long  ndpi_flow_d=0;
 static unsigned long  ndpi_bt_gc=0;
 
 static unsigned long  ndpi_p_ipv4=0;
@@ -382,9 +382,7 @@ module_param_named(skb_lin,	 ndpi_lskb, ulong, 0400);
 MODULE_PARM_DESC(skb_lin,"Counter linear packets. [info]");
 
 module_param_named(flow_created, ndpi_flow_c, ulong, 0400);
-MODULE_PARM_DESC(flow_created,"Counter of created flows. [info]");
-module_param_named(flow_deleted, ndpi_flow_d, ulong, 0400);
-MODULE_PARM_DESC(flow_deleted,"Counter of destroyed flows. [info]");
+MODULE_PARM_DESC(flow_created,"Counter of flows. [info]");
 module_param_named(bt_gc_count,  ndpi_bt_gc, ulong, 0400);
 
 module_param_named(p_ipv4,         ndpi_p_ipv4, ulong, 0400);
@@ -477,7 +475,6 @@ static inline struct ndpi_net *ndpi_pernet(struct net *net)
 
 static	enum nf_ct_ext_id nf_ct_ext_id_ndpi = 0;
 static	struct kmem_cache *osdpi_flow_cache = NULL;
-static	struct kmem_cache *osdpi_id_cache = NULL;
 struct kmem_cache *ct_info_cache = NULL;
 struct kmem_cache *bt_port_cache = NULL;
 
@@ -763,24 +760,27 @@ static inline void ndpi_ct_counters_add(struct nf_ct_ext_ndpi *ct_ndpi,
 
 
 static inline void __ndpi_free_ct_flow(struct nf_ct_ext_ndpi *ct_ndpi) {
-	if(ct_ndpi->flow != NULL) {
-		ndpi_free_flow(ct_ndpi->flow);
-		kmem_cache_free (osdpi_flow_cache, ct_ndpi->flow);
-		WRITE_ONCE(ct_ndpi->flow,NULL);
-		COUNTER(ndpi_flow_d);
+	struct ndpi_flow_struct *flow = NULL;
+	
+	flow = xchg(&ct_ndpi->flow, NULL);
+	if(flow) {
+		ndpi_free_flow(flow);
+		kmem_cache_free (osdpi_flow_cache, flow);
+		COUNTER_D(ndpi_flow_c);
 		module_put(THIS_MODULE);
 	}
 }
 
 static inline void __ndpi_free_ct_proto(struct nf_ct_ext_ndpi *ct_ndpi) {
-        if(ct_ndpi->host) {
-                kfree(ct_ndpi->host);
-                WRITE_ONCE(ct_ndpi->host, NULL);
-        }
-        if(ct_ndpi->flow_opt) {
-                kfree(ct_ndpi->flow_opt);
-                WRITE_ONCE(ct_ndpi->flow_opt, NULL);
-        }
+	char *ptr = NULL;
+
+	ptr = xchg(&ct_ndpi->host, NULL);
+        if(ptr)
+                kfree(ptr);
+       
+	ptr = xchg(&ct_ndpi->flow_opt, NULL);
+        if(ptr)
+                kfree(ptr);
 }
 static void
 ct_ndpi_free_flow (struct ndpi_net *n,
@@ -880,6 +880,10 @@ static int ndpi_init_host_ac(struct ndpi_net *n) {
 	ndpi_protocol_match *hm;
         int i,i2;
 
+	AC_AUTOMATA_t *automa  = n->ndpi_struct->host_automa.ac_automa;
+	if(automa->automata_open)
+		ac_automata_finalize(automa);
+
 	n->host_ac = ndpi_init_automa();
 	if(!n->host_ac) {
 		pr_err("xt_ndpi: cant alloc host_ac\n");
@@ -947,7 +951,6 @@ ndpi_enable_protocols (struct ndpi_net *n)
 			bt_hash_size*1024,bt6_hash_size*1024,
 			bt_hash_tmo,bt_log_size);
 		ndpi_finalize_initialization(n->ndpi_struct);
-		ret = ndpi_init_host_ac(n);
 	}
 	spin_unlock_bh (&n->ipq_lock);
 	return ret;
@@ -1218,7 +1221,7 @@ static inline int can_handle(const struct sk_buff *skb,uint8_t *l4_proto)
 	COUNTER(ndpi_p_non_tcpudp);
 	return 1;
 }
-static u_int8_t is_ndpi_proto(struct nf_ct_ext_ndpi *ct_ndpi, u_int16_t id) {
+static inline u_int8_t is_ndpi_proto(struct nf_ct_ext_ndpi *ct_ndpi, u_int16_t id) {
     return ct_ndpi->proto.master_protocol == id
            || ct_ndpi->proto.app_protocol == id ? 1:0;
 }
@@ -1333,22 +1336,15 @@ static void ndpi_host_info(struct nf_ct_ext_ndpi *ct_ndpi) {
 		pr_info("%s: TLS %s\n",__func__,
 				test_tlsdone(ct_ndpi) ? "done":"in process");
 	if(l != 0) {
+	    char *new_flow_opt;
 	    buf[l++] = 0;
-	    if(ct_ndpi->flow_opt) {
-		int old_l = strlen(ct_ndpi->flow_opt)+1;
-	    	if(old_l < l) {
-			char *new_flow_opt = kmalloc( l, GFP_ATOMIC);
-			if(!new_flow_opt) return;
-			kfree(ct_ndpi->flow_opt);
-			ct_ndpi->flow_opt = new_flow_opt;
-		}
-		memcpy(ct_ndpi->flow_opt,buf,l);
-		return;
-	    }
-	    ct_ndpi->flow_opt = kmalloc( l, GFP_ATOMIC);
-
-	    if(ct_ndpi->flow_opt)
+	    new_flow_opt = kmalloc( l, GFP_ATOMIC);
+	    if(new_flow_opt) {
+		if(ct_ndpi->flow_opt)
+		    kfree(ct_ndpi->flow_opt);
+		ct_ndpi->flow_opt = new_flow_opt;
 	        memcpy(ct_ndpi->flow_opt,buf,l);
+	    }
 	}
     }
 }
@@ -3077,8 +3073,8 @@ static int __net_init ndpi_net_init(struct net *net)
 #endif
 	/* init global detection structure */
 #ifdef USE_GLOBAL_CONTEXT
-	g_ctx = ndpi_calloc(1, sizeof(struct ndpi_global_context));
-	if(!g_ctx) {
+	n->g_ctx = ndpi_calloc(1, sizeof(struct ndpi_global_context));
+	if(!n->g_ctx) {
 		kfree(n->str_buf);
 		str_hosts_done(n->hosts);
 		pr_err("xt_ndpi: alloc global context failed\n");
@@ -3115,8 +3111,11 @@ static int __net_init ndpi_net_init(struct net *net)
 	n->ndpi_struct->cfg.tls_buf_size_limit = tls_buf_size*1024;
 
 	ndpi_set_config(n->ndpi_struct, "any", "ip_list.load", "1");
+	ndpi_set_config(n->ndpi_struct, NULL, "flow_risk_lists.load", "1");
 	ndpi_load_ip_lists(n->ndpi_struct);
 	ndpi_set_config(n->ndpi_struct, "any", "ip_list.load", "0");
+	ndpi_set_config(n->ndpi_struct, NULL, "flow_risk_lists.load", "0");
+	ndpi_init_host_ac(n);
 
 	if(bt_hash_size > 512) bt_hash_size = 512;
 	if(bt6_hash_size > 32) bt6_hash_size = 32;
@@ -3301,6 +3300,10 @@ static int __net_init ndpi_net_init(struct net *net)
 	if(n->risk_names)
 		kfree(n->risk_names);
 	ndpi_exit_detection_module(n->ndpi_struct);
+#ifdef USE_GLOBAL_CONTEXT
+	if(n->g_ctx)
+		kfree(n->g_ctx);
+#endif
 
 	return -ENOMEM;
 }
@@ -3533,7 +3536,6 @@ static void __exit ndpi_mt_exit(void)
 	rcu_assign_pointer(nf_conntrack_destroy_cb,NULL);
 #endif
         kmem_cache_destroy (bt_port_cache);
-        kmem_cache_destroy (osdpi_id_cache);
         kmem_cache_destroy (osdpi_flow_cache);
         kmem_cache_destroy (ct_info_cache);
 }
