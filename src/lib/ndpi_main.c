@@ -6794,7 +6794,8 @@ static int ndpi_init_packet(struct ndpi_detection_module_struct *ndpi_str,
   packet->current_time_ms = current_time_ms;
   packet->current_time = get_timestamp(current_time_ms,ndpi_str->ticks_per_second);
 
-  ndpi_str->input_info = input_info;
+  if(!ndpi_str->input_info)
+	  ndpi_str->input_info = input_info;
 
   packet->iph = (const struct ndpi_iphdr *)packet_data;
 
@@ -7038,6 +7039,7 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
     const struct ndpi_tcphdr *tcph = packet->tcp;
     const struct ndpi_udphdr *udph = packet->udp;
 
+#ifndef __KERNEL__
     if(ndpi_str->max_payload_track_len > 0 && packet->payload_packet_len > 0) {
       /* printf("LEN: %u [%s]\n", packet->payload_packet_len, packet->payload); */
 
@@ -7054,6 +7056,7 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
 	}
       }
     }
+#endif
 
     packet->tcp_retransmission = 0, packet->packet_direction = 0;
 
