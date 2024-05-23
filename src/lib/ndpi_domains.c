@@ -72,6 +72,8 @@ int ndpi_load_domain_suffixes(struct ndpi_detection_module_struct *ndpi_str,
       num_domains++;
   }
 
+  fclose(fd);
+  
   if(!ndpi_domain_classify_finalize(ndpi_str->public_domain_suffixes)) {
     NDPI_LOG_ERR(ndpi_str, "Error while finalizing domain processing\n");
   }

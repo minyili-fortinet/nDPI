@@ -277,6 +277,10 @@ struct ndpi_detection_module_config_struct {
   int stun_opportunistic_tls_enabled;
   int stun_max_packets_extra_dissection;
   int stun_mapped_address_enabled;
+  int stun_response_origin_enabled;
+  int stun_other_address_enabled;
+  int stun_relayed_address_enabled;
+  int stun_peer_address_enabled;
 
   int dns_subclassification_enabled;
   int dns_parse_response_enabled;
@@ -974,6 +978,7 @@ void init_pfcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int
 void init_flute_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_lolwildrift_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_teso_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_ldp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

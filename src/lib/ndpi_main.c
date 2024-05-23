@@ -2383,6 +2383,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "TES_Online", NDPI_PROTOCOL_CATEGORY_GAME,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_LDP,
+			  "LDP", NDPI_PROTOCOL_CATEGORY_NETWORK,
+			  ndpi_build_default_ports(ports_a, 646, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 646, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -6338,6 +6342,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* The Elder Scrolls Online */
   init_teso_dissector(ndpi_str, &a);
 
+  /* Label Distribution Protocol */
+  init_ldp_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -7516,7 +7523,7 @@ static void ndpi_reconcile_msteams_udp(struct ndpi_detection_module_struct *ndpi
 
     if(s_match || d_match) {
       ndpi_int_change_protocol(flow,
-			       NDPI_PROTOCOL_SKYPE_TEAMS, master,
+			       NDPI_PROTOCOL_SKYPE_TEAMS_CALL, master,
 			       /* Keep the same confidence */
 			       flow->confidence);
 
@@ -8273,10 +8280,10 @@ int ndpi_fill_ip_protocol_category(struct ndpi_detection_module_struct *ndpi_str
 
 /* ********************************************************************************* */
 
-int ndpi_fill_ip6_protocol_category(struct ndpi_detection_module_struct *ndpi_str,
-				    struct ndpi_flow_struct *flow,
-				    struct in6_addr *saddr, struct in6_addr *daddr,
-				    ndpi_protocol *ret) {
+int ndpi_fill_ipv6_protocol_category(struct ndpi_detection_module_struct *ndpi_str,
+				     struct ndpi_flow_struct *flow,
+				     struct in6_addr *saddr, struct in6_addr *daddr,
+				     ndpi_protocol *ret) {
   bool match_client = true;
 
   ret->custom_category_userdata = NULL;
@@ -8374,27 +8381,24 @@ static int ndpi_is_ntop_protocol(ndpi_protocol *ret) {
 /* ********************************************************************************* */
 
 static void ndpi_search_shellscript(struct ndpi_detection_module_struct *ndpi_struct,
-                                    struct ndpi_flow_struct *flow)
-{
+                                    struct ndpi_flow_struct *flow) {
   struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
 
   NDPI_LOG_DBG(ndpi_struct, "search Shellscript\n");
 
-  if (packet->payload_packet_len < 3)
-  {
-    return;
-  }
+  if (packet->payload_packet_len < 3)  
+    return;  
 
   if (packet->payload[0] != '#' ||
       packet->payload[1] != '!' ||
-      (packet->payload[2] != '/' && packet->payload[2] != ' '))
-  {
-    return;
-  }
+      (packet->payload[2] != '/' && packet->payload[2] != ' '))  
+    return;  
 
   NDPI_LOG_INFO(ndpi_struct, "found Shellscript\n");
   ndpi_set_risk(flow, NDPI_POSSIBLE_EXPLOIT, "Shellscript found");
 }
+
+/* ********************************************************************************* */
 
 /* ELF format specs: https://man7.org/linux/man-pages/man5/elf.5.html */
 static void ndpi_search_elf(struct ndpi_detection_module_struct *ndpi_struct,
@@ -8407,23 +8411,19 @@ static void ndpi_search_elf(struct ndpi_detection_module_struct *ndpi_struct,
   NDPI_LOG_DBG(ndpi_struct, "search ELF file\n");
 
   if (packet->payload_packet_len < 24)
-  {
     return;
-  }
 
   if (ntohl(get_u_int32_t(packet->payload, 0)) != elf_signature)
-  {
     return;
-  }
 
   if (le32toh(get_u_int32_t(packet->payload, 20)) > max_version)
-  {
     return;
-  }
 
   NDPI_LOG_INFO(ndpi_struct, "found ELF file\n");
   ndpi_set_risk(flow, NDPI_BINARY_APPLICATION_TRANSFER, "ELF found");
 }
+
+/* ********************************************************************************* */
 
 /* PE32/PE32+ format specs: https://learn.microsoft.com/en-us/windows/win32/debug/pe-format */
 static void ndpi_search_portable_executable(struct ndpi_detection_module_struct *ndpi_struct,
@@ -8436,21 +8436,15 @@ static void ndpi_search_portable_executable(struct ndpi_detection_module_struct 
   NDPI_LOG_DBG(ndpi_struct, "search Portable Executable (PE) file\n");
 
   if (packet->payload_packet_len < 0x3C /* offset to PE header */ + 4)
-  {
     return;
-  }
 
   if (ntohs(get_u_int16_t(packet->payload, 0)) != dos_signature)
-  {
     return;
-  }
 
   uint32_t const pe_offset = le32toh(get_u_int32_t(packet->payload, 0x3C));
   if ((u_int32_t)(packet->payload_packet_len - 4) <= pe_offset ||
       be32toh(get_u_int32_t(packet->payload, pe_offset)) != pe_signature)
-  {
     return;
-  }
 
   NDPI_LOG_INFO(ndpi_struct, "found Portable Executable (PE) file\n");
   ndpi_set_risk(flow, NDPI_BINARY_APPLICATION_TRANSFER, "Portable Executable (PE32/PE32+) found");
@@ -8504,7 +8498,8 @@ static int ndpi_do_guess(struct ndpi_detection_module_struct *ndpi_str, struct n
       if(ndpi_str->ndpi_num_custom_protocols != 0)
 	ndpi_fill_ip_protocol_category(ndpi_str, flow, flow->c_address.v4, flow->s_address.v4, ret);
       else
-        ndpi_fill_ip6_protocol_category(ndpi_str, flow, (struct in6_addr *)flow->c_address.v6, (struct in6_addr *)flow->s_address.v6, ret);
+        ndpi_fill_ipv6_protocol_category(ndpi_str, flow, (struct in6_addr *)flow->c_address.v6,
+					 (struct in6_addr *)flow->s_address.v6, ret);
       flow->guessed_header_category = ret->category;
     } else
       flow->guessed_header_category = NDPI_PROTOCOL_CATEGORY_UNSPECIFIED;
@@ -8865,9 +8860,9 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
    flow->first_pkt_fully_encrypted = fully_enc_heuristic(ndpi_str, flow);
   }
 
-  if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
-     flow->packet_counter <= 5)
-  {
+  if((ret.app_protocol == NDPI_PROTOCOL_UNKNOWN)
+     && (packet->payload_packet_len > 0)
+     && (flow->packet_counter <= 5)) {
     ndpi_search_portable_executable(ndpi_str, flow);
     ndpi_search_elf(ndpi_str, flow);
     ndpi_search_shellscript(ndpi_str, flow);
@@ -9196,8 +9191,6 @@ static void parse_single_packet_line(struct ndpi_detection_module_struct *ndpi_s
     }
   }
 }
-
-
 
 /* ********************************************************************************* */
 
@@ -11567,7 +11560,13 @@ static const struct cfg_param {
 
   { "pop",           "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled), NULL, 1 },
 
-  { "ftp",           "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), NULL, 1 },
+  { "stun",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
+  { "stun",          "max_packets_extra_dissection",            "6", "0", "255", CFG_PARAM_INT, __OFF(stun_max_packets_extra_dissection), NULL, 1 },
+  { "stun",          "metadata.attribute.mapped_address",       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_mapped_address_enabled), NULL, 1 },
+  { "stun",          "metadata.attribute.response_origin",      "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_response_origin_enabled), NULL, 1 },
+  { "stun",          "metadata.attribute.other_address",        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_other_address_enabled), NULL, 1 },
+  { "stun",          "metadata.attribute.relayed_address",      "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_relayed_address_enabled), NULL, 1 },
+  { "stun",          "metadata.attribute.peer_address",         "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_peer_address_enabled), NULL, 1 },
 
   { "stun",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
   { "stun",          "max_packets_extra_dissection",            "4", "0", "255", CFG_PARAM_INT, __OFF(stun_max_packets_extra_dissection), NULL, 1 },
