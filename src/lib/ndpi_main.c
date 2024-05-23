@@ -182,7 +182,7 @@ static ndpi_risk_info ndpi_known_risks[] = {
   { NDPI_SMB_INSECURE_VERSION,                  NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_TLS_SUSPICIOUS_ESNI_USAGE,             NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_UNSAFE_PROTOCOL,                       NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_BOTH_ACCOUNTABLE   },
-  { NDPI_DNS_SUSPICIOUS_TRAFFIC,                NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
+  { NDPI_DNS_SUSPICIOUS_TRAFFIC,                NDPI_RISK_MEDIUM, CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_TLS_MISSING_SNI,                       NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_HTTP_SUSPICIOUS_CONTENT,               NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_SERVER_ACCOUNTABLE },
   { NDPI_RISKY_ASN,                             NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_SERVER_ACCOUNTABLE },
@@ -213,7 +213,7 @@ static ndpi_risk_info ndpi_known_risks[] = {
   { NDPI_FULLY_ENCRYPTED,                       NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_TLS_ALPN_SNI_MISMATCH,                 NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_MALWARE_HOST_CONTACTED,                NDPI_RISK_SEVERE, CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
-  { NDPI_BINARY_TRANSFER_ATTEMPT,               NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
+  { NDPI_BINARY_DATA_TRANSFER,                  NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   
   /* Leave this as last member */
   { NDPI_MAX_RISK,                              NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_NO_ACCOUNTABILITY   }
@@ -2377,6 +2377,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_LOLWILDRIFT,
 			  "LoLWildRift", NDPI_PROTOCOL_CATEGORY_GAME,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_TESO,
+			  "TES_Online", NDPI_PROTOCOL_CATEGORY_GAME,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
@@ -6331,6 +6335,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* League of Legends: Wild Rift */
   init_lolwildrift_dissector(ndpi_str, &a);
 
+  /* The Elder Scrolls Online */
+  init_teso_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -8366,6 +8373,29 @@ static int ndpi_is_ntop_protocol(ndpi_protocol *ret) {
 
 /* ********************************************************************************* */
 
+static void ndpi_search_shellscript(struct ndpi_detection_module_struct *ndpi_struct,
+                                    struct ndpi_flow_struct *flow)
+{
+  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+
+  NDPI_LOG_DBG(ndpi_struct, "search Shellscript\n");
+
+  if (packet->payload_packet_len < 3)
+  {
+    return;
+  }
+
+  if (packet->payload[0] != '#' ||
+      packet->payload[1] != '!' ||
+      (packet->payload[2] != '/' && packet->payload[2] != ' '))
+  {
+    return;
+  }
+
+  NDPI_LOG_INFO(ndpi_struct, "found Shellscript\n");
+  ndpi_set_risk(flow, NDPI_POSSIBLE_EXPLOIT, "Shellscript found");
+}
+
 /* ELF format specs: https://man7.org/linux/man-pages/man5/elf.5.html */
 static void ndpi_search_elf(struct ndpi_detection_module_struct *ndpi_struct,
                             struct ndpi_flow_struct *flow)
@@ -8840,6 +8870,7 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
   {
     ndpi_search_portable_executable(ndpi_str, flow);
     ndpi_search_elf(ndpi_str, flow);
+    ndpi_search_shellscript(ndpi_str, flow);
   }
 #ifndef __KERNEL__
   if(flow->first_pkt_fully_encrypted == 0 &&
@@ -11838,3 +11869,31 @@ char *ndpi_dump_config(struct ndpi_detection_module_struct *ndpi_str,
   return NULL;
 }
 #endif
+
+void* ndpi_memmem(const void* haystack, size_t haystack_len, const void* needle, size_t needle_len)
+{
+  if (!haystack || !needle) {
+    return NULL;
+  }
+
+  if (needle_len > haystack_len) {
+    return NULL;
+  }
+
+  if ((size_t)(const u_int8_t*)haystack+haystack_len < haystack_len) {
+    return NULL;
+  }
+
+  if (needle_len == 1) {
+    return memchr(haystack, *(int*)needle, haystack_len);
+  }
+
+  const u_int8_t* h = NULL;
+  const u_int8_t* n = (const u_int8_t*)needle;
+  for (h = haystack; h <= (const u_int8_t*)haystack+haystack_len-needle_len; ++h) {
+    if (*h == n[0] && !memcmp(h, needle, needle_len))
+      return (void*)h;
+  }
+
+  return NULL;
+}
