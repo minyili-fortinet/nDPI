@@ -729,6 +729,9 @@ int ndpi_bittorrent_gc(struct hash_ip4p_table *ht,int key,time_t now);
 
 /* Stun */
 int stun_search_into_zoom_cache(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
+int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
+            struct ndpi_flow_struct *flow,
+            u_int16_t *app_proto);
 
 /* TPKT */
 int tpkt_verify_hdr(const struct ndpi_packet_struct * const packet);
@@ -799,7 +802,6 @@ void init_ntp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int3
 void init_openvpn_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_oracle_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_postgres_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-void init_ppstream_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_pptp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_qq_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_quake_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -978,6 +980,8 @@ void init_lolwildrift_dissector(struct ndpi_detection_module_struct *ndpi_struct
 void init_teso_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ldp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_knxnet_ip_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_bfcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_iqiyi_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

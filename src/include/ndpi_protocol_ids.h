@@ -60,7 +60,7 @@ typedef enum {
   NDPI_PROTOCOL_MAIL_SMTPS            = 29,
   NDPI_PROTOCOL_DTLS                  = 30,
   NDPI_PROTOCOL_UBNTAC2               = 31, /* Ubiquity UBNT AirControl = 2 */
-  NDPI_PROTOCOL_FREE_32               = 32, /* FREE */
+  NDPI_PROTOCOL_BFCP                  = 32,
   NDPI_PROTOCOL_YANDEX_MAIL           = 33,
   NDPI_PROTOCOL_YANDEX_MUSIC          = 34,
   NDPI_PROTOCOL_GNUTELLA              = 35,
@@ -82,12 +82,12 @@ typedef enum {
   NDPI_PROTOCOL_MAIL_IMAPS            = 51,
   NDPI_PROTOCOL_ICECAST               = 52,
   NDPI_PROTOCOL_CPHA                  = 53,
-  NDPI_PROTOCOL_PPSTREAM              = 54,
+  NDPI_PROTOCOL_IQIYI                 = 54,
   NDPI_PROTOCOL_ZATTOO                = 55,
   NDPI_PROTOCOL_YANDEX_MARKET         = 56,
   NDPI_PROTOCOL_YANDEX_DISK           = 57,
   NDPI_PROTOCOL_DISCORD               = 58,
-  NDPI_PROTOCOL_FREE_59               = 59, /* FREE */
+  NDPI_PROTOCOL_ADOBE_CONNECT         = 59,
   NDPI_PROTOCOL_MONGODB               = 60,
   NDPI_PROTOCOL_PLURALSIGHT           = 61,
   NDPI_PROTOCOL_YANDEX_CLOUD          = 62,

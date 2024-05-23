@@ -1272,7 +1272,7 @@ int is_dtls(const u_int8_t *buf, u_int32_t buf_len, u_int32_t *block_len) {
   if(buf_len <= 13)
     return 0;
 
-  if((buf[0] != 0x16 && buf[0] != 0x14 && buf[0] != 0x17) || /* Handshake, change-cipher-spec, Application-Data */
+  if((buf[0] != 0x16 && buf[0] != 0x14 && buf[0] != 0x17 && buf[0] != 0x15) || /* Handshake, change-cipher-spec, Application-Data, Alert */
      !((buf[1] == 0xfe && buf[2] == 0xff) || /* Versions */
        (buf[1] == 0xfe && buf[2] == 0xfd) ||
        (buf[1] == 0x01 && buf[2] == 0x00))) {
@@ -1412,6 +1412,17 @@ static int ndpi_search_tls_udp(struct ndpi_detection_module_struct *ndpi_struct,
       processed += block_len + 13;
       flow->tls_quic.certificate_processed = 1; /* Fake, to avoid extra dissection */
       break;
+    } else if(block[0] == 0x15 /* Alert */) {
+#ifdef DEBUG_TLS
+      printf("[TLS] TLS Alert\n");
+#endif
+
+      if(block_len == 2) {
+       u_int8_t alert_level = block[13];
+
+       if(alert_level == 2 /* Warning (1), Fatal (2) */)
+         ndpi_set_risk(flow, NDPI_TLS_FATAL_ALERT, "Found fatal TLS alert");
+      }
     } else {
 #ifdef DEBUG_TLS
       printf("[TLS] Appllication Data\n");
@@ -1684,6 +1695,32 @@ static void u_int16_t_swpfunc(void * a, void * b, int size) {
 }
 #endif
 
+static bool is_grease_version(u_int16_t version) {
+  switch(version) {
+  case 0x0a0a:
+  case 0x1a1a:
+  case 0x2a2a:
+  case 0x3a3a:
+  case 0x4a4a:
+  case 0x5a5a:
+  case 0x6a6a:
+  case 0x7a7a:
+  case 0x8a8a:
+  case 0x9a9a:
+  case 0xaaaa:
+  case 0xbaba:  
+  case 0xcaca:
+  case 0xdada:
+  case 0xeaea:
+  case 0xfafa:
+    return(true);
+    break;
+    
+  default:
+    return(false);
+  }
+}
+
 /* **************************************** */
 
 static void ndpi_compute_ja4(struct ndpi_flow_struct *flow,
@@ -1697,7 +1734,6 @@ static void ndpi_compute_ja4(struct ndpi_flow_struct *flow,
   u_int16_t tls_handshake_version = ja->client.tls_handshake_version;
   char * const ja_str = &flow->protos.tls_quic.ja4_client[0];
   const u_int16_t ja_max_len = sizeof(flow->protos.tls_quic.ja4_client);
-  
   /*
     Compute JA4 TLS/QUIC client
 
@@ -1717,7 +1753,7 @@ static void ndpi_compute_ja4(struct ndpi_flow_struct *flow,
   ja_str[0] = (quic_version != 0) ? 'q' : 't';
 
   for(i=0; i<ja->client.num_supported_versions; i++) {
-    if((ja->client.supported_versions[i] != 0x0A0A /* GREASE */)
+    if((!is_grease_version(ja->client.supported_versions[i]))
        && (tls_handshake_version < ja->client.supported_versions[i]))
       tls_handshake_version = ja->client.supported_versions[i];
   }
@@ -2472,9 +2508,9 @@ static int _processClientServerHello(struct ndpi_detection_module_struct *ndpi_s
 		s_offset += 2;
 		tot_signature_algorithms_len = ndpi_min((sizeof(ja->client.signature_algorithms_str) / 2) - 1, tot_signature_algorithms_len);
 
+#ifdef TLS_HANDLE_SIGNATURE_ALGORITMS
 		size_t sa_size = ndpi_min(tot_signature_algorithms_len / 2, MAX_NUM_TLS_SIGNATURE_ALGORITHMS);
 
-#ifdef TLS_HANDLE_SIGNATURE_ALGORITMS
 		if (s_offset + 2 * sa_size <= packet->payload_packet_len) {
 		  flow->protos.tls_quic.num_tls_signature_algorithms = sa_size;
 		  memcpy(flow->protos.tls_quic.client_signature_algorithms,
@@ -2482,10 +2518,10 @@ static int _processClientServerHello(struct ndpi_detection_module_struct *ndpi_s
 		}
 #endif
 
-		ja->client.num_signature_algorithms = ndpi_min(sa_size, MAX_NUM_JA);
 		for(i=0, id=0; i<tot_signature_algorithms_len && s_offset+i+1<total_len; i += 2) {
 		  ja->client.signature_algorithms[id++] = ntohs(*(u_int16_t*)&packet->payload[s_offset+i]);
 		}
+		ja->client.num_signature_algorithms = id;
 		
 		for(i=0, id=0; i<tot_signature_algorithms_len && s_offset+i+1<total_len; i++) {
 		  int rc = ndpi_snprintf(&ja->client.signature_algorithms_str[i*2],
