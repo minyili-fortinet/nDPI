@@ -821,7 +821,6 @@ struct ndpi_automa_stats {
 typedef enum {
   NDPI_LRUCACHE_OOKLA = 0,
   NDPI_LRUCACHE_BITTORRENT,
-  NDPI_LRUCACHE_ZOOM,
   NDPI_LRUCACHE_STUN,
   NDPI_LRUCACHE_TLS_CERT,
   NDPI_LRUCACHE_MINING,
@@ -1011,6 +1010,10 @@ struct ndpi_flow_udp_struct {
 
   /* NDPI_PROTOCOL_RAKNET */
   u_int32_t raknet_custom:1;
+
+  /* NDPI_PROTOCOL_RTP */
+  u_int16_t rtp_seq[2];
+  u_int8_t rtp_seq_set[2];
 
   /* NDPI_PROTOCOL_EAQ */
   u_int8_t eaq_pkt_id;
@@ -1290,7 +1293,7 @@ struct ndpi_flow_struct {
   /* init parameter, internal used to set up timestamp,... */
   u_int16_t guessed_protocol_id, guessed_protocol_id_by_ip, guessed_category, guessed_header_category;
   u_int8_t l4_proto, protocol_id_already_guessed:1, fail_with_unknown:1, ip_port_finished:1,
-    init_finished:1, client_packet_direction:1, packet_direction:1, is_ipv6:1, first_pkt_fully_encrypted:1;
+    init_finished:1, client_packet_direction:1, packet_direction:1, is_ipv6:1, first_pkt_fully_encrypted:1, skip_entropy_check: 1;
 
   u_int16_t num_dissector_calls;
   ndpi_confidence_t confidence; /* ndpi_confidence_t */
@@ -1425,7 +1428,7 @@ struct ndpi_flow_struct {
       char ja3_client[33], ja3_server[33], ja4_client[37];
       u_int16_t server_cipher;
       u_int8_t sha1_certificate_fingerprint[20];
-      u_int8_t hello_processed:1, ch_direction:1, subprotocol_detected:1, fingerprint_set:1, _pad:4;
+      u_int8_t hello_processed:1, ch_direction:1, subprotocol_detected:1, fingerprint_set:1, webrtc:1, _pad:3;
 
 #ifdef TLS_HANDLE_SIGNATURE_ALGORITMS
       /* Under #ifdef to save memory for those who do not need them */

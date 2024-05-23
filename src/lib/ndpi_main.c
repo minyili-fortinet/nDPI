@@ -194,7 +194,7 @@ static ndpi_risk_info ndpi_known_risks[] = {
   { NDPI_TLS_CERT_VALIDITY_TOO_LONG,            NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_SERVER_ACCOUNTABLE },
   { NDPI_TLS_SUSPICIOUS_EXTENSION,              NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_BOTH_ACCOUNTABLE   },
   { NDPI_TLS_FATAL_ALERT,                       NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_BOTH_ACCOUNTABLE   },
-  { NDPI_SUSPICIOUS_ENTROPY,                    NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_BOTH_ACCOUNTABLE   },
+  { NDPI_SUSPICIOUS_ENTROPY,                    NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_BOTH_ACCOUNTABLE   },
   { NDPI_CLEAR_TEXT_CREDENTIALS,                NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_DNS_LARGE_PACKET,                      NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_DNS_FRAGMENTED,                        NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
@@ -2820,24 +2820,28 @@ static ndpi_patricia_node_t* add_to_ptree(ndpi_patricia_tree_t *tree, int family
 
 #ifndef __KERNEL__
 /*
-  Load a file containing IPv4 addresses in CIDR format as 'protocol_id'
+  Load a file containing IPv4 OR IPv6 addresses in CIDR format as 'protocol_id'
 
   Return: the number of entries loaded or -1 in case of error
 */
-int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
-			 const char *path, u_int16_t protocol_id) {
+int ndpi_load_ptree_file(ndpi_patricia_tree_t *ptree,
+			 const char *path,
+			 bool is_ipv4,
+			 u_int16_t protocol_id) {
   char buffer[128], *line, *addr, *cidr, *saveptr;
   FILE *fd;
   int len;
+  int af_type = is_ipv4 ? AF_INET : AF_INET6;
+  int default_cidr = is_ipv4 ? 32 : 128;
   u_int num_loaded = 0;
 
-  if(!ndpi_str || !path || !ndpi_str->protocols_ptree)
+  if( !path || !ptree)
     return(-1);
 
   fd = fopen(path, "r");
 
   if(fd == NULL) {
-    NDPI_LOG_ERR(ndpi_str, "Unable to open file %s [%s]\n", path, strerror(errno));
+    /* NDPI_LOG_ERR(NULL, "Unable to open file %s [%s]\n", path, strerror(errno)); */
     return(-1);
   }
 
@@ -2862,12 +2866,14 @@ int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
       cidr = strtok_r(NULL, "\n", &saveptr);
 
       pin.s_addr = inet_addr(addr);
-      if((node = add_to_ptree(ndpi_str->protocols_ptree, AF_INET, &pin, cidr ? atoi(cidr) : 32 /* bits */)) != NULL) {
+      if((node = add_to_ptree(ptree, af_type, &pin,
+			      cidr ? atoi(cidr) : default_cidr /* bits */)) != NULL) {
 	u_int i, found = 0;
 
 	for(i=0; i<UV16_MAX_USER_VALUES; i++) {
 	  if(node->value.u.uv16[i].user_value == 0) {
-	    node->value.u.uv16[i].user_value = protocol_id, node->value.u.uv16[i].additional_user_value =  0 /* port */;
+	    node->value.u.uv16[i].user_value = protocol_id,
+	      node->value.u.uv16[i].additional_user_value = 0 /* port */;
 	    found = 1;
 	    break;
 	  }
@@ -2886,7 +2892,41 @@ int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
 
 /* ******************************************* */
 
-static void ndpi_init_ptree_ipv4(void *ptree, ndpi_network host_list[]) {
+int ndpi_load_ipv4_ptree_file(ndpi_ptree_t *ptree, const char *path,
+			      u_int16_t protocol_id) {
+  if(!ptree)
+    return -1;
+  return(ndpi_load_ptree_file(ptree->v4, path, true /* IPv4 */, protocol_id));
+}
+
+/* ******************************************* */
+
+int ndpi_load_ipv6_ptree_file(ndpi_ptree_t *ptree, const char *path,
+			      u_int16_t protocol_id) {
+  if(!ptree)
+    return -1;
+  return(ndpi_load_ptree_file(ptree->v6, path, false /* IPv6 */, protocol_id));
+}
+
+/* ******************************************* */
+
+/*
+  Load a file containing IPv4 addresses in CIDR format as 'protocol_id'
+
+  Return: the number of entries loaded or -1 in case of error
+*/
+int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
+			 const char *path, u_int16_t protocol_id) {
+  if(!ndpi_str)
+    return -1;
+  return(ndpi_load_ptree_file(ndpi_str->protocols_ptree,
+			      path, true /* is_ipv4 */,
+			      protocol_id));
+}
+
+/* ******************************************* */
+
+static void ndpi_init_ptree_ipv4(ndpi_patricia_tree_t *ptree, ndpi_network host_list[]) {
   int i;
 
   for(i = 0; host_list[i].network != 0x0; i++) {
@@ -2908,7 +2948,7 @@ static void ndpi_init_ptree_ipv4(void *ptree, ndpi_network host_list[]) {
 /* ******************************************* */
 
 static void ndpi_init_ptree_ipv6(struct ndpi_detection_module_struct *ndpi_str,
-				 void *ptree, ndpi_network6 host_list[]) {
+				 ndpi_patricia_tree_t *ptree, ndpi_network6 host_list[]) {
   int i;
 
   for(i = 0; host_list[i].network != NULL; i++) {
@@ -2918,9 +2958,10 @@ static void ndpi_init_ptree_ipv6(struct ndpi_detection_module_struct *ndpi_str,
 
     rc = inet_pton(AF_INET6, host_list[i].network, &pin);
     if (rc != 1) {
-        NDPI_LOG_ERR(ndpi_str, "Invalid ipv6 address [%s]: %d\n", host_list[i].network, rc);
-        continue;
+      NDPI_LOG_ERR(ndpi_str, "Invalid ipv6 address [%s]: %d\n", host_list[i].network, rc);
+      continue;
     }
+    
     if((node = add_to_ptree(ptree, AF_INET6, &pin, host_list[i].cidr /* bits */)) != NULL) {
       node->value.u.uv16[0].user_value = host_list[i].value, node->value.u.uv16[0].additional_user_value = 0;
     }
@@ -3329,8 +3370,6 @@ void ndpi_global_deinit(struct ndpi_global_context *g_ctx) {
       ndpi_lru_free_cache(g_ctx->ookla_global_cache);
     if(g_ctx->bittorrent_global_cache)
       ndpi_lru_free_cache(g_ctx->bittorrent_global_cache);
-    if(g_ctx->zoom_global_cache)
-      ndpi_lru_free_cache(g_ctx->zoom_global_cache);
     if(g_ctx->stun_global_cache)
       ndpi_lru_free_cache(g_ctx->stun_global_cache);
     if(g_ctx->stun_zoom_global_cache)
@@ -3383,8 +3422,8 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(struct ndpi_glob
     ndpi_exit_detection_module(ndpi_str);
     return NULL;
   }
-  ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, host_protocol_list);
 
+  ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, host_protocol_list);
 
   ndpi_str->ip_risk_mask_ptree = ndpi_patricia_new(32 /* IPv4 */);
   ndpi_str->ip_risk_mask_ptree6 = ndpi_patricia_new(128 /* IPv6 */);
@@ -3892,22 +3931,6 @@ int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) 
                    ndpi_str->cfg.bittorrent_cache_num_entries);
     }
   }
-  if(ndpi_str->cfg.zoom_cache_num_entries > 0) {
-    if(ndpi_str->cfg.zoom_cache_scope == NDPI_LRUCACHE_SCOPE_GLOBAL) {
-      if(!ndpi_str->g_ctx->zoom_global_cache) {
-        ndpi_str->g_ctx->zoom_global_cache = ndpi_lru_cache_init(ndpi_str->cfg.zoom_cache_num_entries,
-                                                                 ndpi_str->cfg.zoom_cache_ttl, 1);
-      }
-      ndpi_str->zoom_cache = ndpi_str->g_ctx->zoom_global_cache;
-    } else {
-      ndpi_str->zoom_cache = ndpi_lru_cache_init(ndpi_str->cfg.zoom_cache_num_entries,
-                                                 ndpi_str->cfg.zoom_cache_ttl, 0);
-    }
-    if(!ndpi_str->zoom_cache) {
-      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
-                   ndpi_str->cfg.zoom_cache_num_entries);
-    }
-  }
   if(ndpi_str->cfg.stun_cache_num_entries > 0) {
     if(ndpi_str->cfg.stun_cache_scope == NDPI_LRUCACHE_SCOPE_GLOBAL) {
       if(!ndpi_str->g_ctx->stun_global_cache) {
@@ -4325,10 +4348,6 @@ void ndpi_exit_detection_module(struct ndpi_detection_module_struct *ndpi_str) {
        ndpi_str->bittorrent_cache)
       ndpi_lru_free_cache(ndpi_str->bittorrent_cache);
 
-    if(!ndpi_str->cfg.zoom_cache_scope &&
-       ndpi_str->zoom_cache)
-      ndpi_lru_free_cache(ndpi_str->zoom_cache);
-
     if(!ndpi_str->cfg.stun_cache_scope &&
        ndpi_str->stun_cache)
       ndpi_lru_free_cache(ndpi_str->stun_cache);
@@ -4555,14 +4574,10 @@ static u_int16_t guess_protocol_id(struct ndpi_detection_module_struct *ndpi_str
 	    ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, NULL);
 
 	  if(packet->payload_packet_len > sizeof(struct ndpi_icmphdr)) {
-	    flow->entropy = ndpi_entropy(packet->payload + sizeof(struct ndpi_icmphdr),
-	                                 packet->payload_packet_len - sizeof(struct ndpi_icmphdr));
-
-	    if(NDPI_ENTROPY_ENCRYPTED_OR_RANDOM(flow->entropy) != 0) {
-	      char str[32];
-
-		snprintf(str, sizeof(str), "Entropy %.2f", flow->entropy);
-		ndpi_set_risk(flow, NDPI_SUSPICIOUS_ENTROPY, str);
+	    if (flow->skip_entropy_check == 0) {
+	      flow->entropy = ndpi_entropy(packet->payload + sizeof(struct ndpi_icmphdr),
+	                                   packet->payload_packet_len - sizeof(struct ndpi_icmphdr));
+	      ndpi_entropy2risk(flow);
 	    }
 
 	    u_int16_t chksm = icmp4_checksum(packet->payload, packet->payload_packet_len);
@@ -6908,42 +6923,6 @@ static int ndpi_init_packet(struct ndpi_detection_module_struct *ndpi_str,
     if(l4_packet_len >= packet->tcp->doff * 4) {
       packet->payload_packet_len = l4_packet_len - packet->tcp->doff * 4;
       packet->payload = ((u_int8_t *) packet->tcp) + (packet->tcp->doff * 4);
-
-      /* check for new tcp syn packets, here
-       * idea: reset detection state if a connection is unknown
-       */
-      if(packet->tcp->syn != 0 && packet->tcp->ack == 0 && flow->init_finished != 0 &&
-	 flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN) {
-	u_int16_t guessed_protocol_id, guessed_protocol_id_by_ip;
-	u_int16_t packet_direction_counter[2];
-        u_int8_t num_processed_pkts;
-
-#define flow_save(a) a = flow->a
-#define flow_restore(a) flow->a = a
-
-	flow_save(packet_direction_counter[0]);
-	flow_save(packet_direction_counter[1]);
-	flow_save(num_processed_pkts);
-	flow_save(guessed_protocol_id);
-	flow_save(guessed_protocol_id_by_ip);
-
-        ndpi_free_flow_data(flow);
-        memset(flow, 0, sizeof(*(flow)));
-
-        /* Restore pointers */
-        flow->l4_proto = IPPROTO_TCP;
-
-	flow_restore(packet_direction_counter[0]);
-	flow_restore(packet_direction_counter[1]);
-	flow_restore(num_processed_pkts);
-	flow_restore(guessed_protocol_id);
-	flow_restore(guessed_protocol_id_by_ip);
-
-#undef flow_save
-#undef flow_restore
-
-        NDPI_LOG_DBG(ndpi_str, "tcp syn packet for unknown protocol, reset detection state\n");
-      }
     } else {
       /* tcp header not complete */
       return(1);
@@ -7827,61 +7806,6 @@ int search_into_bittorrent_cache(struct ndpi_detection_module_struct *ndpi_struc
 
 /* ********************************************************************************* */
 
-/* #define ZOOM_CACHE_DEBUG */
-
-
-static u_int64_t make_zoom_key(struct ndpi_flow_struct *flow, int server) {
-  u_int64_t key;
-
-  if(server) {
-    if(flow->is_ipv6)
-      key = ndpi_quick_hash64((const char *)flow->s_address.v6, 16);
-    else
-      key = flow->s_address.v4;
-  } else {
-    if(flow->is_ipv6)
-      key = ndpi_quick_hash64((const char *)flow->c_address.v6, 16);
-    else
-      key = flow->c_address.v4;
-  }
-
-  return key;
-}
-
-/* ********************************************************************************* */
-
-static u_int8_t ndpi_search_into_zoom_cache(struct ndpi_detection_module_struct *ndpi_struct,
-					    struct ndpi_flow_struct *flow, int server) {
-
-  if(ndpi_struct->zoom_cache) {
-    u_int16_t cached_proto;
-    u_int64_t key;
-
-    key = make_zoom_key(flow, server);
-    u_int8_t found = ndpi_lru_find_cache(ndpi_struct->zoom_cache, key, &cached_proto,
-					 0 /* Don't remove it as it can be used for other connections */,
-					 ndpi_get_current_time(flow));
-
-#ifdef ZOOM_CACHE_DEBUG
-    printf("[Zoom] *** [TCP] SEARCHING key 0x%llx [found: %u]\n", (long long unsigned int)key, found);
-#endif
-
-    return(found);
-  }
-
-  return(0);
-}
-
-/* ********************************************************************************* */
-
-static void ndpi_add_connection_as_zoom(struct ndpi_detection_module_struct *ndpi_struct,
-					struct ndpi_flow_struct *flow) {
-  if(ndpi_struct->zoom_cache)
-    ndpi_lru_add_to_cache(ndpi_struct->zoom_cache, make_zoom_key(flow, 1), NDPI_PROTOCOL_ZOOM, ndpi_get_current_time(flow));
-}
-
-/* ********************************************************************************* */
-
 /*
   NOTE:
 
@@ -7950,15 +7874,6 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
 			 &cached_proto, 0 /* Don't remove it as it can be used for other connections */,
 			 ndpi_get_current_time(flow))) {
     ndpi_set_detected_protocol(ndpi_str, flow, cached_proto, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
-    ret.app_protocol = flow->detected_protocol_stack[0];
-  }
-
-  /* Does it looks like Zoom? */
-  if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
-     flow->l4_proto == IPPROTO_UDP && /* Zoom/UDP used for video */
-     ((ntohs(flow->s_port) == 8801 && ndpi_search_into_zoom_cache(ndpi_str, flow, 1)) ||
-      (ntohs(flow->c_port) == 8801 && ndpi_search_into_zoom_cache(ndpi_str, flow, 0)))) {
-    ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_ZOOM, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
     ret.app_protocol = flow->detected_protocol_stack[0];
   }
 
@@ -8887,10 +8802,6 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 
   /* ndpi_reconcile_protocols(ndpi_str, flow, &ret); */
 
-  /* Zoom cache */
-  if((ret.app_protocol == NDPI_PROTOCOL_ZOOM) && (flow->l4_proto == IPPROTO_TCP))
-    ndpi_add_connection_as_zoom(ndpi_str, flow);
-
   if(ndpi_str->cfg.fully_encrypted_heuristic &&
      ret.app_protocol == NDPI_PROTOCOL_UNKNOWN && /* Only for unknown traffic */
      flow->packet_counter == 1 && packet->payload_packet_len > 0) {
@@ -8904,26 +8815,18 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
     ndpi_search_elf(ndpi_str, flow);
     ndpi_search_shellscript(ndpi_str, flow);
   }
-#ifndef __KERNEL__
-  if(flow->first_pkt_fully_encrypted == 0 &&
-     ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
-     NDPI_ENTROPY_ENCRYPTED_OR_RANDOM(flow->entropy) == 0 &&
-     flow->packet_counter < 3)
-  {
-    flow->entropy = ndpi_entropy(packet->payload, packet->payload_packet_len);
-    if(NDPI_ENTROPY_ENCRYPTED_OR_RANDOM(flow->entropy) != 0) {
-      char str[32];
 
-      snprintf(str, sizeof(str), "Entropy %.2f", flow->entropy);
-      ndpi_set_risk(flow, NDPI_SUSPICIOUS_ENTROPY, str);
-    }
-  }
-  if(ret.app_protocol != NDPI_PROTOCOL_UNKNOWN &&
-     ret.app_protocol != NDPI_PROTOCOL_IP_ICMP &&
-     flow->entropy > 0.0f)
+#ifndef __KERNEL__
+  if(flow->skip_entropy_check == 0 &&
+     flow->first_pkt_fully_encrypted == 0 &&
+     flow->packet_counter < 5 &&
+     /* The following protocols do their own entropy calculation/classification. */
+     ret.app_protocol != NDPI_PROTOCOL_IP_ICMP)
   {
-    flow->entropy = 0.0f;
-    ndpi_unset_risk(flow, NDPI_SUSPICIOUS_ENTROPY);
+    if (ret.app_protocol != NDPI_PROTOCOL_HTTP) {
+      flow->entropy = ndpi_entropy(packet->payload, packet->payload_packet_len);
+    }
+    ndpi_entropy2risk(flow);
   }
 #endif
 
@@ -10563,9 +10466,6 @@ int ndpi_get_lru_cache_stats(struct ndpi_global_context *g_ctx,
   case NDPI_LRUCACHE_BITTORRENT:
     ndpi_lru_get_stats(is_local ? ndpi_struct->bittorrent_cache : g_ctx->bittorrent_global_cache, stats);
     return 0;
-  case NDPI_LRUCACHE_ZOOM:
-    ndpi_lru_get_stats(is_local ? ndpi_struct->zoom_cache : g_ctx->zoom_global_cache, stats);
-    return 0;
   case NDPI_LRUCACHE_STUN:
     ndpi_lru_get_stats(is_local ? ndpi_struct->stun_cache : g_ctx->stun_global_cache, stats);
     return 0;
@@ -10731,9 +10631,11 @@ int ndpi_ptree_match_addr(ndpi_ptree_t *tree,
   bits = ptree->maxbits;
 
   if(is_v6)
-    ndpi_fill_prefix_v6(&prefix, (const struct in6_addr *) &addr->ipv6, bits, ptree->maxbits);
+    ndpi_fill_prefix_v6(&prefix, (const struct in6_addr *) &addr->ipv6,
+			bits, ptree->maxbits);
   else
-    ndpi_fill_prefix_v4(&prefix, (const struct in_addr *) &addr->ipv4, bits, ptree->maxbits);
+    ndpi_fill_prefix_v4(&prefix, (const struct in_addr *) &addr->ipv4,
+			bits, ptree->maxbits);
 
   node = ndpi_patricia_search_best(ptree, &prefix);
 
@@ -11649,13 +11551,9 @@ static const struct cfg_param {
   { NULL,            "lru.bittorrent.ttl",                      "0", "0", "16777215", CFG_PARAM_INT, __OFF(bittorrent_cache_ttl), NULL , 0 },
   { NULL,            "lru.bittorrent.scope",                    "0", "0", "1", CFG_PARAM_INT, __OFF(bittorrent_cache_scope), clbk_only_with_global_ctx , 0 },
 
-  { NULL,            "lru.zoom.size",                           "512", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_num_entries), NULL , 0 },
-  { NULL,            "lru.zoom.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(zoom_cache_ttl), NULL , 0 },
-  { NULL,            "lru.zoom.scope",                          "0", "0", "1", CFG_PARAM_INT, __OFF(zoom_cache_scope), clbk_only_with_global_ctx , 0 },
-
-  { NULL,            "lru.stun.size",                           "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_num_entries), NULL , 0 },
-  { NULL,            "lru.stun.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_ttl), NULL , 0 },
-  { NULL,            "lru.stun.scope",                          "0", "0", "1", CFG_PARAM_INT, __OFF(stun_cache_scope), clbk_only_with_global_ctx , 0 },
+  { NULL,            "lru.stun.size",                           "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.stun.ttl",                            "0", "0", "16777215", CFG_PARAM_INT, __OFF(stun_cache_ttl), NULL, 0 },
+  { NULL,            "lru.stun.scope",                          "0", "0", "1", CFG_PARAM_INT, __OFF(stun_cache_scope), clbk_only_with_global_ctx, 0 },
 
   { NULL,            "lru.tls_cert.size",                       "1024", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_num_entries), NULL , 0 },
   { NULL,            "lru.tls_cert.ttl",                        "0", "0", "16777215", CFG_PARAM_INT, __OFF(tls_cert_cache_ttl), NULL , 0 },
@@ -11908,45 +11806,48 @@ char *ndpi_dump_config(struct ndpi_detection_module_struct *ndpi_str,
 
 void* ndpi_memmem(const void* haystack, size_t haystack_len, const void* needle, size_t needle_len)
 {
-  if (!haystack || !needle) {
-    return NULL;
-  }
-
-  if (needle_len > haystack_len) {
-    return NULL;
-  }
-
-  if ((size_t)(const u_int8_t*)haystack+haystack_len < haystack_len) {
+  if (!haystack || !needle || haystack_len < needle_len || needle_len == 0) {
     return NULL;
   }
 
   if (needle_len == 1) {
-    return memchr(haystack, *(int*)needle, haystack_len);
+    return (void *)memchr(haystack, *(const u_int8_t *)needle, haystack_len);
   }
 
-  const u_int8_t* h = NULL;
-  const u_int8_t* n = (const u_int8_t*)needle;
-  for (h = haystack; h <= (const u_int8_t*)haystack+haystack_len-needle_len; ++h) {
-    if (*h == n[0] && !memcmp(h, needle, needle_len))
-      return (void*)h;
+  const u_int8_t *current = (const u_int8_t *)haystack;
+  const u_int8_t *haystack_end = (const u_int8_t *)haystack + haystack_len;
+
+  while (current <= haystack_end - needle_len) {
+    /* Find the first occurrence of the first character from the needle */
+    current = (const u_int8_t *)memchr(current, *(const u_int8_t *)needle,
+                                       haystack_end - current);
+
+    if (!current) {
+      return NULL;
+    }
+
+    /* Check the rest of the needle for a match */
+    if ((current + needle_len <= haystack_end) &&
+        (memcmp(current, needle, needle_len) == 0)) {
+      return (void *)current;
+    }
+
+    /* Shift one character to the right for the next search */
+    current++;
   }
 
   return NULL;
 }
 
-size_t ndpi_strlcpy(char *dst, const char* src, size_t dst_len)
+size_t ndpi_strlcpy(char *dst, const char* src, size_t dst_len, size_t src_len)
 {
-  if (!dst || !src) {
+  if (!dst || !src || dst_len == 0) {
     return 0;
   }
 
-  size_t src_len = strlen(src);
-
-  if (dst_len != 0) {
-    size_t len = (src_len < dst_len - 1) ? src_len : dst_len - 1;
-    memcpy(dst, src, len);
-    dst[len] = '\0';
-  }
+  size_t copy_len = ndpi_min(src_len, dst_len - 1);
+  memmove(dst, src, copy_len);
+  dst[copy_len] = '\0';
 
   return src_len;
 }

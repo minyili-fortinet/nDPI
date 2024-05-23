@@ -182,9 +182,6 @@ struct ndpi_global_context {
   /* NDPI_PROTOCOL_BITTORRENT */
   struct ndpi_lru_cache *bittorrent_global_cache;
 
-  /* NDPI_PROTOCOL_ZOOM */
-  struct ndpi_lru_cache *zoom_global_cache;
-
   /* NDPI_PROTOCOL_STUN and subprotocols */
   struct ndpi_lru_cache *stun_global_cache;
   struct ndpi_lru_cache *stun_zoom_global_cache;
@@ -236,9 +233,6 @@ struct ndpi_detection_module_config_struct {
   int bittorrent_cache_num_entries;
   int bittorrent_cache_ttl;
   int bittorrent_cache_scope;
-  int zoom_cache_num_entries;
-  int zoom_cache_ttl;
-  int zoom_cache_scope;
   int stun_cache_num_entries;
   int stun_cache_ttl;
   int stun_cache_scope;
@@ -399,9 +393,6 @@ struct ndpi_detection_module_struct {
   /* NDPI_PROTOCOL_BITTORRENT */
   struct ndpi_lru_cache *bittorrent_cache;
 
-  /* NDPI_PROTOCOL_ZOOM */
-  struct ndpi_lru_cache *zoom_cache;
-
   /* NDPI_PROTOCOL_STUN and subprotocols */
   struct ndpi_lru_cache *stun_cache;
   struct ndpi_lru_cache *stun_zoom_cache;
@@ -530,11 +521,16 @@ struct ndpi_detection_module_struct {
 
 #else /* not defined NDPI_ENABLE_DEBUG_MESSAGES */
 # ifdef WIN32
+/* 
+*  Already defined in ndpi_define.h
+*/
+#ifndef NDPI_LOG_DBG
 # define NDPI_LOG(mod, ...) { (void)mod; }
 # define NDPI_LOG_ERR(mod, ...) { (void)mod; }
 # define NDPI_LOG_INFO(mod, ...) { (void)mod; }
 # define NDPI_LOG_DBG(mod, ...) { (void)mod; }
 # define NDPI_LOG_DBG2(mod, ...) { (void)mod; }
+#endif
 # else
 # define NDPI_LOG(proto, mod, log_level, args...) { /* printf(args); */ }
 # ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
@@ -714,7 +710,7 @@ const uint8_t *get_crypto_data(struct ndpi_detection_module_struct *ndpi_struct,
 
 /* RTP */
 int is_valid_rtp_payload_type(uint8_t type);
-int is_rtp_or_rtcp(struct ndpi_detection_module_struct *ndpi_struct);
+int is_rtp_or_rtcp(struct ndpi_detection_module_struct *ndpi_struct, u_int16_t *seq);
 u_int8_t rtp_get_stream_type(u_int8_t payloadType, ndpi_multimedia_flow_type *s_type);
 
 /* Bittorrent */
