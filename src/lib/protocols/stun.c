@@ -311,6 +311,9 @@ static void parse_xor_ip_port_attribute(struct ndpi_detection_module_struct *ndp
     }
   }
 }
+
+/* ***************************************************** */
+
 int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
             struct ndpi_flow_struct *flow,
             u_int16_t *app_proto)
@@ -325,9 +328,8 @@ int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
   u_int32_t magic_cookie;
   u_int32_t transaction_id[3];
 
-  if(payload_length < STUN_HDR_LEN) {
-    return 0;
-  }
+  if(payload_length < STUN_HDR_LEN)
+    return(-1);  
 
   /* Some really old/legacy stuff */
   if(strncmp((const char *)payload, "RSP/", 4) == 0 &&
@@ -365,20 +367,21 @@ int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
   if(packet->tcp) {
     if(msg_len + STUN_HDR_LEN > payload_length)
       return 0;
+    
     payload_length = msg_len + STUN_HDR_LEN;
   }
 
   if(msg_type == 0 || (msg_len + STUN_HDR_LEN != payload_length)) {
     NDPI_LOG_DBG(ndpi_struct, "Invalid msg_type = %04X or len %d %d\n",
                  msg_type, msg_len, payload_length);
-    return 0;
+    return -1;
   }
 
   /* https://www.iana.org/assignments/stun-parameters/stun-parameters.xhtml */
   if(((msg_type & 0x3EEF) > 0x000B) &&
      msg_type != 0x0800 && msg_type != 0x0801 && msg_type != 0x0802) {
     NDPI_LOG_DBG(ndpi_struct, "Invalid msg_type = %04X\n", msg_type);
-    return 0;
+    return -1;
   }
 
   if(magic_cookie != 0x2112A442) {
@@ -511,6 +514,8 @@ int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
 	    *app_proto = NDPI_PROTOCOL_ADULT_CONTENT;
 	  } else if(strstr(flow->host_server_name, "telegram") != NULL) {
 	    *app_proto = NDPI_PROTOCOL_TELEGRAM_VOIP;
+	  } else if(strstr(flow->host_server_name, "viber") != NULL) {
+	    *app_proto = NDPI_PROTOCOL_VIBER_VOIP;
 	  }
 	} else
 	  flow->host_server_name[0] = '\0';
@@ -579,6 +584,8 @@ int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
 
   return 1;
 }
+
+/* ***************************************************** */
 
 static int keep_extra_dissection(struct ndpi_detection_module_struct *ndpi_struct,
                                  struct ndpi_flow_struct *flow)
@@ -656,7 +663,7 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
   /* RFC9443 */
   if(first_byte <= 3) {
     NDPI_LOG_DBG(ndpi_struct, "Still STUN\n");
-    if(is_stun(ndpi_struct, flow, &app_proto)) { /* To extract other metadata */
+    if(is_stun(ndpi_struct, flow, &app_proto) == 1) { /* To extract other metadata */
       if(is_new_subclassification_better(ndpi_struct, flow, app_proto)) {
         ndpi_int_stun_add_connection(ndpi_struct, flow, app_proto, __get_master(flow));
       }
@@ -973,7 +980,8 @@ static void ndpi_search_stun(struct ndpi_detection_module_struct *ndpi_struct, s
 {
   struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int16_t app_proto;
-
+  int rc;
+  
   NDPI_LOG_DBG(ndpi_struct, "search stun\n");
 
   app_proto = NDPI_PROTOCOL_UNKNOWN;
@@ -985,13 +993,15 @@ static void ndpi_search_stun(struct ndpi_detection_module_struct *ndpi_struct, s
     return;
   }
 
-  if(is_stun(ndpi_struct, flow, &app_proto)) {
+  rc = is_stun(ndpi_struct, flow, &app_proto);
+  
+  if(rc == 1) {
     ndpi_int_stun_add_connection(ndpi_struct, flow, app_proto, __get_master(flow));
     return;
   }
 
   /* TODO: can we stop earlier? */
-  if(flow->packet_counter > 10)
+  if(flow->packet_counter > 5)
     NDPI_EXCLUDE_PROTO(ndpi_struct, flow);
 }
 

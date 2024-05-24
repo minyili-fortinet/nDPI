@@ -32,6 +32,15 @@ Adobe Connect is a web conferencing platform that allows users to conduct online
 References: `Main site: <https://www.adobe.com/products/adobeconnect.html>`_
 
 
+.. _Proto 65:
+
+`NDPI_PROTOCOL_IRC`
+==================
+IRC (Internet Relay Chat) is a text-based chat system for instant messaging.
+
+References: `Wikipiedia: <https://en.wikipedia.org/wiki/IRC>`_ and `Some statistics: <https://netsplit.de/networks/top10.php>`
+
+
 .. _Proto 72:
 
 `NDPI_PROTOCOL_HART_IP`
@@ -56,7 +65,21 @@ References: `RFC1350 <https://datatracker.ietf.org/doc/html/rfc1350>`_ and `RFC2
 =======================
 A Remote Procedure Call protocol over HTTP from Microsoft.
 
-References: `Protocol Specs: <https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rpch/c0f4c9c5-1a61-4d10-b8e2-005378d1d212`_
+References: `Protocol Specs: <https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rpch/c0f4c9c5-1a61-4d10-b8e2-005378d1d212>`_
+
+
+.. _Proto 149:
+
+`NDPI_PROTOCOL_EGD`
+=========================
+Ethernet Global Data (EGD) is a communication protocol developed by GE Fanuc Automation for real-time data exchange between automation devices and control systems using standard Ethernet technology. It is widely adopted in industrial environments for its simplicity and reliability in data communication.
+
+References: `Wikipedia <https://en.wikipedia.org/wiki/Ethernet_Global_Data_Protocol>`_
+
+Notes:
+
+- This dissector only works for data packets, not configuration commands.
+- IPv6 is not supported
 
 
 .. _Proto 182:
@@ -65,7 +88,16 @@ References: `Protocol Specs: <https://learn.microsoft.com/en-us/openspecs/window
 =======================
 Redis Serialization Protocol
 
-References: `Protocol Specs: <https://redis.io/docs/reference/protocol-spec/`_
+References: `Protocol Specs: <https://redis.io/docs/reference/protocol-spec/>`_
+
+
+.. _Proto 186:
+
+`NDPI_PROTOCOL_COD_MOBILE`
+=======================
+Call of Duty: Mobile is a free-to-play shooter game for iOS and Android devices. It has amassed over 650 million downloads worldwide, making it one of the most popular mobile games.
+
+References: `Main site: <https://www.callofduty.com/mobile/>`_
 
 
 .. _Proto 201:
@@ -84,6 +116,7 @@ References: `Main site: <https://meet.google.com/>`_
 Steam Datagram Relay (SDR) is Valve's virtual private gaming network. Used in all modern games from Valve, but can also be used by developers via the Steamworks SDK for their games.
 
 References: `Main site: <https://partner.steamgames.com/doc/features/multiplayer/steamdatagramrelay>`_
+
 
 .. _Proto 338:
 
@@ -787,3 +820,12 @@ References: `Main site: <https://joinmastodon.org/>`_
 Threads is an online social media and social networking service operated by Meta Platforms.
 
 References: `Main site: <https://www.threads.net>`_
+
+
+.. _Proto 414:
+
+`NDPI_PROTOCOL_VIBER_VOIP`
+=========================
+Audio/video calls made using the Viber app.
+
+References: `Wikipedia <https://en.wikipedia.org/wiki/Viber>`_

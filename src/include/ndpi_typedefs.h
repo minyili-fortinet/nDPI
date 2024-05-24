@@ -901,9 +901,6 @@ struct ndpi_flow_tcp_struct {
 
   /* NDPI_PROTOCOL_IRC */
   u_int32_t irc_3a_counter:3;
-  u_int32_t irc_stage2:5;
-  u_int32_t irc_direction:2;
-  u_int32_t irc_0x1000_full:1;
 
   /* NDPI_PROTOCOL_USENET */
   u_int32_t usenet_stage:2;
@@ -1551,9 +1548,6 @@ struct ndpi_flow_struct {
   u_int16_t all_packets_counter;
   u_int16_t packet_direction_complete_counter[2];      // can be 0 - 65000
 
-  /* NDPI_PROTOCOL_H323 */
-  u_int8_t h323_valid_packets;
-
   /* NDPI_PROTOCOL_BITTORRENT */
   u_int32_t bittorrent_seq;
   u_int8_t bittorrent_stage;		      // can be 0 - 255
@@ -1782,7 +1776,11 @@ typedef void (*ndpi_void_fn3_t)(ndpi_patricia_node_t *node, void *data, void *us
 
 /* **************************************** */
 
-typedef struct ndpi_ptree ndpi_ptree_t;
+typedef struct ndpi_ptree
+{
+  ndpi_patricia_tree_t *v4;
+  ndpi_patricia_tree_t *v6;
+} ndpi_ptree_t;
 
 /* **************************************** */
 

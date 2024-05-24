@@ -177,7 +177,7 @@ typedef enum {
   NDPI_PROTOCOL_RADIUS                = 146,
   NDPI_PROTOCOL_WINDOWS_UPDATE        = 147,
   NDPI_PROTOCOL_TEAMVIEWER            = 148,
-  NDPI_PROTOCOL_FREE_149              = 149, /* FREE */
+  NDPI_PROTOCOL_EGD                   = 149,
   NDPI_PROTOCOL_LOTUS_NOTES           = 150,
   NDPI_PROTOCOL_SAP                   = 151,
   NDPI_PROTOCOL_GTP                   = 152,
@@ -214,7 +214,7 @@ typedef enum {
   NDPI_PROTOCOL_PINTEREST             = 183,
   NDPI_PROTOCOL_VHUA                  = 184,
   NDPI_PROTOCOL_TELEGRAM              = 185,
-  NDPI_PROTOCOL_VEVO                  = 186,
+  NDPI_PROTOCOL_COD_MOBILE            = 186,
   NDPI_PROTOCOL_PANDORA               = 187,
   NDPI_PROTOCOL_QUIC                  = 188,
   NDPI_PROTOCOL_ZOOM                  = 189, /* Zoom video conference. */
@@ -442,6 +442,7 @@ typedef enum {
   NDPI_PROTOCOL_BLUESKY               = 411,
   NDPI_PROTOCOL_MASTODON              = 412,
   NDPI_PROTOCOL_THREADS               = 413,
+  NDPI_PROTOCOL_VIBER_VOIP            = 414,
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_protocol_ids.h"

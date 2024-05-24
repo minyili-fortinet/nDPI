@@ -69,6 +69,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/citrix.c \
 		     protocols/cpha.c \
 		     protocols/coap.c \
+		     protocols/cod_mobile.c \
 		     protocols/collectd.c \
 		     protocols/corba.c \
 		     protocols/crossfire.c \
@@ -87,6 +88,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/dropbox.c \
 		     protocols/eaq.c \
 		     protocols/edonkey.c \
+		     protocols/egd.c \
 		     protocols/elastic_search.c \
 		     protocols/epicgames.c \
 		     protocols/ethereum.c \

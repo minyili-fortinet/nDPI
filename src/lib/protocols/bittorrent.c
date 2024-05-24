@@ -1685,16 +1685,15 @@ static void ndpi_search_bittorrent(struct ndpi_detection_module_struct *ndpi_str
       }
 
 
-      ndpi_skip_bittorrent(ndpi_struct, flow);
+      if(flow->packet_counter > 5) // 10
+          ndpi_skip_bittorrent(ndpi_struct, flow);
       return;
       /* UDP */
 
   bittorrent_found:
-       //if(bt_proto && (packet->payload_packet_len > 47))
-       //     memcpy(flow->protos.bittorrent.hash, &bt_proto[27], 20);
 
         NDPI_LOG_INFO(ndpi_struct,
-	     "BT: BitTorrent protocol detected: %s\n",detect_type ? detect_type : "(NULL)");
+	     "BT: BitTorrent protocol detected: %s\n",detect_type ? detect_type : "Unknown");
         ndpi_add_connection_as_bittorrent(ndpi_struct, flow, -1, bt_proto ? 1:0, NDPI_CONFIDENCE_DPI);
   return;
 }

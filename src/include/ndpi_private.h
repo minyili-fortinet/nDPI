@@ -220,7 +220,8 @@ struct ndpi_detection_module_config_struct {
   int track_payload_enabled;
   int libgcrypt_init;
   int guess_on_giveup;
-
+  int compute_entropy;
+  
   char filename_config[CFG_MAX_LEN];
 
   int log_level;
@@ -349,12 +350,7 @@ struct ndpi_detection_module_struct {
   ndpi_list *trusted_issuer_dn;
 
   /* Patricia trees */
-  ndpi_patricia_tree_t *ip_risk_mask_ptree;
-  ndpi_patricia_tree_t *ip_risk_mask_ptree6;
-  ndpi_patricia_tree_t *ip_risk_ptree;
-  ndpi_patricia_tree_t *ip_risk_ptree6;
-  ndpi_patricia_tree_t *protocols_ptree;  /* IP-based protocol detection */
-  ndpi_patricia_tree_t *protocols_ptree6;
+  ndpi_ptree_t *ip_risk_mask, *ip_risk, *protocols /* IP-based protocol detection */;
 
   /* *** If you add a new Patricia tree, please update ptree_type above! *** */
 
@@ -978,6 +974,8 @@ void init_ldp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int3
 void init_knxnet_ip_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_bfcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_iqiyi_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_egd_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_cod_mobile_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

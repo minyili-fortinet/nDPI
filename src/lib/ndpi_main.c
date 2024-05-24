@@ -1,7 +1,7 @@
 /*
  * ndpi_main.c
  *
- * Copyright (C) 2011-23 - ntop.org
+ * Copyright (C) 2011-24 - ntop.org
  *
  * This file is part of nDPI, an open source deep packet inspection
  * library based on the OpenDPI and PACE technology by ipoque GmbH
@@ -273,15 +273,6 @@ void ndpi_flow_free(void *ptr) {
 
 /* *********************************************************************************** */
 
-/* Opaque structure defined here */
-struct ndpi_ptree
-{
-  ndpi_patricia_tree_t *v4;
-  ndpi_patricia_tree_t *v6;
-};
-
-/* *********************************************************************************** */
-
 u_int32_t ndpi_detection_get_sizeof_ndpi_flow_struct(void) {
   return(sizeof(struct ndpi_flow_struct));
 }
@@ -401,30 +392,6 @@ u_int16_t ndpi_map_ndpi_id_to_user_proto_id(struct ndpi_detection_module_struct 
 }
 
 /* ************************************************************************************* */
-/* ************************************************************************************* */
-
-#ifdef CODE_UNUSED
-ndpi_port_range *ndpi_build_default_ports_range(ndpi_port_range *ports, u_int16_t portA_low, u_int16_t portA_high,
-                                                u_int16_t portB_low, u_int16_t portB_high, u_int16_t portC_low,
-                                                u_int16_t portC_high, u_int16_t portD_low, u_int16_t portD_high,
-                                                u_int16_t portE_low, u_int16_t portE_high) {
-  int i = 0;
-
-  ports[i].port_low = portA_low, ports[i].port_high = portA_high;
-  i++;
-  ports[i].port_low = portB_low, ports[i].port_high = portB_high;
-  i++;
-  ports[i].port_low = portC_low, ports[i].port_high = portC_high;
-  i++;
-  ports[i].port_low = portD_low, ports[i].port_high = portD_high;
-  i++;
-  ports[i].port_low = portE_low, ports[i].port_high = portE_high;
-
-  return(ports);
-}
-#endif
-
-/* *********************************************************************************** */
 
 ndpi_port_range *ndpi_build_default_ports(ndpi_port_range *ports, u_int16_t portA, u_int16_t portB, u_int16_t portC,
                                           u_int16_t portD, u_int16_t portE) {
@@ -997,12 +964,6 @@ static void init_string_based_protocols(struct ndpi_detection_module_struct *ndp
   }
 
   for(i = 0; tls_certificate_match[i].string_to_match != NULL; i++) {
-#if 0
-    printf("%s() %s / %u\n", __FUNCTION__,
-	   tls_certificate_match[i].string_to_match,
-	   tls_certificate_match[i].protocol_id);
-#endif
-
     if(!is_proto_enabled(ndpi_str, tls_certificate_match[i].protocol_id)) {
       NDPI_LOG_DBG(ndpi_str, "[NDPI] Skip tls cert match for %s/protoId=%d: disabled\n",
 		   tls_certificate_match[i].string_to_match, tls_certificate_match[i].protocol_id);
@@ -2377,8 +2338,8 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "KNXnet_IP", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 3671, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 3671, 0, 0, 0, 0) /* UDP */);
-  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_FREE_149,
-			  "Free149", NDPI_PROTOCOL_CATEGORY_VOIP,
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_EGD,
+			  "EthernetGlobalData", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_BFCP,
@@ -2388,6 +2349,14 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
   ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_IQIYI,
 			  "iQIYI", NDPI_PROTOCOL_CATEGORY_STREAMING,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_VIBER_VOIP,
+			  "ViberVoip", NDPI_PROTOCOL_CATEGORY_VOIP,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_COD_MOBILE,
+			  "CoD_Mobile", NDPI_PROTOCOL_CATEGORY_GAME,
+ 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
@@ -2511,27 +2480,39 @@ int ndpi_get_patricia_stats(struct ndpi_detection_module_struct *ndpi_struct,
 
   switch(ptree_type) {
   case NDPI_PTREE_RISK_MASK:
-    ndpi_patricia_get_stats(ndpi_struct->ip_risk_mask_ptree, stats);
+    if(!ndpi_struct->ip_risk_mask)
+      return -1;
+    ndpi_patricia_get_stats(ndpi_struct->ip_risk_mask->v4, stats);
     return 0;
 
   case NDPI_PTREE_RISK_MASK6:
-    ndpi_patricia_get_stats(ndpi_struct->ip_risk_mask_ptree6, stats);
+    if(!ndpi_struct->ip_risk_mask)
+      return -1;
+    ndpi_patricia_get_stats(ndpi_struct->ip_risk_mask->v6, stats);
     return 0;
 
   case NDPI_PTREE_RISK:
-    ndpi_patricia_get_stats(ndpi_struct->ip_risk_ptree, stats);
+    if(!ndpi_struct->ip_risk)
+      return -1;
+    ndpi_patricia_get_stats(ndpi_struct->ip_risk->v4, stats);
     return 0;
 
   case NDPI_PTREE_RISK6:
-    ndpi_patricia_get_stats(ndpi_struct->ip_risk_ptree6, stats);
+    if(!ndpi_struct->ip_risk)
+      return -1;
+    ndpi_patricia_get_stats(ndpi_struct->ip_risk->v6, stats);
     return 0;
 
   case NDPI_PTREE_PROTOCOLS:
-    ndpi_patricia_get_stats(ndpi_struct->protocols_ptree, stats);
+    if(!ndpi_struct->protocols)
+      return -1;
+    ndpi_patricia_get_stats(ndpi_struct->protocols->v4, stats);
     return 0;
 
   case NDPI_PTREE_PROTOCOLS6:
-    ndpi_patricia_get_stats(ndpi_struct->protocols_ptree6, stats);
+    if(!ndpi_struct->protocols)
+      return -1;
+    ndpi_patricia_get_stats(ndpi_struct->protocols->v6, stats);
     return 0;
 
   default:
@@ -2637,7 +2618,7 @@ u_int16_t ndpi_network_ptree_match(struct ndpi_detection_module_struct *ndpi_str
   ndpi_prefix_t prefix;
   ndpi_patricia_node_t *node;
 
-  if(!ndpi_str || !ndpi_str->protocols_ptree)
+  if(!ndpi_str || !ndpi_str->protocols)
     return(NDPI_PROTOCOL_UNKNOWN);
 
   if(ndpi_str->ndpi_num_custom_protocols == 0) {
@@ -2654,8 +2635,9 @@ u_int16_t ndpi_network_ptree_match(struct ndpi_detection_module_struct *ndpi_str
   }
 
   /* Make sure all in network byte order otherwise compares wont work */
-  ndpi_fill_prefix_v4(&prefix, pin, 32, ((ndpi_patricia_tree_t *) ndpi_str->protocols_ptree)->maxbits);
-  node = ndpi_patricia_search_best(ndpi_str->protocols_ptree, &prefix);
+  ndpi_fill_prefix_v4(&prefix, pin, 32,
+		      ((ndpi_patricia_tree_t *) ndpi_str->protocols->v4)->maxbits);
+  node = ndpi_patricia_search_best(ndpi_str->protocols->v4, &prefix);
 
   return(node ? node->value.u.uv16[0].user_value : NDPI_PROTOCOL_UNKNOWN);
 }
@@ -2668,7 +2650,7 @@ u_int16_t ndpi_network_port_ptree_match(struct ndpi_detection_module_struct *ndp
   ndpi_prefix_t prefix;
   ndpi_patricia_node_t *node;
 
-  if(!ndpi_str || !ndpi_str->protocols_ptree)
+  if(!ndpi_str || !ndpi_str->protocols)
     return(NDPI_PROTOCOL_UNKNOWN);
 
   if(ndpi_str->ndpi_num_custom_protocols == 0) {
@@ -2685,8 +2667,9 @@ u_int16_t ndpi_network_port_ptree_match(struct ndpi_detection_module_struct *ndp
   }
 
   /* Make sure all in network byte order otherwise compares wont work */
-  ndpi_fill_prefix_v4(&prefix, pin, 32, ((ndpi_patricia_tree_t *) ndpi_str->protocols_ptree)->maxbits);
-  node = ndpi_patricia_search_best(ndpi_str->protocols_ptree, &prefix);
+  ndpi_fill_prefix_v4(&prefix, pin, 32,
+		      ((ndpi_patricia_tree_t *) ndpi_str->protocols->v4)->maxbits);
+  node = ndpi_patricia_search_best(ndpi_str->protocols->v4, &prefix);
 
   if(node) {
     int i;
@@ -2725,14 +2708,15 @@ u_int16_t ndpi_network_port_ptree6_match(struct ndpi_detection_module_struct *nd
   ndpi_prefix_t prefix;
   ndpi_patricia_node_t *node;
 
-  if(!ndpi_str || !ndpi_str->protocols_ptree6)
+  if(!ndpi_str || !ndpi_str->protocols)
     return(NDPI_PROTOCOL_UNKNOWN);
 
   /* TODO: check on "private" addresses? */
 
   /* Make sure all in network byte order otherwise compares wont work */
-  ndpi_fill_prefix_v6(&prefix, pin, 128, ((ndpi_patricia_tree_t *) ndpi_str->protocols_ptree6)->maxbits);
-  node = ndpi_patricia_search_best(ndpi_str->protocols_ptree6, &prefix);
+  ndpi_fill_prefix_v6(&prefix, pin, 128,
+		      ((ndpi_patricia_tree_t *) ndpi_str->protocols->v6)->maxbits);
+  node = ndpi_patricia_search_best(ndpi_str->protocols->v6, &prefix);
 
   if(node) {
     int i;
@@ -2769,12 +2753,13 @@ ndpi_risk_enum ndpi_network_risk_ptree_match(struct ndpi_detection_module_struct
   ndpi_prefix_t prefix;
   ndpi_patricia_node_t *node;
 
-  if(!ndpi_str || !ndpi_str->ip_risk_ptree)
+  if(!ndpi_str || !ndpi_str->ip_risk)
     return(NDPI_NO_RISK);
 
   /* Make sure all in network byte order otherwise compares wont work */
-  ndpi_fill_prefix_v4(&prefix, pin, 32, ((ndpi_patricia_tree_t *) ndpi_str->ip_risk_ptree)->maxbits);
-  node = ndpi_patricia_search_best(ndpi_str->ip_risk_ptree, &prefix);
+  ndpi_fill_prefix_v4(&prefix, pin, 32,
+		      ((ndpi_patricia_tree_t *) ndpi_str->ip_risk->v4)->maxbits);
+  node = ndpi_patricia_search_best(ndpi_str->ip_risk->v4, &prefix);
 
   if(node)
     return((ndpi_risk_enum)node->value.u.uv16[0].user_value);
@@ -2790,8 +2775,9 @@ ndpi_risk_enum ndpi_network_risk_ptree_match6(struct ndpi_detection_module_struc
   ndpi_patricia_node_t *node;
 
   /* Make sure all in network byte order otherwise compares wont work */
-  ndpi_fill_prefix_v6(&prefix, pin, 128, ((ndpi_patricia_tree_t *) ndpi_str->ip_risk_ptree6)->maxbits);
-  node = ndpi_patricia_search_best(ndpi_str->ip_risk_ptree6, &prefix);
+  ndpi_fill_prefix_v6(&prefix, pin, 128,
+		      ((ndpi_patricia_tree_t *) ndpi_str->ip_risk->v6)->maxbits);
+  node = ndpi_patricia_search_best(ndpi_str->ip_risk->v6, &prefix);
 
   if(node)
     return((ndpi_risk_enum)node->value.u.uv16[0].user_value);
@@ -2824,15 +2810,12 @@ static ndpi_patricia_node_t* add_to_ptree(ndpi_patricia_tree_t *tree, int family
 
   Return: the number of entries loaded or -1 in case of error
 */
-int ndpi_load_ptree_file(ndpi_patricia_tree_t *ptree,
+int ndpi_load_ptree_file(ndpi_ptree_t *ptree,
 			 const char *path,
-			 bool is_ipv4,
 			 u_int16_t protocol_id) {
-  char buffer[128], *line, *addr, *cidr, *saveptr;
+  char buffer[1024], *line, *addr, *cidr, *saveptr;
   FILE *fd;
   int len;
-  int af_type = is_ipv4 ? AF_INET : AF_INET6;
-  int default_cidr = is_ipv4 ? 32 : 128;
   u_int num_loaded = 0;
 
   if( !path || !ptree)
@@ -2860,14 +2843,28 @@ int ndpi_load_ptree_file(ndpi_patricia_tree_t *ptree,
     addr = strtok_r(line, "/", &saveptr);
 
     if(addr) {
-      struct in_addr pin;
       ndpi_patricia_node_t *node;
-
+      bool is_ipv4 = strchr(addr, ':') ? false : true;
+	
       cidr = strtok_r(NULL, "\n", &saveptr);
+      
+      if(is_ipv4)  {
+	struct in_addr addr4;
+	
+	addr4.s_addr = inet_addr(addr);
 
-      pin.s_addr = inet_addr(addr);
-      if((node = add_to_ptree(ptree, af_type, &pin,
-			      cidr ? atoi(cidr) : default_cidr /* bits */)) != NULL) {
+	/* printf("+ %s/%d\n", addr, cidr ? atoi(cidr) : 32); */
+	node = add_to_ptree(ptree->v4, AF_INET, &addr4, cidr ? atoi(cidr) : 32 /* bits */);
+      } else {
+	struct in6_addr addr6;
+	
+	if(inet_pton(AF_INET6, addr, &addr6) == 1)
+	  node = add_to_ptree(ptree->v6, AF_INET6, &addr6, cidr ? atoi(cidr) : 128);
+	else
+	  node = NULL;
+      }
+      
+      if(node != NULL) {
 	u_int i, found = 0;
 
 	for(i=0; i<UV16_MAX_USER_VALUES; i++) {
@@ -2892,24 +2889,6 @@ int ndpi_load_ptree_file(ndpi_patricia_tree_t *ptree,
 
 /* ******************************************* */
 
-int ndpi_load_ipv4_ptree_file(ndpi_ptree_t *ptree, const char *path,
-			      u_int16_t protocol_id) {
-  if(!ptree)
-    return -1;
-  return(ndpi_load_ptree_file(ptree->v4, path, true /* IPv4 */, protocol_id));
-}
-
-/* ******************************************* */
-
-int ndpi_load_ipv6_ptree_file(ndpi_ptree_t *ptree, const char *path,
-			      u_int16_t protocol_id) {
-  if(!ptree)
-    return -1;
-  return(ndpi_load_ptree_file(ptree->v6, path, false /* IPv6 */, protocol_id));
-}
-
-/* ******************************************* */
-
 /*
   Load a file containing IPv4 addresses in CIDR format as 'protocol_id'
 
@@ -2919,9 +2898,8 @@ int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
 			 const char *path, u_int16_t protocol_id) {
   if(!ndpi_str)
     return -1;
-  return(ndpi_load_ptree_file(ndpi_str->protocols_ptree,
-			      path, true /* is_ipv4 */,
-			      protocol_id));
+  
+  return(ndpi_load_ptree_file(ndpi_str->protocols, path, protocol_id));
 }
 
 /* ******************************************* */
@@ -3042,7 +3020,7 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
   hints.ai_flags = AI_CANONNAME;
 #endif
 
-  if(!is_ipv6 && ndpi_str->protocols_ptree) {
+  if(!is_ipv6 && ndpi_str->protocols) {
     /* Check if the IP address is symbolic or numeric */
 #ifndef __KERNEL__
     unsigned int d[4];
@@ -3075,9 +3053,9 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
 	return(-1);
     }
 
-    node = add_to_ptree(ndpi_str->protocols_ptree, AF_INET, &pin, bits);
+    node = add_to_ptree(ndpi_str->protocols->v4, AF_INET, &pin, bits);
 #ifndef __KERNEL__
-  } else if(is_ipv6 && ndpi_str->protocols_ptree6) {
+  } else if(is_ipv6 && ndpi_str->protocols) {
     if(strchr(value, ':') == NULL) {
       /* This might be a symbolic IPv6 address */
 
@@ -3103,7 +3081,7 @@ static int ndpi_add_host_ip_subprotocol(struct ndpi_detection_module_struct *ndp
 	return(-1);
     }
 
-    node = add_to_ptree(ndpi_str->protocols_ptree6, AF_INET6, &pin6, bits);
+    node = add_to_ptree(ndpi_str->protocols->v6, AF_INET6, &pin6, bits);
   } else {
     return(-1);
   }
@@ -3416,17 +3394,15 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(struct ndpi_glob
 #endif /* NDPI_ENABLE_DEBUG_MESSAGES */
   ndpi_str->cfg.log_level =  ndpi_debug_level_init;
 
-  if((ndpi_str->protocols_ptree = ndpi_patricia_new(32 /* IPv4 */)) == NULL ||
-     (ndpi_str->protocols_ptree6 = ndpi_patricia_new(128 /* IPv6 */)) == NULL) {
+  if((ndpi_str->protocols = ndpi_ptree_create()) == NULL) {
     NDPI_LOG_ERR(ndpi_str, "[NDPI] Error allocating tree\n");
     ndpi_exit_detection_module(ndpi_str);
     return NULL;
   }
 
-  ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, host_protocol_list);
+  ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, host_protocol_list);
 
-  ndpi_str->ip_risk_mask_ptree = ndpi_patricia_new(32 /* IPv4 */);
-  ndpi_str->ip_risk_mask_ptree6 = ndpi_patricia_new(128 /* IPv6 */);
+  ndpi_str->ip_risk_mask = ndpi_ptree_create();
 
   ndpi_str->g_ctx = g_ctx;
   set_default_config(&ndpi_str->cfg);
@@ -3653,222 +3629,221 @@ void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str) {
   }
 
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_AMAZON_AWS)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_amazon_aws_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_amazon_aws_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_amazon_aws_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_amazon_aws_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_MICROSOFT_AZURE)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_microsoft_azure_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_microsoft_azure_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_microsoft_azure_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_microsoft_azure_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_CACHEFLY)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_cachefly_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_cachefly_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_cachefly_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_cachefly_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_CLOUDFLARE)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_cloudflare_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_cloudflare_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_cloudflare_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_cloudflare_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_GOOGLE)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_google_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_google_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_google_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_google_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_GOOGLE_CLOUD)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_google_cloud_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_google_cloud_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_google_cloud_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_google_cloud_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_MICROSOFT_365)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_microsoft_365_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_microsoft_365_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_microsoft_365_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_microsoft_365_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_MS_ONE_DRIVE)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_ms_one_drive_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_ms_one_drive_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_ms_one_drive_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_ms_one_drive_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_MS_OUTLOOK)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_ms_outlook_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_ms_outlook_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_ms_outlook_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_ms_outlook_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_SKYPE_TEAMS)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_skype_teams_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_skype_teams_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_skype_teams_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_skype_teams_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_PROTONVPN)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_protonvpn_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_protonvpn_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_protonvpn_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_protonvpn_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_TOR)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_tor_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_tor_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_tor_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_tor_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_WHATSAPP)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_whatsapp_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_whatsapp_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_whatsapp_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_whatsapp_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_ETHEREUM)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_ethereum_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_ethereum_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_ethereum_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_ethereum_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_ZOOM)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_zoom_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_zoom_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_zoom_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_zoom_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_MULLVAD)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_mullvad_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_mullvad_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_mullvad_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_mullvad_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_TELEGRAM)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_telegram_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_telegram_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_telegram_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_telegram_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_APPLE)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_apple_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_apple_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_apple_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_apple_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_TWITTER)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_twitter_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_twitter_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_twitter_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_twitter_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_NETFLIX)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_netflix_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_netflix_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_netflix_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_netflix_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_WEBEX)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_webex_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_webex_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_webex_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_webex_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_TEAMVIEWER)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_teamviewer_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_teamviewer_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_teamviewer_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_teamviewer_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_FACEBOOK)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_facebook_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_facebook_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_facebook_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_facebook_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_TENCENT)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_tencent_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_tencent_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_tencent_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_tencent_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_OPENDNS)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_opendns_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_opendns_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_opendns_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_opendns_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_DROPBOX)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_dropbox_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_dropbox_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_dropbox_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_dropbox_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_STARCRAFT)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_starcraft_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_starcraft_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_starcraft_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_starcraft_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_UBUNTUONE)) {
-   ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_ubuntuone_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_ubuntuone_protocol_list_6);
+   ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_ubuntuone_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_ubuntuone_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_TWITCH)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_twitch_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_twitch_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_twitch_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_twitch_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_HOTSPOT_SHIELD)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_hotspot_shield_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_hotspot_shield_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_hotspot_shield_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_hotspot_shield_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_GITHUB)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_github_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_github_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_github_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_github_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_STEAM)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_steam_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_steam_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_steam_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_steam_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_BLOOMBERG)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_bloomberg_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_bloomberg_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_bloomberg_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_bloomberg_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_EDGECAST)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_edgecast_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_edgecast_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_edgecast_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_edgecast_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_GOTO)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_goto_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_goto_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_goto_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_goto_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_RIOTGAMES)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_riotgames_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_riotgames_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_riotgames_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_riotgames_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_THREEMA)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_threema_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_threema_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_threema_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_threema_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_ALIBABA)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_alibaba_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_alibaba_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_alibaba_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_alibaba_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_AVAST)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_avast_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_avast_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_avast_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_avast_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_DISCORD)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_discord_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_discord_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_discord_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_discord_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_LINE)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_line_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_line_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_line_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_line_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_VK)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_vk_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_vk_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_vk_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_vk_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_YANDEX)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_yandex_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_yandex_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_yandex_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_yandex_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_YANDEX_CLOUD)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_yandex_cloud_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_yandex_cloud_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_yandex_cloud_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_yandex_cloud_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_DISNEYPLUS)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_disneyplus_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_disneyplus_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_disneyplus_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_disneyplus_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_HULU)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_hulu_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_hulu_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_hulu_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_hulu_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_EPICGAMES)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_epicgames_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_epicgames_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_epicgames_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_epicgames_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_NVIDIA)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_nvidia_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_nvidia_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_nvidia_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_nvidia_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_ROBLOX)) {
-    ndpi_init_ptree_ipv4(ndpi_str->protocols_ptree, ndpi_protocol_roblox_protocol_list);
-    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols_ptree6, ndpi_protocol_roblox_protocol_list_6);
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_roblox_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_roblox_protocol_list_6);
   }
 
-  if(ndpi_str->cfg.flow_risk_lists_enabled) {
-    if(!ndpi_str->ip_risk_ptree) ndpi_str->ip_risk_ptree = ndpi_patricia_new(32 /* IPv4 */);
-    if(!ndpi_str->ip_risk_ptree6) ndpi_str->ip_risk_ptree6 = ndpi_patricia_new(128 /* IPv6 */);
-    if(ndpi_str->ip_risk_ptree == NULL ||
-       ndpi_str->ip_risk_ptree6 == NULL) {
+  if(ndpi_str->cfg.flow_risk_lists_enabled) {    
+    if((ndpi_str->ip_risk = ndpi_ptree_create()) == NULL) {
       NDPI_LOG_ERR(ndpi_str, "[NDPI] Error allocating risk tree\n");
       return;
     }
 
     if(ndpi_str->cfg.risk_anonymous_subscriber_list_icloudprivaterelay_enabled) {
-      ndpi_init_ptree_ipv4(ndpi_str->ip_risk_ptree, ndpi_anonymous_subscriber_icloud_private_relay_protocol_list);
-      ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk_ptree6, ndpi_anonymous_subscriber_icloud_private_relay_protocol_list_6);
+      ndpi_init_ptree_ipv4(ndpi_str->ip_risk->v4, ndpi_anonymous_subscriber_icloud_private_relay_protocol_list);
+      ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk->v6, ndpi_anonymous_subscriber_icloud_private_relay_protocol_list_6);
     }
+    
     if(ndpi_str->cfg.risk_anonymous_subscriber_list_protonvpn_enabled) {
-      ndpi_init_ptree_ipv4(ndpi_str->ip_risk_ptree, ndpi_anonymous_subscriber_protonvpn_protocol_list);
-      ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk_ptree6, ndpi_anonymous_subscriber_protonvpn_protocol_list_6);
-    }
+      ndpi_init_ptree_ipv4(ndpi_str->ip_risk->v4, ndpi_anonymous_subscriber_protonvpn_protocol_list);
+      ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk->v6, ndpi_anonymous_subscriber_protonvpn_protocol_list_6);    
+      }
+    
     if(ndpi_str->cfg.risk_crawler_bot_list_enabled) {
-      ndpi_init_ptree_ipv4(ndpi_str->ip_risk_ptree, ndpi_http_crawler_bot_protocol_list);
-      ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk_ptree6, ndpi_http_crawler_bot_protocol_list_6);
+      ndpi_init_ptree_ipv4(ndpi_str->ip_risk->v4, ndpi_http_crawler_bot_protocol_list);
+      ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk->v6, ndpi_http_crawler_bot_protocol_list_6);
     }
   }
 }
@@ -4368,23 +4343,9 @@ void ndpi_exit_detection_module(struct ndpi_detection_module_struct *ndpi_str) {
        ndpi_str->msteams_cache)
       ndpi_lru_free_cache(ndpi_str->msteams_cache);
 
-    if(ndpi_str->protocols_ptree)
-      ndpi_patricia_destroy((ndpi_patricia_tree_t *) ndpi_str->protocols_ptree, free_ptree_data);
-
-    if(ndpi_str->protocols_ptree6)
-      ndpi_patricia_destroy((ndpi_patricia_tree_t *) ndpi_str->protocols_ptree6, free_ptree_data);
-
-    if(ndpi_str->ip_risk_mask_ptree)
-      ndpi_patricia_destroy((ndpi_patricia_tree_t *) ndpi_str->ip_risk_mask_ptree, NULL);
-
-    if(ndpi_str->ip_risk_mask_ptree6)
-      ndpi_patricia_destroy((ndpi_patricia_tree_t *) ndpi_str->ip_risk_mask_ptree6, NULL);
-
-    if(ndpi_str->ip_risk_ptree)
-      ndpi_patricia_destroy((ndpi_patricia_tree_t *) ndpi_str->ip_risk_ptree, NULL);
-
-    if(ndpi_str->ip_risk_ptree6)
-      ndpi_patricia_destroy((ndpi_patricia_tree_t *) ndpi_str->ip_risk_ptree6, NULL);
+    if(ndpi_str->protocols)    ndpi_ptree_destroy(ndpi_str->protocols);
+    if(ndpi_str->ip_risk_mask) ndpi_ptree_destroy(ndpi_str->ip_risk_mask);
+    if(ndpi_str->ip_risk)      ndpi_ptree_destroy(ndpi_str->ip_risk);
 
     if(ndpi_str->udpRoot != NULL) ndpi_tdestroy(ndpi_str->udpRoot, ndpi_free);
     if(ndpi_str->tcpRoot != NULL) ndpi_tdestroy(ndpi_str->tcpRoot, ndpi_free);
@@ -4574,13 +4535,14 @@ static u_int16_t guess_protocol_id(struct ndpi_detection_module_struct *ndpi_str
 	    ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, NULL);
 
 	  if(packet->payload_packet_len > sizeof(struct ndpi_icmphdr)) {
-	    if (flow->skip_entropy_check == 0) {
+	    if(ndpi_str->cfg.compute_entropy && (flow->skip_entropy_check == 0)) {
 	      flow->entropy = ndpi_entropy(packet->payload + sizeof(struct ndpi_icmphdr),
 	                                   packet->payload_packet_len - sizeof(struct ndpi_icmphdr));
 	      ndpi_entropy2risk(flow);
 	    }
 
 	    u_int16_t chksm = icmp4_checksum(packet->payload, packet->payload_packet_len);
+	    
 	    if(chksm) {
 	      ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, NULL);
 	    }
@@ -4665,19 +4627,19 @@ int ndpi_add_ip_risk_mask(struct ndpi_detection_module_struct *ndpi_str,
 
   cidr = strtok_r(NULL, "\n", &saveptr);
 
-  if(!is_ipv6 && ndpi_str->ip_risk_mask_ptree) {
+  if(!is_ipv6 && ndpi_str->ip_risk_mask && ndpi_str->ip_risk_mask->v4) {
     struct in_addr pin;
 
     if(inet_pton(AF_INET, addr, &pin) != 1)
       return(-1);
-    node = add_to_ptree(ndpi_str->ip_risk_mask_ptree, AF_INET,
+    node = add_to_ptree(ndpi_str->ip_risk_mask->v4, AF_INET,
 			&pin, cidr ? atoi(cidr) : 32 /* bits */);
-  } else if(is_ipv6 && ndpi_str->ip_risk_mask_ptree6) {
+  } else if(is_ipv6 && ndpi_str->ip_risk_mask && ndpi_str->ip_risk_mask->v6) {
     struct in6_addr pin6;
 
     if(inet_pton(AF_INET6, addr, &pin6) != 1)
       return(-1);
-    node = add_to_ptree(ndpi_str->ip_risk_mask_ptree6, AF_INET6,
+    node = add_to_ptree(ndpi_str->ip_risk_mask->v6, AF_INET6,
 			&pin6, cidr ? atoi(cidr) : 128 /* bits */);
   } else {
     return(-2);
@@ -5165,7 +5127,7 @@ int load_category_file_fd(struct ndpi_detection_module_struct *ndpi_str,
 
   (void)lines_read;
 
-  if(!ndpi_str || !fd || !ndpi_str->protocols_ptree)
+  if(!ndpi_str || !fd || !ndpi_str->protocols)
     return(0);
 
   while(1) {
@@ -6395,6 +6357,12 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* iQIYI */
   init_iqiyi_dissector(ndpi_str, &a);
 
+  /* Ethernet Global Data */
+  init_egd_dissector(ndpi_str, &a);
+
+  /* Call of Duty: Mobile */
+  init_cod_mobile_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -6489,6 +6457,7 @@ static void ndpi_enabled_callbacks_init(struct ndpi_detection_module_struct *ndp
   /* now build the specific buffer for tcp, udp and non_tcp_udp */
   ndpi_str->callback_buffer_size_tcp_payload = 0;
   ndpi_str->callback_buffer_size_tcp_no_payload = 0;
+
   for(a = 0; a < ndpi_str->callback_buffer_size; a++) {
     if(!NDPI_ISSET(dbm,ndpi_str->callback_buffer[a].ndpi_protocol_id)) continue;
     if(!ndpi_proto_cb_tcp_payload(ndpi_str,a)) continue;
@@ -6500,6 +6469,7 @@ static void ndpi_enabled_callbacks_init(struct ndpi_detection_module_struct *ndp
     }
     ndpi_str->callback_buffer_size_tcp_payload++;
   }
+  
   for(a = 0; a < ndpi_str->callback_buffer_size; a++) {
     if(!NDPI_ISSET(dbm,ndpi_str->callback_buffer[a].ndpi_protocol_id)) continue;
     if(!ndpi_proto_cb_tcp_nopayload(ndpi_str,a)) continue;
@@ -6513,6 +6483,7 @@ static void ndpi_enabled_callbacks_init(struct ndpi_detection_module_struct *ndp
   }
 
   ndpi_str->callback_buffer_size_udp = 0;
+  
   for(a = 0; a < ndpi_str->callback_buffer_size; a++) {
     if(!NDPI_ISSET(dbm,ndpi_str->callback_buffer[a].ndpi_protocol_id)) continue;
     if(!ndpi_proto_cb_udp(ndpi_str,a)) continue;
@@ -6526,6 +6497,7 @@ static void ndpi_enabled_callbacks_init(struct ndpi_detection_module_struct *ndp
   }
 
   ndpi_str->callback_buffer_size_non_tcp_udp = 0;
+
   for(a = 0; a < ndpi_str->callback_buffer_size; a++) {
     if(!NDPI_ISSET(dbm,ndpi_str->callback_buffer[a].ndpi_protocol_id)) continue;
     if(!ndpi_proto_cb_other(ndpi_str,a)) continue;
@@ -7046,17 +7018,22 @@ int current_pkt_from_server_to_client(struct ndpi_detection_module_struct *ndpi_
 
 static int tcp_ack_padding(struct ndpi_packet_struct *packet) {
   const struct ndpi_tcphdr *tcph = packet->tcp;
+  
   if(tcph && tcph->ack && !tcph->psh &&
      packet->payload_packet_len < 8 &&
      packet->payload_packet_len > 1 /* To avoid TCP keep-alives */) {
     int i;
+    
     for(i = 0; i < packet->payload_packet_len; i++)
       if(packet->payload[i] != 0)
         return 0;
     return 1;
   }
+
   return 0;
 }
+
+/* ******************************************************************** */
 
 static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_str,
 				     struct ndpi_flow_struct *flow) {
@@ -7080,7 +7057,8 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
 	for(i=0; (i<packet->payload_packet_len)
 	      && (flow->flow_payload_len < ndpi_str->max_payload_track_len); i++) {
 	  flow->flow_payload[flow->flow_payload_len++] =
-	    (ndpi_isprint(packet->payload[i]) || ndpi_isspace(packet->payload[i])) ? packet->payload[i] : '.';
+	    (ndpi_isprint(packet->payload[i])
+	     || ndpi_isspace(packet->payload[i])) ? packet->payload[i] : '.';
 	}
       }
     }
@@ -7201,29 +7179,25 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
     }
 
     if(flow->init_finished == 0) {
-      u_int16_t s_port, d_port; /* Source/Dest ports */
+      u_int16_t s_port = 0, d_port = 0; /* Source/Dest ports */
 
       flow->init_finished = 1;
-
-      if(tcph != NULL &&
-	 ndpi_str->input_info &&
-	 ndpi_str->input_info->seen_flow_beginning == NDPI_FLOW_BEGINNING_SEEN) {
-	flow->l4.tcp.seen_syn = 1;
-	flow->l4.tcp.seen_syn_ack = 1;
-	flow->l4.tcp.seen_ack = 1;
-      }
-
-      /* Client/Server direction */
-
-      s_port = 0;
-      d_port = 0;
+      
       if(tcph != NULL) {
-	s_port = tcph->source;
-	d_port = tcph->dest;
+	if(ndpi_str->input_info &&
+	   ndpi_str->input_info->seen_flow_beginning == NDPI_FLOW_BEGINNING_SEEN) {
+	  flow->l4.tcp.seen_syn = 1;
+	  flow->l4.tcp.seen_syn_ack = 1;
+	  flow->l4.tcp.seen_ack = 1;
+	}
+
+	s_port = tcph->source, d_port = tcph->dest;
       } else if(udph != NULL) {
 	s_port = udph->source;
 	d_port = udph->dest;
       }
+      
+      /* Client/Server direction */
 
       if(ndpi_str->input_info &&
 	 ndpi_str->input_info->in_pkt_dir != NDPI_IN_PKT_DIR_UNKNOWN) {
@@ -7255,6 +7229,7 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
 	  memcpy(flow->c_address.v6, &packet->iphv6->ip6_src, 16);
 	  memcpy(flow->s_address.v6, &packet->iphv6->ip6_dst, 16);
 	}
+
 	flow->c_port = s_port;
 	flow->s_port = d_port;
       } else {
@@ -7265,6 +7240,7 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
 	  memcpy(flow->c_address.v6, &packet->iphv6->ip6_dst, 16);
 	  memcpy(flow->s_address.v6, &packet->iphv6->ip6_src, 16);
 	}
+	
 	flow->c_port = d_port;
 	flow->s_port = s_port;
       }
@@ -7286,9 +7262,9 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
       flow->packet_direction_complete_counter[packet->packet_direction]++;
     }
 
-    if(ndpi_is_multi_or_broadcast(packet))
-      ; /* multicast or broadcast */
-    else {
+    if(!ndpi_is_multi_or_broadcast(packet)) {
+      /* ! (multicast or broadcast) */
+
       if(flow->packet_direction_complete_counter[flow->client_packet_direction] == 0)
 	ndpi_set_risk(flow, NDPI_UNIDIRECTIONAL_TRAFFIC, "No client to server traffic"); /* Should never happen */
       else if(flow->packet_direction_complete_counter[!flow->client_packet_direction] == 0)
@@ -7310,28 +7286,25 @@ static u_int32_t check_ndpi_subprotocols(struct ndpi_detection_module_struct * c
   u_int32_t num_calls = 0, a;
 
   if(detected_protocol == NDPI_PROTOCOL_UNKNOWN)
-  {
     return num_calls;
-  }
 
-  for (a = 0; a < ndpi_str->proto_defaults[detected_protocol].subprotocol_count; a++)
-  {
+  for (a = 0; a < ndpi_str->proto_defaults[detected_protocol].subprotocol_count; a++) {
     u_int16_t subproto_id = ndpi_str->proto_defaults[detected_protocol].subprotocols[a];
+    
     if(subproto_id == (uint16_t)NDPI_PROTOCOL_MATCHED_BY_CONTENT ||
         subproto_id == flow->detected_protocol_stack[0] ||
-        subproto_id == flow->detected_protocol_stack[1])
-    {
+        subproto_id == flow->detected_protocol_stack[1]) {
       continue;
     }
 
     u_int16_t subproto_index = ndpi_str->proto_defaults[subproto_id].protoIdx;
+    
     if((ndpi_str->callback_buffer[subproto_index].ndpi_selection_bitmask & ndpi_selection_packet) ==
          ndpi_str->callback_buffer[subproto_index].ndpi_selection_bitmask &&
         NDPI_BITMASK_COMPARE(flow->excluded_protocol_bitmask,
                              ndpi_str->callback_buffer[subproto_index].excluded_protocol_bitmask) == 0 &&
         NDPI_BITMASK_COMPARE(ndpi_str->callback_buffer[subproto_index].detection_bitmask,
-                             detection_bitmask) != 0)
-    {
+                             detection_bitmask) != 0) {
       ndpi_str->callback_buffer[subproto_index].func(ndpi_str, flow);
       num_calls++;
     }
@@ -7347,8 +7320,7 @@ static u_int32_t check_ndpi_detection_func(struct ndpi_detection_module_struct *
 					   NDPI_SELECTION_BITMASK_PROTOCOL_SIZE const ndpi_selection_packet,
 					   struct call_function_struct const * const callback_buffer,
 					   uint32_t callback_buffer_size,
-					   int is_tcp_without_payload)
-{
+					   int is_tcp_without_payload) {
   void *func = NULL;
   u_int32_t num_calls = 0;
   u_int16_t proto_index = ndpi_str->proto_defaults[flow->guessed_protocol_id].protoIdx;
@@ -7379,6 +7351,8 @@ static u_int32_t check_ndpi_detection_func(struct ndpi_detection_module_struct *
   if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN)
     {
       u_int32_t a;
+      /* TODO: optimize as today we're doing a linear scan */
+      
       for (a = 0; a < callback_buffer_size; a++) {
         if((func != callback_buffer[a].func) &&
             (callback_buffer[a].ndpi_selection_bitmask & ndpi_selection_packet) ==
@@ -7422,8 +7396,7 @@ u_int32_t check_ndpi_other_flow_func(struct ndpi_detection_module_struct *ndpi_s
 
 static u_int32_t check_ndpi_udp_flow_func(struct ndpi_detection_module_struct *ndpi_str,
 					  struct ndpi_flow_struct *flow,
-					  NDPI_SELECTION_BITMASK_PROTOCOL_SIZE *ndpi_selection_packet)
-{
+					  NDPI_SELECTION_BITMASK_PROTOCOL_SIZE *ndpi_selection_packet) {
   return check_ndpi_detection_func(ndpi_str, flow, *ndpi_selection_packet,
 				   ndpi_str->callback_buffer_udp,
 				   ndpi_str->callback_buffer_size_udp, 0);
@@ -8771,15 +8744,15 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
     /* Right now, all the 3 supported risks are only about the *client* ip.
        Don't check the server ip, to try avoiding false positives */
 
-    if(ndpi_str->ip_risk_ptree &&
-       packet->iph &&
-       ndpi_is_public_ipv4(ntohl(packet->iph->saddr)) &&
-       ndpi_is_public_ipv4(ntohl(packet->iph->daddr))) {
+    if(ndpi_str->ip_risk && ndpi_str->ip_risk->v4
+       && packet->iph
+       && ndpi_is_public_ipv4(ntohl(packet->iph->saddr))
+       && ndpi_is_public_ipv4(ntohl(packet->iph->daddr))) {
       struct in_addr addr;
 
       addr.s_addr = flow->c_address.v4;
       net_risk = ndpi_network_risk_ptree_match(ndpi_str, &addr);
-    } else if(ndpi_str->ip_risk_ptree6 &&
+    } else if(ndpi_str->ip_risk && ndpi_str->ip_risk->v6 &&
               packet->iphv6) { /* TODO: some checks on "local" addresses? */
       struct in6_addr addr;
 
@@ -8817,15 +8790,17 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
   }
 
 #ifndef __KERNEL__
-  if(flow->skip_entropy_check == 0 &&
+  if(ndpi_str->cfg.compute_entropy &&
+     flow->skip_entropy_check == 0 &&
      flow->first_pkt_fully_encrypted == 0 &&
      flow->packet_counter < 5 &&
      /* The following protocols do their own entropy calculation/classification. */
-     ret.app_protocol != NDPI_PROTOCOL_IP_ICMP)
-  {
+     ret.app_protocol != NDPI_PROTOCOL_IP_ICMP) {
+
     if (ret.app_protocol != NDPI_PROTOCOL_HTTP) {
       flow->entropy = ndpi_entropy(packet->payload, packet->payload_packet_len);
     }
+    
     ndpi_entropy2risk(flow);
   }
 #endif
@@ -8867,44 +8842,6 @@ u_int32_t ndpi_bytestream_to_number(const u_int8_t *str, u_int16_t max_chars_to_
 
   return(val);
 }
-
-/* ********************************************************************************* */
-
-#ifdef CODE_UNUSED
-u_int32_t ndpi_bytestream_dec_or_hex_to_number(const u_int8_t *str, u_int16_t max_chars_to_read, u_int16_t *bytes_read) {
-  u_int32_t val;
-  val = 0;
-  if(max_chars_to_read <= 2 || str[0] != '0' || str[1] != 'x') {
-    return(ndpi_bytestream_to_number(str, max_chars_to_read, bytes_read));
-  } else {
-    /*use base 16 system */
-    str += 2;
-    max_chars_to_read -= 2;
-    *bytes_read = *bytes_read + 2;
-
-    while(max_chars_to_read > 0) {
-      if(*str >= '0' && *str <= '9') {
-	val *= 16;
-	val += *str - '0';
-      } else if(*str >= 'a' && *str <= 'f') {
-	val *= 16;
-	val += *str + 10 - 'a';
-      } else if(*str >= 'A' && *str <= 'F') {
-	val *= 16;
-	val += *str + 10 - 'A';
-      } else {
-	break;
-      }
-      str++;
-      max_chars_to_read = max_chars_to_read - 1;
-      *bytes_read = *bytes_read + 1;
-    }
-  }
-
-  return(val);
-}
-
-#endif
 
 /* ********************************************************************************* */
 
@@ -9925,30 +9862,52 @@ void ndpi_dump_risks_score(FILE *risk_out) {
 #endif
 /* ****************************************************** */
 
-/*
- * Find the first occurrence of find in s, where the search is limited to the
- * first slen characters of s.
- */
-char *ndpi_strnstr(const char *s, const char *find, size_t slen) {
-  char c;
-  size_t len;
-
-  if((c = *find++) != '\0') {
-    len = strnlen(find, slen);
-    do {
-      char sc;
-
-      do {
-	if(slen-- < 1 || (sc = *s++) == '\0')
-	  return(NULL);
-      } while(sc != c);
-      if(len > slen)
-	return(NULL);
-    } while(strncmp(s, find, len) != 0);
-    s--;
+char *ndpi_strnstr(const char *haystack, const char *needle, size_t len)
+{
+  if (!haystack || !needle || len == 0)
+  {
+    return NULL;
   }
 
-  return((char *) s);
+  size_t needle_len = strlen(needle);
+  size_t hs_real_len = strnlen(haystack, len);
+
+  if (needle_len == 0)
+  {
+    return (char *)haystack;
+  }
+
+  if (needle_len > hs_real_len)
+  {
+    return NULL;
+  }
+
+  if (needle_len == 1)
+  {
+    return (char *)memchr(haystack, *needle, hs_real_len);
+  }
+
+  const char *current = haystack;
+  const char *haystack_end = haystack + hs_real_len;
+
+  while (current <= haystack_end - needle_len)
+  {
+    current = (const char *)memchr(current, *needle, haystack_end - current);
+
+    if (!current)
+    {
+      return NULL;
+    }
+
+    if ((current + needle_len <= haystack_end) && memcmp(current, needle, needle_len) == 0)
+    {
+      return (char *)current;
+    }
+
+    current++;
+  }
+
+  return NULL;
 }
 
 /* ****************************************************** */
@@ -10280,16 +10239,6 @@ int NDPI_BITMASK_IS_EMPTY(NDPI_PROTOCOL_BITMASK a) {
   return(1);
 }
 #endif
-#ifdef CODE_UNUSED
-void NDPI_DUMP_BITMASK(NDPI_PROTOCOL_BITMASK a) {
-  unsigned int i;
-
-  for(i = 0; i < NDPI_NUM_FDS_BITS; i++)
-    printf("[%d=%u]", i, a.fds_bits[i]);
-
-  printf("\n");
-}
-#endif
 
 u_int16_t ndpi_get_api_version() {
   return(NDPI_API_VERSION);
@@ -10568,6 +10517,7 @@ void ndpi_ptree_destroy(ndpi_ptree_t *tree) {
   if(tree) {
     if(tree->v4)
       ndpi_patricia_destroy(tree->v4, free_ptree_data);
+
     if(tree->v6)
       ndpi_patricia_destroy(tree->v6, free_ptree_data);
 
@@ -11524,12 +11474,13 @@ static const struct cfg_param {
   /* Global parameters */
 
   { NULL,            "packets_limit_per_flow",                  "32", "0", "255", CFG_PARAM_INT, __OFF(max_packets_to_process), NULL, 1 },
-  { NULL,            "flow.direction_detection",                "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(direction_detect_enabled), NULL, 0 },
-  { NULL,            "flow.track_payload",                      "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(track_payload_enabled), NULL, 0 }, // FIXME
-  { NULL,            "tcp_ack_payload_heuristic",               "0", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tcp_ack_paylod_heuristic), NULL, 1 },
-  { NULL,            "fully_encrypted_heuristic",               "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fully_encrypted_heuristic), NULL, 1 },
-  { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_CONST_FLAG,     __OFF(libgcrypt_init), NULL, 0 },
+  { NULL,            "flow.direction_detection",                "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(direction_detect_enabled), NULL, 0 },
+  { NULL,            "flow.track_payload",                      "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(track_payload_enabled), NULL, 0 },
+  { NULL,            "tcp_ack_payload_heuristic",               "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tcp_ack_paylod_heuristic), NULL, 1 },
+  { NULL,            "fully_encrypted_heuristic",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fully_encrypted_heuristic), NULL, 1 },
+  { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(libgcrypt_init), NULL, 0 },
   { NULL,            "dpi.guess_on_giveup",                     "0x3", "0", "3", CFG_PARAM_INT, __OFF(guess_on_giveup), NULL, 1 },
+  { NULL,            "dpi.compute_entropy",                     "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(compute_entropy), NULL, 0 },
 
   { NULL,            "flow_risk_lists.load",                    "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(flow_risk_lists_enabled), NULL, 0 },
 

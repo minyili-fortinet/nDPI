@@ -118,17 +118,17 @@ extern "C" {
   u_int32_t ndpi_get_tot_allocated_memory(void);
 
   /**
-   * Search the first occurrence of substring -find- in -s-
-   * The search is limited to the first -slen- characters of the string
+   * Finds the first occurrence of the substring 'needle' in the string 'haystack'.
    *
-   * @par    s     = string to parse
-   * @par    find  = string to match with -s-
-   * @par    slen  = max length to match between -s- and -find-
-   * @return a pointer to the beginning of the located substring;
-   *         NULL if the substring is not found
+   * This function is similar to the standard `strstr()` function, but it has an additional parameter `len` that
+   * specifies the maximum length of the search.
    *
+   * @param haystack The string to search in.
+   * @param needle The substring to search for.
+   * @param len The maximum length of the search.
+   * @return Pointer to the first occurrence of 'needle' in 'haystack', or NULL if no match is found.
    */
-  char* ndpi_strnstr(const char *s, const char *find, size_t slen);
+  char *ndpi_strnstr(const char *haystack, const char *needle, size_t len);
 
   /**
    * Same as ndpi_strnstr but case insensitive
@@ -1195,9 +1195,7 @@ extern "C" {
   ndpi_ptree_t* ndpi_ptree_create(void);
   int ndpi_ptree_insert(ndpi_ptree_t *tree, const ndpi_ip_addr_t *addr, u_int8_t bits, u_int64_t user_data);
   int ndpi_ptree_match_addr(ndpi_ptree_t *tree, const ndpi_ip_addr_t *addr, u_int64_t *user_data);
-  int ndpi_load_ipv4_ptree_file(ndpi_ptree_t *tree, const char *path, u_int16_t protocol_id);
-  int ndpi_load_ipv6_ptree_file(ndpi_ptree_t *tree, const char *path, u_int16_t protocol_id);
-
+  int ndpi_load_ptree_file(ndpi_ptree_t *tree, const char *path, u_int16_t protocol_id);
   void ndpi_ptree_destroy(ndpi_ptree_t *tree);
 
   /* General purpose utilities */
