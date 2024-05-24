@@ -3626,20 +3626,20 @@ static int is_ip_list_enabled(struct ndpi_detection_module_struct *ndpi_str, int
 
 /* *********************************************** */
 
-int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) {
+void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str) {
   u_int i;
 
   if(!ndpi_str)
-    return -1;
+    return;
 
   if(!ndpi_str->custom_categories.categories_loaded)
     ndpi_enable_loaded_categories(ndpi_str);
 
   if(ndpi_str->finalized) /* Already finalized */
-    return 0;
+    return;
 
   if(ndpi_str->cfg.libgcrypt_init) {
-    if(!gcry_control(GCRYCTL_INITIALIZATION_FINISHED_P)) {
+    if(!gcry_control(GCRYCTL_INITIALIZATION_FINISHED_P,0)) {
       const char *gcrypt_ver = gcry_check_version(NULL);
       if(!gcrypt_ver) {
         NDPI_LOG_ERR(ndpi_str, "Error initializing libgcrypt\n");
