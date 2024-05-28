@@ -2885,7 +2885,6 @@ int ndpi_load_ptree_file(ndpi_ptree_t *ptree,
   fclose(fd);
   return(num_loaded);
 }
-#endif
 
 /* ******************************************* */
 
@@ -2901,6 +2900,7 @@ int ndpi_load_ipv4_ptree(struct ndpi_detection_module_struct *ndpi_str,
   
   return(ndpi_load_ptree_file(ndpi_str->protocols, path, protocol_id));
 }
+#endif
 
 /* ******************************************* */
 
@@ -3603,14 +3603,14 @@ static int is_ip_list_enabled(struct ndpi_detection_module_struct *ndpi_str, int
 /* *********************************************** */
 
 void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str) {
-  u_int i;
 
   if(!ndpi_str)
     return;
 
+#ifndef __KERNEL__
   if(!ndpi_str->custom_categories.categories_loaded)
     ndpi_enable_loaded_categories(ndpi_str);
-
+#endif
   if(ndpi_str->finalized) /* Already finalized */
     return;
 
@@ -8307,7 +8307,7 @@ static int ndpi_is_ntop_protocol(ndpi_protocol *ret) {
 
 static void ndpi_search_shellscript(struct ndpi_detection_module_struct *ndpi_struct,
                                     struct ndpi_flow_struct *flow) {
-  struct ndpi_packet_struct const * const packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct const * const packet = ndpi_get_packet_struct(ndpi_struct);
 
   NDPI_LOG_DBG(ndpi_struct, "search Shellscript\n");
 
@@ -8459,7 +8459,12 @@ static int ndpi_do_guess(struct ndpi_detection_module_struct *ndpi_str, struct n
     ret->master_protocol = flow->guessed_protocol_id, ret->app_protocol = flow->guessed_protocol_id_by_ip;
 
     flow->num_dissector_calls += ndpi_check_flow_func(ndpi_str, flow, &ndpi_selection_packet);
-
+#if 0
+     NDPI_LOG(flow ? flow->detected_protocol_stack[0] : NDPI_PROTOCOL_UNKNOWN, ndpi_str, NDPI_LOG_TRACE,
+             "[%d/%d] dissector_calls %d\n",
+	     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1],flow->num_dissector_calls
+	     );
+#endif
     flow->confidence = NDPI_CONFIDENCE_CUSTOM_RULE;
     ndpi_fill_protocol_category(ndpi_str, flow, ret);
     return(-1);
@@ -8488,10 +8493,8 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 
   packet = ndpi_get_packet_struct(ndpi_str);
   if(ndpi_str->cfg.log_level >= NDPI_LOG_TRACE) 
-     NDPI_LOG(flow ? flow->detected_protocol_stack[0] : NDPI_PROTOCOL_UNKNOWN, ndpi_str, NDPI_LOG_TRACE,
-             "[%d/%d] START packet processing\n",
-	     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]
-	     );
+     NDPI_LOG_DBG( ndpi_str, "[%d/%d] START packet processing\n",
+	     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
 
   ret.master_protocol = flow->detected_protocol_stack[1],
     ret.app_protocol = flow->detected_protocol_stack[0];
@@ -8772,7 +8775,12 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
      (packet->tcp_retransmission == 0 && packet->payload_packet_len != 0))
     flow->fail_with_unknown = 1;
   flow->num_dissector_calls += num_calls;
-
+#if 0
+   NDPI_LOG(flow ? flow->detected_protocol_stack[0] : NDPI_PROTOCOL_UNKNOWN, ndpi_str, NDPI_LOG_TRACE,
+             "[%d/%d] dissector_calls %d\n",
+	     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1],flow->num_dissector_calls
+	     );
+#endif
   /* ndpi_reconcile_protocols(ndpi_str, flow, &ret); */
 
   if(ndpi_str->cfg.fully_encrypted_heuristic &&
@@ -9887,24 +9895,24 @@ char *ndpi_strnstr(const char *haystack, const char *needle, size_t len)
     return (char *)memchr(haystack, *needle, hs_real_len);
   }
 
-  const char *current = haystack;
+  const char *curr = haystack;
   const char *haystack_end = haystack + hs_real_len;
 
-  while (current <= haystack_end - needle_len)
+  while (curr <= haystack_end - needle_len)
   {
-    current = (const char *)memchr(current, *needle, haystack_end - current);
+    curr = (const char *)memchr(curr, *needle, haystack_end - curr);
 
-    if (!current)
+    if (!curr)
     {
       return NULL;
     }
 
-    if ((current + needle_len <= haystack_end) && memcmp(current, needle, needle_len) == 0)
+    if ((curr + needle_len <= haystack_end) && memcmp(curr, needle, needle_len) == 0)
     {
-      return (char *)current;
+      return (char *)curr;
     }
 
-    current++;
+    curr++;
   }
 
   return NULL;
@@ -11443,12 +11451,10 @@ static const struct cfg_param {
   { "tls",           "metadata.ja3s_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3s_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja4c_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja4c_fingerprint_enabled), NULL, 1 },
 
-  { "smtp",          "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled), NULL,1 },
-
-  { "imap",          "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(imap_opportunistic_tls_enabled), NULL, 1 },
-
-  { "pop",           "tls_dissection",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled), NULL, 1 },
-
+  { "smtp",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled), NULL,1 },
+  { "imap",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(imap_opportunistic_tls_enabled), NULL, 1 },
+  { "pop",           "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled), NULL, 1 },
+  { "ftp",           "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), NULL, 1 },
   { "stun",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
   { "stun",          "max_packets_extra_dissection",            "6", "0", "255", CFG_PARAM_INT, __OFF(stun_max_packets_extra_dissection), NULL, 1 },
   { "stun",          "metadata.attribute.mapped_address",       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_mapped_address_enabled), NULL, 1 },
@@ -11457,18 +11463,11 @@ static const struct cfg_param {
   { "stun",          "metadata.attribute.relayed_address",      "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_relayed_address_enabled), NULL, 1 },
   { "stun",          "metadata.attribute.peer_address",         "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_peer_address_enabled), NULL, 1 },
 
-  { "stun",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
-  { "stun",          "max_packets_extra_dissection",            "4", "0", "255", CFG_PARAM_INT, __OFF(stun_max_packets_extra_dissection), NULL, 1 },
-  { "stun",          "metadata.attribute.mapped_address",       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_mapped_address_enabled), NULL, 1 },
-
-  { "dns",           "subclassification",                       "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), NULL, 1 },
-  { "dns",           "process_response",                        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), NULL, 1 },
-
-  { "http",          "process_response",                        "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), NULL, 1 },
-
+  { "dns",           "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), NULL, 1 },
+  { "dns",           "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), NULL, 1 },
+  { "http",          "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), NULL, 1 },
   { "ookla",         "dpi.aggressiveness",                      "0x01", "0", "1", CFG_PARAM_INT, __OFF(ookla_aggressiveness), NULL, 1 },
-
-  { "$PROTO_NAME_OR_ID", "log",                                 "0", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(debug_bitmask), NULL, 1 },
+  { "$PROTO_NAME_OR_ID", "log",                                 "disable", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(debug_bitmask), NULL, 1 },
   { "$PROTO_NAME_OR_ID", "ip_list.load",                        "1", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(ip_list_bitmask), NULL, 0 },
 
   /* Global parameters */
@@ -11765,26 +11764,26 @@ void* ndpi_memmem(const void* haystack, size_t haystack_len, const void* needle,
     return (void *)memchr(haystack, *(const u_int8_t *)needle, haystack_len);
   }
 
-  const u_int8_t *current = (const u_int8_t *)haystack;
+  const u_int8_t *curr = (const u_int8_t *)haystack;
   const u_int8_t *haystack_end = (const u_int8_t *)haystack + haystack_len;
 
-  while (current <= haystack_end - needle_len) {
+  while (curr <= haystack_end - needle_len) {
     /* Find the first occurrence of the first character from the needle */
-    current = (const u_int8_t *)memchr(current, *(const u_int8_t *)needle,
-                                       haystack_end - current);
+    curr = (const u_int8_t *)memchr(curr, *(const u_int8_t *)needle,
+                                       haystack_end - curr);
 
-    if (!current) {
+    if (!curr) {
       return NULL;
     }
 
     /* Check the rest of the needle for a match */
-    if ((current + needle_len <= haystack_end) &&
-        (memcmp(current, needle, needle_len) == 0)) {
-      return (void *)current;
+    if ((curr + needle_len <= haystack_end) &&
+        (memcmp(curr, needle, needle_len) == 0)) {
+      return (void *)curr;
     }
 
     /* Shift one character to the right for the next search */
-    current++;
+    curr++;
   }
 
   return NULL;

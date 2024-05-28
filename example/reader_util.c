@@ -357,7 +357,7 @@ static uint16_t ndpi_get_proto_id(struct ndpi_detection_module_struct *ndpi_mod,
 /* ***************************************************** */
 
 extern int bt_parse_debug;
-static NDPI_PROTOCOL_BITMASK debug_bitmask;
+// static NDPI_PROTOCOL_BITMASK debug_bitmask;
 
 static char _proto_delim[] = " \t,:;";
 int parse_proto_name_list(char *str, NDPI_PROTOCOL_BITMASK *bitmask, int inverted_logic) {

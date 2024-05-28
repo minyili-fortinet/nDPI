@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stddef.h>
-
 #if defined(_MSC_VER)
 #define shoco_restrict __restrict
 #elif __GNUC__

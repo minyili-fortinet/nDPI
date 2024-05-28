@@ -1059,8 +1059,8 @@ static int check_known_ip_service( struct ndpi_net *n,int family,
 
 	spin_lock_bh (&n->ipq_lock);
 	node = ndpi_patricia_search_best(
-			family == AF_INET ? n->ndpi_struct->protocols_ptree:
-				n->ndpi_struct->protocols_ptree6,
+			family == AF_INET ? n->ndpi_struct->protocols->v4:
+				n->ndpi_struct->protocols->v6,
 			&ipx);
 	if(node) {
 	    if(protocol == IPPROTO_UDP || protocol == IPPROTO_TCP) {

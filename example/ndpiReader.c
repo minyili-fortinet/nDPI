@@ -2677,7 +2677,7 @@ static void node_idle_scan_walker(const void *node, ndpi_VISIT which, int depth,
 
 /* *********************************************** */
 
-#if 1
+#if 0
 /**
  * @brief Print debug
  */

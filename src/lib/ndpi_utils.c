@@ -81,12 +81,14 @@ struct pcre2_struct {
 };
 #endif
 
+#ifndef __KERNEL__
 typedef struct {
   char *key;
   u_int16_t value16;
   UT_hash_handle hh;
 } ndpi_str_hash_priv;
 
+#endif
 /* ****************************************** */
 
 /* implementation of the punycode check function */
@@ -2728,7 +2730,6 @@ float ndpi_entropy(u_int8_t const * const buf, size_t len) {
 
   return entropy;
 }
-#endif
 
 /* ******************************************************************** */
 
@@ -2801,6 +2802,7 @@ void ndpi_entropy2risk(struct ndpi_flow_struct *flow) {
 reset_risk:
   ndpi_unset_risk(flow, NDPI_SUSPICIOUS_ENTROPY);
 }
+#endif
 
 /* ******************************************************************** */
 
@@ -3256,6 +3258,8 @@ const char *ndpi_lru_cache_idx_to_name(lru_cache_type idx)
   return names[idx];
 }
 
+#ifndef __KERNEL__
+
 /* ******************************************* */
 
 size_t ndpi_compress_str(const char * in, size_t len, char * out, size_t bufsize) {
@@ -3275,6 +3279,7 @@ size_t ndpi_decompress_str(const char * in, size_t len, char * out, size_t bufsi
 }
 
 /* ******************************************* */
+
 
 static u_char ndpi_domain_mapper[256];
 static bool ndpi_domain_mapper_initialized = false;
@@ -3393,3 +3398,5 @@ u_int ndpi_encode_domain(struct ndpi_detection_module_struct *ndpi_str,
 
   return(out_idx);
 }
+
+#endif

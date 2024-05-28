@@ -129,7 +129,7 @@ extern int is_version_with_var_int_transport_params(uint32_t version);
   159a76.....
 */
 
-#define NDPI_MAX_TLS_REQUEST_SIZE 16384
+#define NDPI_MAX_TLS_REQUEST_SIZE (16384+4096)
 #define TLS_THRESHOLD             34387200 /* Threshold for certificate validity                                */
 #define TLS_LIMIT_DATE            1598918400 /* From 01/09/2020 TLS certificates lifespan is limited to 13 months */
 
@@ -746,7 +746,7 @@ void processCertificateElements(struct ndpi_detection_module_struct *ndpi_struct
 		    char buf[32];
 
 		    snprintf(buf, sizeof(buf), "Unknown extension %02X", general_name_type);
-#if DEBUG_TLS
+#ifdef DEBUG_TLS
 		    printf("[TLS] Leftover %u bytes", packet->payload_packet_len - i);
 #endif
 		    ndpi_set_risk(flow, NDPI_TLS_SUSPICIOUS_EXTENSION, buf);

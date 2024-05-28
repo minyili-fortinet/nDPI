@@ -1155,6 +1155,10 @@ extern "C" {
 		     ndpi_serializer *serializer);
 #endif
 
+#ifdef __KERNEL__
+  int NDPI_BITMASK_IS_EMPTY(NDPI_PROTOCOL_BITMASK a);
+#endif
+
   char *ndpi_get_ip_proto_name(u_int16_t ip_proto, char *name, unsigned int name_len);
 
   const char* ndpi_http_method2str(ndpi_http_method m);
