@@ -312,8 +312,7 @@ static unsigned long  ndpi_p_non_tcpudp=0;
 static unsigned long  ndpi_p_max_parsed_lines=0;
 static unsigned long  ndpi_p_ipv6=0;
 static unsigned long  ndpi_p_nonip=0;
-static unsigned long  ndpi_p_id_num=0;
-static unsigned long  ndpi_p_noncached=0;
+static unsigned long  ndpi_p_ndpi=0;
 static unsigned long  ndpi_p_err_prot_err=0;
 static unsigned long  ndpi_p_err_noiphdr=0;
 static unsigned long  ndpi_p_err_alloc_flow=0;
@@ -368,53 +367,59 @@ MODULE_PARM_DESC(ndpi_flow_limit,"Limit netflow records. Default 10000000 (~4.3G
 module_param_named(max_unk_tcp,max_packet_unk_tcp,ulong, 0600);
 module_param_named(max_unk_udp,max_packet_unk_udp,ulong, 0600);
 module_param_named(max_unk_other,max_packet_unk_other,ulong, 0600);
-module_param_named(flow_read_debug,flow_read_debug,ulong, 0600);
+module_param_named(x_flow_read_debug,flow_read_debug,ulong, 0600);
 
 module_param_named(ndpi_size_flow_struct,ndpi_size_flow_struct,ulong, 0400);
+MODULE_PARM_DESC(ndpi_size_flow_struct,"Sizeof ndpi_size_flow_struct. [info]");
 module_param_named(ndpi_size_hash_ip4p_node,ndpi_size_hash_ip4p_node,ulong, 0400);
+MODULE_PARM_DESC(ndpi_size_hash_ip4p_node,"Sizeof ndpi_size_hash_ip4p_node. [info]");
 
-module_param_named(err_oversize, ndpi_jumbo, ulong, 0400);
-MODULE_PARM_DESC(err_oversize,"Counter nonlinear packets bigger than MTU. [info]");
 module_param_named(err_skb_linear, ndpi_falloc, ulong, 0400);
 MODULE_PARM_DESC(err_skb_linear,"Counter of unsuccessful conversions of nonlinear packets. [error]");
 
-module_param_named(skb_seg,	 ndpi_nskb, ulong, 0400);
-MODULE_PARM_DESC(skb_seg,"Counter nonlinear packets. [info]");
-module_param_named(skb_lin,	 ndpi_lskb, ulong, 0400);
-MODULE_PARM_DESC(skb_lin,"Counter linear packets. [info]");
+module_param_named(c_ndpi_skb_seg,	 ndpi_nskb, ulong, 0400);
+MODULE_PARM_DESC(c_ndpi_skb_seg,"Counter nonlinear packets. [info]");
+module_param_named(c_ndpi_skb_lin,	 ndpi_lskb, ulong, 0400);
+MODULE_PARM_DESC(c_ndpi_skb_lin,"Counter linear packets. [info]");
+module_param_named(c_ndpi,	 ndpi_p_ndpi, ulong, 0400);
 
 module_param_named(flow_created, ndpi_flow_c, ulong, 0400);
 MODULE_PARM_DESC(flow_created,"Counter of flows. [info]");
+
 module_param_named(bt_gc_count,  ndpi_bt_gc, ulong, 0400);
 
-module_param_named(p_ipv4,         ndpi_p_ipv4, ulong, 0400);
-module_param_named(p_ipv6,         ndpi_p_ipv6, ulong, 0400);
-module_param_named(p_nonip,        ndpi_p_nonip, ulong, 0400);
-module_param_named(ct_null,      ndpi_p_ct_null, ulong, 0400);
-module_param_named(ct_untrack,   ndpi_p_ct_untrack, ulong, 0400);
-module_param_named(ct_confirm,   ndpi_p_ct_confirm, ulong, 0400);
-module_param_named(ct_nolabel,   ndpi_p_ct_nolabel, ulong, 0400);
-module_param_named(ct_ndpi,      ndpi_p_ct_ndpi, ulong, 0400);
-module_param_named(err_add_ndpi, ndpi_p_err_add_ndpi, ulong, 0400);
-module_param_named(p_non_tcpudp,   ndpi_p_non_tcpudp, ulong, 0400);
+module_param_named(c_p_ipv4,         ndpi_p_ipv4, ulong, 0400);
+module_param_named(c_p_ipv6,         ndpi_p_ipv6, ulong, 0400);
+module_param_named(c_p_nonip,        ndpi_p_nonip, ulong, 0400);
 module_param_named(max_parsed_lines, ndpi_p_max_parsed_lines, ulong, 0400);
-module_param_named(id_num,	 ndpi_p_id_num, ulong, 0400);
+
+module_param_named(c_ct_untrack,     ndpi_p_ct_untrack, ulong, 0400);
+module_param_named(c_non_tcpudp,   ndpi_p_non_tcpudp, ulong, 0400);
 module_param_named(c_match,	 ndpi_p_ndpi_match,  ulong, 0400);
 module_param_named(c_new_pkt,	 ndpi_p_c_new_pkt, ulong, 0400);
 module_param_named(c_cached,	 ndpi_p_cached,  ulong, 0400);
 module_param_named(c_end_maxpkt, ndpi_p_c_end_max,  ulong, 0400);
 module_param_named(c_end_fail,	 ndpi_p_c_end_fail,  ulong, 0400);
-module_param_named(c_dpi,	 ndpi_p_noncached, ulong, 0400);
+
+module_param_named(c_l4mismatch,   ndpi_p_l4mismatch,  ulong, 0400);
+module_param_named(c_l4mis_size,   ndpi_p_l4mis_size, ulong, 0400);
+
+module_param_named(err_oversize, ndpi_jumbo, ulong, 0400);
+MODULE_PARM_DESC(err_oversize,"Counter nonlinear packets bigger than MTU. [info]");
 module_param_named(err_ip_frag_len, ndpi_p_err_ip_frag_len, ulong, 0400);
 module_param_named(err_bad_tcp_udp, ndpi_p_err_bad_tcp_udp, ulong, 0400);
+module_param_named(err_ct_confirm, ndpi_p_ct_confirm, ulong, 0400);
+module_param_named(err_ct_nolabel, ndpi_p_ct_nolabel, ulong, 0400);
+module_param_named(err_ct_ndpi,    ndpi_p_ct_ndpi, ulong, 0400);
+module_param_named(err_add_ndpi,   ndpi_p_err_add_ndpi, ulong, 0400);
+module_param_named(err_ct_null,    ndpi_p_ct_null, ulong, 0400);
 module_param_named(err_last_ct,  ndpi_p_c_last_ct_not, ulong, 0400);
 module_param_named(err_prot_err, ndpi_p_err_prot_err, ulong, 0400);
 module_param_named(err_noiphdr,  ndpi_p_err_noiphdr, ulong, 0400);
 module_param_named(err_alloc_flow, ndpi_p_err_alloc_flow, ulong, 0400);
-module_param_named(err_alloc_id, ndpi_p_err_alloc_id, ulong, 0400);
-module_param_named(l4mismatch,	 ndpi_p_l4mismatch,  ulong, 0400);
-module_param_named(l4mis_size,	 ndpi_p_l4mis_size, ulong, 0400);
-module_param_named(x_ct_free_magic, ndpi_p_free_magic, ulong, 0400);
+module_param_named(err_alloc_id,   ndpi_p_err_alloc_id, ulong, 0400);
+module_param_named(err_ct_free_magic, ndpi_p_free_magic, ulong, 0400);
+
 unsigned long  ndpi_pto=0,
 	       ndpi_ptss=0, ndpi_ptsd=0,
 	       ndpi_ptds=0, ndpi_ptdd=0,
@@ -677,19 +682,24 @@ static inline struct nf_ct_ext_labels *nf_ct_ext_find_label(const struct nf_conn
 #endif
 }
 
+DEFINE_SPINLOCK(lock_flist);
 
-static void ndpi_ct_list_add(struct ndpi_net *n,
+static inline int ndpi_ct_list_add(struct ndpi_net *n,
 			struct nf_ct_ext_ndpi *ct_ndpi) {
 
 	struct nf_ct_ext_ndpi *h;
-
-	do {
+	int ret = false;
+	if(!test_flow_yes(ct_ndpi)) {
+	    spin_lock_bh(&lock_flist);
 	    h = READ_ONCE(n->flow_h);
 	    WRITE_ONCE(ct_ndpi->next,h);
-	} while(cmpxchg(&n->flow_h,h,ct_ndpi) != h);
-
-	set_flow_yes(ct_ndpi);
-	atomic_inc(&n->acc_work);
+	    WRITE_ONCE(n->flow_h,ct_ndpi);
+	    set_flow_yes(ct_ndpi);
+	    spin_unlock_bh(&lock_flist);
+	    atomic_inc(&n->acc_work);
+	    ret = true;
+	}
+	return ret;
 }
 
 static void ndpi_init_ct_struct(struct ndpi_net *n,
@@ -861,8 +871,7 @@ nf_ndpi_free_flow (struct nf_conn * ct)
 	    n = ndpi_pernet(nf_ct_net(ct));
 
 	    ct_ndpi_free_flow(n,ext_l,ct_ndpi,FLOW_FREE_NORM,ct);
-	} else
-		COUNTER(ndpi_p_ct_null);
+	}
 }
 
 /* must be locked ct_ndpi->lock */
@@ -1791,7 +1800,7 @@ ndpi_mt(const struct sk_buff *skb, struct xt_action_param *par)
 			ct_ndpi->flow->extra_packets_func ? ", extra_func":"",
 			ct_ndpi->flow->fail_with_unknown ? ", end_dpi":"");
 
-		COUNTER(ndpi_p_noncached);
+		COUNTER(ndpi_p_ndpi);
 		flow = ct_ndpi->flow;
 
 		if(r_proto == NDPI_PROCESS_ERROR || !flow) {
@@ -2254,10 +2263,7 @@ ndpi_tg(struct sk_buff *skb, const struct xt_action_param *par)
 
 		    spin_lock_bh (&ct_ndpi->lock);
 
-		    if(!test_flow_yes(ct_ndpi)) { // atomic
-			ndpi_ct_list_add(n,ct_ndpi); //
-			flow_add = true;
-		    }
+		    flow_add = ndpi_ct_list_add(n,ct_ndpi);
 
 		    if(!test_nat_done(ct_ndpi) &&  // atomic
 		       !ct_proto_get_flow_nat(c_proto)) { // atomic
@@ -2562,7 +2568,7 @@ static int ninfo_proc_close(struct inode *inode, struct file *file)
 
 int ndpi_delete_acct(struct ndpi_net *n,int all) {
 	struct nf_ct_ext_ndpi *ct_ndpi,*next,*prev;
-	int i2 = 0, del,skip_del;
+	int i2 = 0, del,skip_del, needed_unlock = 1;
 
 	if(!ndpi_enable_flow) return 0;
 
@@ -2577,12 +2583,17 @@ int ndpi_delete_acct(struct ndpi_net *n,int all) {
 
 	next = prev = NULL;
 
+	spin_lock_bh(&lock_flist);
 	ct_ndpi = READ_ONCE(n->flow_h);
 
 	while(ct_ndpi) {
 
 		if(!spin_trylock_bh(&ct_ndpi->lock)) {
 			// skip locked flow
+			if(needed_unlock) {
+				needed_unlock = 0;
+				spin_unlock_bh(&lock_flist);
+			}
 			prev = ct_ndpi;
 			ct_ndpi = READ_ONCE(ct_ndpi->next);
 			continue;
@@ -2600,18 +2611,15 @@ int ndpi_delete_acct(struct ndpi_net *n,int all) {
 			break;
 		case 3: del = 1;
 		}
-
+		if(needed_unlock && !del) {
+			needed_unlock = 0;
+			spin_unlock_bh(&lock_flist);
+		}
 		if(del) {
 			if(!prev) { // first element
-				prev = cmpxchg(&n->flow_h, ct_ndpi, next);
-				if(prev == ct_ndpi) {  // n->flow_h == ct_ndpi
-					prev = NULL;
-				} else { // prev is n->flow_h
-					while(prev && prev->next != ct_ndpi) prev = prev->next;
-					if(!prev) BUG();
-				}
-			}
-			if(prev && cmpxchg(&prev->next,ct_ndpi,next) != ct_ndpi) BUG();
+				WRITE_ONCE(n->flow_h,next);
+			} else
+			    if(cmpxchg(&prev->next,ct_ndpi,next) != ct_ndpi) BUG();
 		}
 		spin_unlock_bh(&ct_ndpi->lock);
 
@@ -2643,6 +2651,8 @@ int ndpi_delete_acct(struct ndpi_net *n,int all) {
 
 		ct_ndpi=next;
 	}
+	if(needed_unlock)
+		spin_unlock_bh(&lock_flist);
 
 	mutex_unlock(&n->rem_lock);
 	if( (all > 1 || i2) && flow_read_debug)
@@ -2705,7 +2715,7 @@ ssize_t nflow_read(struct ndpi_net *n, char __user *buf,
                               size_t count, loff_t *ppos)
 {
 	struct nf_ct_ext_ndpi *ct_ndpi,*next,*prev;
-	int p,del,r;
+	int p,del,r,needed_unlock;
 	ssize_t sl=0;
 	loff_t st_pos;
 
@@ -2758,8 +2768,11 @@ ssize_t nflow_read(struct ndpi_net *n, char __user *buf,
 	}
 	st_pos = *ppos;
 	prev = NULL;
+	needed_unlock = 0;
 
 	if(!n->flow_l) { // start read list
+		spin_lock_bh(&lock_flist);
+		needed_unlock = 1;
 		ct_ndpi = READ_ONCE(n->flow_h);
 	} else { // continue read list
 		prev = n->flow_l;
@@ -2773,6 +2786,11 @@ ssize_t nflow_read(struct ndpi_net *n, char __user *buf,
 		next = READ_ONCE(ct_ndpi->next);
 
 		del  = test_for_delete(ct_ndpi);
+
+		if(needed_unlock && !del) {
+			needed_unlock = 0;
+			spin_unlock_bh(&lock_flist);
+		}
 
 		n->str_buf_len = 0; n->str_buf_offs = 0;
 
@@ -2797,15 +2815,9 @@ ssize_t nflow_read(struct ndpi_net *n, char __user *buf,
 
 		if(del) {
 			if(!prev) { // first element
-				prev = cmpxchg(&n->flow_h, ct_ndpi, next);
-				if(prev == ct_ndpi) { // n->flow_h == ct_ndpi
-					prev = NULL;
-				} else { // prev is n->flow_h
-					while(prev && prev->next != ct_ndpi) prev = prev->next;
-					if(!prev) BUG();
-				}
-			}
-			if(prev && cmpxchg(&prev->next,ct_ndpi,next) != ct_ndpi) BUG();
+				WRITE_ONCE(n->flow_h,next);
+			} else
+				if(cmpxchg(&prev->next,ct_ndpi,next) != ct_ndpi) BUG();
 		}
 		spin_unlock_bh(&ct_ndpi->lock);
 
@@ -2836,6 +2848,8 @@ ssize_t nflow_read(struct ndpi_net *n, char __user *buf,
 			n->cnt_out++;
 		}
 	}
+	if(needed_unlock)
+		spin_unlock_bh(&lock_flist);
 
 	if(!ct_ndpi ) {
 		n->acc_end = 1;
@@ -3022,7 +3036,6 @@ static void __net_exit ndpi_net_exit(struct net *net)
 		kfree(n->g_ctx);
 #endif
 
-// FIXME
 	if(n->risk_names)
 		kfree(n->risk_names);
 
