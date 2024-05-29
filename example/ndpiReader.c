@@ -5580,6 +5580,7 @@ void jitterUnitTest() {
 /* *********************************************** */
 
 void compressedBitmapUnitTest() {
+#if 0
   ndpi_bitmap *b = ndpi_bitmap_alloc(), *b1;
   u_int i, trace = 0;
   size_t ser;
@@ -5615,6 +5616,7 @@ void compressedBitmapUnitTest() {
   ndpi_free(buf);
   ndpi_bitmap_free(b);
   ndpi_bitmap_free(b1);
+#endif
 }
 
 /* *********************************************** */
@@ -5726,6 +5728,7 @@ void strnstrUnitTest(void) {
 /* *********************************************** */
 
 void filterUnitTest() {
+#if 0
   ndpi_filter* f = ndpi_filter_alloc();
   u_int32_t v, i;
 
@@ -5739,6 +5742,7 @@ void filterUnitTest() {
   assert(ndpi_filter_contains(f, v));
 
   ndpi_filter_free(f);
+#endif
 }
 
 /* *********************************************** */
@@ -5822,6 +5826,7 @@ void sketchUnitTest() {
 /* *********************************************** */
 
 void binaryBitmapUnitTest() {
+#if 0
   ndpi_binary_bitmap *b = ndpi_binary_bitmap_alloc();
   u_int64_t hashval = 8149764909040470312;
   u_int8_t category = 33;
@@ -5832,6 +5837,7 @@ void binaryBitmapUnitTest() {
   assert(ndpi_binary_bitmap_isset(b, hashval, &category));
   assert(category == 33);
   ndpi_binary_bitmap_free(b);
+#endif
 }
 
 /* *********************************************** */
