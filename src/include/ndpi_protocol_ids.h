@@ -185,7 +185,7 @@ typedef enum {
   NDPI_PROTOCOL_LLMNR                 = 154,
   NDPI_PROTOCOL_TOCA_BOCA             = 155,
   NDPI_PROTOCOL_SPOTIFY               = 156,
-  NDPI_PROTOCOL_MESSENGER             = 157,
+  NDPI_PROTOCOL_FACEBOOK_MESSENGER    = 157,
   NDPI_PROTOCOL_H323                  = 158,
   NDPI_PROTOCOL_OPENVPN               = 159,
   NDPI_PROTOCOL_NOE                   = 160,
@@ -443,6 +443,7 @@ typedef enum {
   NDPI_PROTOCOL_MASTODON              = 412,
   NDPI_PROTOCOL_THREADS               = 413,
   NDPI_PROTOCOL_VIBER_VOIP            = 414,
+  NDPI_PROTOCOL_ZUG                   = 415,
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_protocol_ids.h"

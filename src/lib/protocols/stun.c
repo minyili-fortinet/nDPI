@@ -62,7 +62,7 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
 
 
 /* Valid classifications:
-    * STUN, DTLS, STUN/RTP, DTLS/SRTP
+    * STUN, DTLS, STUN/RTP, DTLS/SRTP, RTP or RTCP (the last two, only from RTP dissector)
     * STUN/APP, DTLS/APP, SRTP/APP ["real" sub-classification]
    The idea is:
     * the specific "real" application (WA/FB/Signal/...), if present, should
@@ -345,6 +345,14 @@ int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
      ((ntohs(get_u_int16_t(payload, 0)) + 2) == payload_length)) {
     payload += 2;
     payload_length -=2;
+  }
+
+  /* Microsoft Multiplexed TURN messages */
+  if(payload_length >= STUN_HDR_LEN + 12 &&
+     ntohs(get_u_int16_t(payload, 0)) == 0xFF10 &&
+     ntohs(get_u_int16_t(payload, 2)) + 4 == payload_length) {
+    payload += 12;
+    payload_length -= 12;
   }
 
   msg_type = ntohs(*((u_int16_t *)&payload[0]));
@@ -698,65 +706,60 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
          positives. In that case, the TLS dissector doesn't set the master protocol, so we
          need to rollback to the current state */
 
-      if(packet->tcp) {
-        /* TODO: TLS code assumes that DTLS is only over UDP */
-        NDPI_LOG_DBG(ndpi_struct, "Ignoring DTLS over TCP\n");
+      if(flow->tls_quic.certificate_processed == 1) {
+        NDPI_LOG_DBG(ndpi_struct, "Interesting DTLS stuff already processed. Ignoring\n");
       } else {
-        if(flow->tls_quic.certificate_processed == 1) {
-          NDPI_LOG_DBG(ndpi_struct, "Interesting DTLS stuff already processed. Ignoring\n");
-        } else {
-          NDPI_LOG_DBG(ndpi_struct, "Switch to DTLS (%d/%d)\n",
-                       flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
+        NDPI_LOG_DBG(ndpi_struct, "Switch to DTLS (%d/%d)\n",
+                     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
 
-          if(flow->stun.maybe_dtls == 0) {
-            /* First DTLS packet of the flow */
-            first_dtls_pkt = 1;
+        if(flow->stun.maybe_dtls == 0) {
+          /* First DTLS packet of the flow */
+          first_dtls_pkt = 1;
 
-	    /* We might need to rollback this change... */
-	    old_proto_stack[0] = flow->detected_protocol_stack[0];
-	    old_proto_stack[1] = flow->detected_protocol_stack[1];
+          /* We might need to rollback this change... */
+          old_proto_stack[0] = flow->detected_protocol_stack[0];
+          old_proto_stack[1] = flow->detected_protocol_stack[1];
 
-            /* TODO: right way? It is a bit scary... do we need to reset something else too? */
-            reset_detected_protocol(flow);
-            /* We keep the category related to STUN traffic */
-	    /* STUN often triggers this risk; clear it. TODO: clear other risks? */
-	    ndpi_unset_risk(flow, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT);
+          /* TODO: right way? It is a bit scary... do we need to reset something else too? */
+          reset_detected_protocol(flow);
+          /* We keep the category related to STUN traffic */
+          /* STUN often triggers this risk; clear it. TODO: clear other risks? */
+          ndpi_unset_risk(flow, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT);
 
-            /* Give room for DTLS handshake, where we might have
-               retransmissions and fragments */
-            flow->max_extra_packets_to_check = ndpi_min(255, (int)flow->max_extra_packets_to_check + 10);
-            flow->stun.maybe_dtls = 1;
-	  }
-
-	  switch_to_tls(ndpi_struct, flow, first_dtls_pkt);
-
-	  if(first_dtls_pkt &&
-             flow->detected_protocol_stack[0] == NDPI_PROTOCOL_DTLS &&
-             flow->detected_protocol_stack[1] == NDPI_PROTOCOL_UNKNOWN &&
-             old_proto_stack[0] != NDPI_PROTOCOL_UNKNOWN &&
-             old_proto_stack[0] != NDPI_PROTOCOL_STUN) {
-            NDPI_LOG_DBG(ndpi_struct, "Keeping old subclassification %d\n", old_proto_stack[0]);
-            ndpi_int_stun_add_connection(ndpi_struct, flow,
-                                         old_proto_stack[0] == NDPI_PROTOCOL_RTP ? NDPI_PROTOCOL_SRTP : old_proto_stack[0],
-                                         __get_master(flow));
-	  }
-
-	  /* If this is not a real DTLS packet, we need to restore the old state */
-          if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN &&
-             first_dtls_pkt) {
-            NDPI_LOG_DBG(ndpi_struct, "Switch to TLS failed. Rollback to old classification\n");
-
-            ndpi_set_detected_protocol(ndpi_struct, flow,
-                                       old_proto_stack[0], old_proto_stack[1],
-                                       NDPI_CONFIDENCE_DPI);
-
-            flow->stun.maybe_dtls = 0;
-            flow->max_extra_packets_to_check -= 10;
-          }
-
-	  NDPI_LOG_DBG(ndpi_struct, "(%d/%d)\n",
-                       flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
+          /* Give room for DTLS handshake, where we might have
+             retransmissions and fragments */
+          flow->max_extra_packets_to_check = ndpi_min(255, (int)flow->max_extra_packets_to_check + 10);
+          flow->stun.maybe_dtls = 1;
         }
+
+        switch_to_tls(ndpi_struct, flow, first_dtls_pkt);
+
+        if(first_dtls_pkt &&
+           flow->detected_protocol_stack[0] == NDPI_PROTOCOL_DTLS &&
+           flow->detected_protocol_stack[1] == NDPI_PROTOCOL_UNKNOWN &&
+           old_proto_stack[0] != NDPI_PROTOCOL_UNKNOWN &&
+           old_proto_stack[0] != NDPI_PROTOCOL_STUN) {
+          NDPI_LOG_DBG(ndpi_struct, "Keeping old subclassification %d\n", old_proto_stack[0]);
+          ndpi_int_stun_add_connection(ndpi_struct, flow,
+                                       old_proto_stack[0] == NDPI_PROTOCOL_RTP ? NDPI_PROTOCOL_SRTP : old_proto_stack[0],
+                                       __get_master(flow));
+        }
+
+        /* If this is not a real DTLS packet, we need to restore the old state */
+        if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_UNKNOWN &&
+           first_dtls_pkt) {
+          NDPI_LOG_DBG(ndpi_struct, "Switch to TLS failed. Rollback to old classification\n");
+
+          ndpi_set_detected_protocol(ndpi_struct, flow,
+                                     old_proto_stack[0], old_proto_stack[1],
+                                     NDPI_CONFIDENCE_DPI);
+
+          flow->stun.maybe_dtls = 0;
+          flow->max_extra_packets_to_check -= 10;
+        }
+
+        NDPI_LOG_DBG(ndpi_struct, "(%d/%d)\n",
+                     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
       }
     }
   } else if(first_byte <= 79) {
@@ -796,7 +799,7 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
     NDPI_LOG_DBG(ndpi_struct, "QUIC range. Unexpected\n");
   } else if(first_byte <= 191) {
 
-    rtp_rtcp = is_rtp_or_rtcp(ndpi_struct, NULL);
+    rtp_rtcp = is_rtp_or_rtcp(ndpi_struct, packet->payload, packet->payload_packet_len, NULL);
     if(rtp_rtcp == IS_RTP) {
       NDPI_LOG_DBG(ndpi_struct, "RTP (dir %d)\n", packet->packet_direction);
       NDPI_LOG_INFO(ndpi_struct, "Found RTP over STUN\n");
@@ -804,6 +807,7 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
       rtp_get_stream_type(packet->payload[1] & 0x7F, &flow->flow_multimedia_type);
 
       if(flow->detected_protocol_stack[0] != NDPI_PROTOCOL_RTP &&
+         flow->detected_protocol_stack[0] != NDPI_PROTOCOL_RTCP &&
          flow->detected_protocol_stack[1] != NDPI_PROTOCOL_SRTP) {
 
         if(flow->detected_protocol_stack[1] != NDPI_PROTOCOL_UNKNOWN) {
@@ -821,6 +825,11 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
                                        __get_master(flow) == NDPI_PROTOCOL_STUN ? NDPI_PROTOCOL_RTP: NDPI_PROTOCOL_SRTP,
                                        __get_master(flow));
         }
+      } else if(flow->detected_protocol_stack[0] == NDPI_PROTOCOL_RTCP &&
+                flow->detected_protocol_stack[1] == NDPI_PROTOCOL_UNKNOWN) {
+        /* From RTP dissector; if we have RTP and RTCP multiplexed together (but not STUN, yet) we always
+	   use RTP, as we do in RTP dissector */
+        ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_RTP, NDPI_CONFIDENCE_DPI);
       }
     } else if(rtp_rtcp == IS_RTCP) {
       NDPI_LOG_DBG(ndpi_struct, "RTCP\n");
@@ -828,7 +837,39 @@ static int stun_search_again(struct ndpi_detection_module_struct *ndpi_struct,
       NDPI_LOG_DBG(ndpi_struct, "Unexpected\n");
     }
   } else {
-    NDPI_LOG_DBG(ndpi_struct, "QUIC range. Unexpected\n");
+    /* Microsoft Multiplexed TURN messages.
+       See: https://msopenspecs.azureedge.net/files/MS-TURN/%5bMS-TURN%5d.pdf 2.2.3 */
+    if(packet->payload_packet_len >= 12 &&
+       ntohs(get_u_int16_t(packet->payload, 0)) == 0xFF10 &&
+       flow->detected_protocol_stack[0] == NDPI_PROTOCOL_SKYPE_TEAMS_CALL) {
+      u_int16_t ch_len;
+
+      ch_len = ntohs(get_u_int16_t(packet->payload, 2));
+
+      if(ch_len == packet->payload_packet_len - 4 &&
+         ch_len >= 8) {
+        const u_int8_t *orig_payload;
+        u_int16_t orig_payload_length;
+
+        orig_payload = packet->payload;
+        orig_payload_length = packet->payload_packet_len;
+        packet->payload = packet->payload + 12;
+        packet->payload_packet_len = ch_len - 8;
+
+        stun_search_again(ndpi_struct, flow);
+
+        NDPI_LOG_DBG(ndpi_struct, "End recursion on MS channel\n");
+
+        packet->payload = orig_payload;
+        packet->payload_packet_len = orig_payload_length;
+
+      } else {
+        NDPI_LOG_ERR(ndpi_struct, "Invalid MS channel length %d %d\n",
+                     ch_len, packet->payload_packet_len - 4);
+      }
+    } else {
+      NDPI_LOG_DBG(ndpi_struct, "QUIC other range. Unexpected\n");
+    }
   }
   return keep_extra_dissection(ndpi_struct, flow);
 }
@@ -945,9 +986,22 @@ static void ndpi_int_stun_add_connection(struct ndpi_detection_module_struct *nd
       confidence = NDPI_CONFIDENCE_DPI_CACHE;
       if(app_proto == NDPI_PROTOCOL_RTP)
         master_proto = NDPI_PROTOCOL_SRTP; /* STUN/RTP --> SRTP/APP */
+      if(master_proto == NDPI_PROTOCOL_RTP || master_proto == NDPI_PROTOCOL_RTCP)
+        master_proto = NDPI_PROTOCOL_SRTP; /* RTP|RTCP --> SRTP/APP */
       app_proto = new_app_proto;
     }
   }
+
+  /* From RTP dissector */
+  if(master_proto == NDPI_PROTOCOL_RTP || master_proto == NDPI_PROTOCOL_RTCP) {
+    if(app_proto == NDPI_PROTOCOL_UNKNOWN) {
+      app_proto = NDPI_PROTOCOL_RTP;
+      master_proto = NDPI_PROTOCOL_STUN; /* RTP|RTCP ->STUN/RTP */
+    } else {
+      master_proto = NDPI_PROTOCOL_SRTP;
+    }
+  }
+
   /* Adding only real subclassifications */
   if(is_subclassification_real_by_proto(app_proto))
     add_to_caches(ndpi_struct, flow, app_proto);
@@ -967,10 +1021,20 @@ static void ndpi_int_stun_add_connection(struct ndpi_detection_module_struct *nd
 #endif
   }
 
-  if(!flow->extra_packets_func && keep_extra_dissection(ndpi_struct, flow)) {
-    NDPI_LOG_DBG(ndpi_struct, "Enabling extra dissection\n");
-    flow->max_extra_packets_to_check = ndpi_struct->cfg.stun_max_packets_extra_dissection;
-    flow->extra_packets_func = stun_search_again;
+  switch_extra_dissection_to_stun(ndpi_struct, flow);
+}
+
+/* ************************************************************ */
+
+void switch_extra_dissection_to_stun(struct ndpi_detection_module_struct *ndpi_struct,
+				     struct ndpi_flow_struct *flow)
+{
+  if(!flow->extra_packets_func) {
+    if(keep_extra_dissection(ndpi_struct, flow)) {
+      NDPI_LOG_DBG(ndpi_struct, "Enabling extra dissection\n");
+      flow->max_extra_packets_to_check = ndpi_struct->cfg.stun_max_packets_extra_dissection;
+      flow->extra_packets_func = stun_search_again;
+    }
   }
 }
 

@@ -177,11 +177,12 @@ typedef enum {
   NDPI_HTTP_OBSOLETE_SERVER,
   NDPI_PERIODIC_FLOW,          /* Set in case a flow repeats at a specific pace [used by apps on top of nDPI] */
   NDPI_MINOR_ISSUES,           /* Generic packet issues (e.g. DNS with 0 TTL) */
-  NDPI_TCP_ISSUES,             /* 50 */ /* TCP issues such as connection failed, probing or scan */
+  NDPI_TCP_ISSUES,             /* 50 */ /* TCP issues such as connection failed or scan */
   NDPI_FULLY_ENCRYPTED,        /* This (unknown) session is fully encrypted */
   NDPI_TLS_ALPN_SNI_MISMATCH,  /* Invalid ALPN/SNI combination */
   NDPI_MALWARE_HOST_CONTACTED, /* Flow client contacted a malware host */
   NDPI_BINARY_DATA_TRANSFER,   /* Attempt to transfer something in binary format */
+  NDPI_PROBING_ATTEMPT,        /* Probing attempt (e.g. TCP connection with no data exchanged or unidirection traffic for bidirectional flows such as SSH) */
   
   /* Leave this as last member */
   NDPI_MAX_RISK /* must be <= 63 due to (**) */
@@ -915,9 +916,6 @@ struct ndpi_flow_tcp_struct {
   /* NDPI_PROTOCOL_SSH */
   u_int32_t ssh_stage:3;
 
-  /* NDPI_PROTOCOL_KAFKA */
-  u_int32_t kafka_stage:1;
-
   /* NDPI_PROTOCOL_VNC */
   u_int32_t vnc_stage:2;			// 0 - 3
 
@@ -971,9 +969,6 @@ struct ndpi_flow_tcp_struct {
 
   /* NDPI_PROTOCOL_RADMIN */
   u_int32_t radmin_stage:1;
-
-  /* NDPI_PROTOCOL_KAFKA */
-  u_int32_t kafka_correlation_id;
 };
 
 /* ************************************************** */
@@ -988,12 +983,6 @@ struct ndpi_flow_udp_struct {
   /* NDPI_PROTOCOL_XBOX */
   u_int32_t xbox_stage:1;
 
-  /* NDPI_PROTOCOL_RTP */
-  u_int32_t rtp_stage:2;
-
-  /* NDPI_PROTOCOL_RTCP */
-  u_int32_t rtcp_stage:2;
-
   /* NDPI_PROTOCOL_QUIC */
   u_int32_t quic_0rtt_found:1;
   u_int32_t quic_vn_pair:1;
@@ -1001,16 +990,15 @@ struct ndpi_flow_udp_struct {
   /* NDPI_PROTOCOL_LOLWILDRIFT */
   u_int32_t lolwildrift_stage:1;
 
+  /* NDPI_PROTOCOL_ZOOM */
+  u_int32_t zoom_p2p:1;
+
   /* NDPI_PROTOCOL_EPICGAMES */
   u_int32_t epicgames_stage:1;
   u_int32_t epicgames_word;
 
   /* NDPI_PROTOCOL_RAKNET */
   u_int32_t raknet_custom:1;
-
-  /* NDPI_PROTOCOL_RTP */
-  u_int16_t rtp_seq[2];
-  u_int8_t rtp_seq_set[2];
 
   /* NDPI_PROTOCOL_EAQ */
   u_int8_t eaq_pkt_id;
@@ -1543,6 +1531,7 @@ struct ndpi_flow_struct {
   /* Only packets with L5 data (ie no TCP SYN, pure ACKs, ...) */
   u_int16_t packet_counter;		      // can be 0 - 65000
   u_int16_t packet_direction_counter[2];
+  u_int8_t  packet_direction_with_payload_observed[2]; /* 0 = no packet with payload observed, 1 = at least one packet with payload observed */
 
   /* All packets even those without payload */
   u_int16_t all_packets_counter;
@@ -1589,6 +1578,14 @@ struct ndpi_flow_struct {
 
   /* NDPI_PROTOCOL_TINC */
   u_int8_t tinc_state;
+ 
+   /* NDPI_PROTOCOL_RTCP */ 
+   u_int8_t rtcp_stage:2;
+
+   /* NDPI_PROTOCOL_RTP */
+   u_int8_t rtp_stage:2;
+   u_int8_t rtp_seq_set[2];
+   u_int16_t rtp_seq[2];
 
   /* Flow payload */
   u_int16_t flow_payload_len;

@@ -270,6 +270,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/wireguard.c \
 		     protocols/z3950.c \
 		     protocols/zabbix.c \
+		     protocols/zug.c \
 		     third_party/include/ahocorasick.h \
 		     third_party/include/ndpi_patricia.h \
 		     third_party/include/libcache.h \

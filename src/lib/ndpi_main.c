@@ -214,6 +214,7 @@ static ndpi_risk_info ndpi_known_risks[] = {
   { NDPI_TLS_ALPN_SNI_MISMATCH,                 NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_MALWARE_HOST_CONTACTED,                NDPI_RISK_SEVERE, CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_BINARY_DATA_TRANSFER,                  NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
+  { NDPI_PROBING_ATTEMPT,                       NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   
   /* Leave this as last member */
   { NDPI_MAX_RISK,                              NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_NO_ACCOUNTABILITY   }
@@ -1629,10 +1630,6 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Spotify", NDPI_PROTOCOL_CATEGORY_MUSIC,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
-  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_MESSENGER,
-			  "Messenger", NDPI_PROTOCOL_CATEGORY_CHAT,
-			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
-			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_LISP,
 			  "LISP", NDPI_PROTOCOL_CATEGORY_CLOUD,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
@@ -2357,6 +2354,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_COD_MOBILE,
 			  "CoD_Mobile", NDPI_PROTOCOL_CATEGORY_GAME,
  			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_ZUG,
+			  "ZUG", NDPI_PROTOCOL_CATEGORY_CRYPTO_CURRENCY,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
@@ -6363,6 +6364,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* Call of Duty: Mobile */
   init_cod_mobile_dissector(ndpi_str, &a);
 
+  /* ZUG */
+  init_zug_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -7262,6 +7266,9 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
       flow->packet_direction_complete_counter[packet->packet_direction]++;
     }
 
+    if(packet->payload_packet_len > 0)
+      flow->packet_direction_with_payload_observed[packet->packet_direction] = 1;
+    
     if(!ndpi_is_multi_or_broadcast(packet)) {
       /* ! (multicast or broadcast) */
 
@@ -7804,6 +7811,51 @@ static void ndpi_check_tcp_flags(struct ndpi_flow_struct *flow) {
     ndpi_set_risk(flow, NDPI_TCP_ISSUES, "TCP probing attempt");
 }
 
+/* ******************************************************************** */
+
+static void ndpi_check_probing_attempt(struct ndpi_flow_struct *flow) {
+  if(flow->l4_proto == IPPROTO_TCP) {
+    if(flow->packet_direction_with_payload_observed[0]
+       && flow->packet_direction_with_payload_observed[1]) {
+      /* Both directions observed */
+
+      if(flow->confidence == NDPI_CONFIDENCE_DPI) {
+	switch(flow->detected_protocol_stack[0]) {
+	case NDPI_PROTOCOL_SSH:
+	  if(flow->protos.ssh.hassh_server[0] == '\0')
+	    ndpi_set_risk(flow, NDPI_PROBING_ATTEMPT, "SSH Probing");
+	  break;
+	  
+	case NDPI_PROTOCOL_TLS:
+	case NDPI_PROTOCOL_QUIC:
+	case NDPI_PROTOCOL_MAIL_SMTPS:
+	case NDPI_PROTOCOL_MAIL_POPS:
+	case NDPI_PROTOCOL_MAIL_IMAPS:
+	case NDPI_PROTOCOL_DTLS:
+	  if(flow->host_server_name[0] == '\0')
+	    ndpi_set_risk(flow, NDPI_PROBING_ATTEMPT, "TLS/QUIC Probing");
+	  break;
+	}
+      }
+    } else {
+      switch(flow->confidence) {
+      case NDPI_CONFIDENCE_MATCH_BY_PORT:
+      case NDPI_CONFIDENCE_NBPF:
+      case NDPI_CONFIDENCE_DPI_PARTIAL_CACHE:
+      case NDPI_CONFIDENCE_DPI_CACHE:
+      case NDPI_CONFIDENCE_MATCH_BY_IP:
+      case NDPI_CONFIDENCE_CUSTOM_RULE:
+	/* Skipping rules where an early match might be confused with a probing attempt */
+	break;
+
+      default:
+	ndpi_set_risk(flow, NDPI_PROBING_ATTEMPT,
+		      "TCP connection with unidirectional traffic");
+      }
+    }
+  }
+}
+
 /* ********************************************************************************* */
 
 ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_str, struct ndpi_flow_struct *flow,
@@ -7818,9 +7870,11 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
   if(!ndpi_str || !flow)
     return(ret);
 
-  if(flow->l4_proto == IPPROTO_TCP)
+  if(flow->l4_proto == IPPROTO_TCP) {
     ndpi_check_tcp_flags(flow);
-
+    ndpi_check_probing_attempt(flow);
+  }
+  
   /* Init defaults */
   ret.master_protocol = flow->detected_protocol_stack[1], ret.app_protocol = flow->detected_protocol_stack[0];
   ret.protocol_by_ip = flow->guessed_protocol_id_by_ip;
@@ -8491,10 +8545,12 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
   if((!flow) || (!ndpi_str) || (ndpi_str->finalized != 1))
     return(ret);
 
+  flow->num_processed_pkts++;
   packet = ndpi_get_packet_struct(ndpi_str);
-  if(ndpi_str->cfg.log_level >= NDPI_LOG_TRACE) 
-     NDPI_LOG_DBG( ndpi_str, "[%d/%d] START packet processing\n",
-	     flow->detected_protocol_stack[0], flow->detected_protocol_stack[1]);
+
+  NDPI_LOG_DBG(ndpi_str, "[%d/%d] START packet processing\n",
+               flow->detected_protocol_stack[0],
+	       flow->detected_protocol_stack[1]);
 
   ret.master_protocol = flow->detected_protocol_stack[1],
     ret.app_protocol = flow->detected_protocol_stack[0];
@@ -8514,7 +8570,6 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
     return(ret); /* Avoid spending too much time with this flow */
   }
 
-  flow->num_processed_pkts++;
   ndpi_str->current_ts = current_time_ms;
 
   /* Init default */
@@ -8564,7 +8619,7 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
       t.tuple.l3_proto = flow->l4_proto;
 
       if(packet->tcp)
-	t.tuple.l4_src_port = packet->tcp->source, t.tuple.l4_dst_port = packet->tcp->dest;
+	t.tuple.l4_src_port = packet->tcp->source, t.tuple.l4_dst_port = packet->tcp->dest;      
       else if(packet->udp)
 	t.tuple.l4_src_port = packet->udp->source, t.tuple.l4_dst_port = packet->udp->dest;
 
@@ -10160,7 +10215,7 @@ int ndpi_match_hostname_protocol(struct ndpi_detection_module_struct *ndpi_struc
 #endif
 
     if(subproto == NDPI_PROTOCOL_OOKLA) {
-	ookla_add_to_cache(ndpi_struct, flow);
+      ookla_add_to_cache(ndpi_struct, flow);
     }
 
     return(1);
@@ -10457,8 +10512,11 @@ u_int8_t ndpi_extra_dissection_possible(struct ndpi_detection_module_struct *ndp
 	 flow->detected_protocol_stack[1],
 	 !!flow->extra_packets_func);
 
-  if(!flow->extra_packets_func)
+  if(!flow->extra_packets_func) {
+    ndpi_check_probing_attempt(flow);
     return(0);
+  }
+  
   return(1);
 }
 
@@ -11446,15 +11504,18 @@ static const struct cfg_param {
   { "tls",           "certificate_expiration_threshold",        "30", "0", "365", CFG_PARAM_INT, __OFF(tls_certificate_expire_in_x_days), NULL, 1 },
   { "tls",           "application_blocks_tracking",             "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_app_blocks_tracking_enabled), NULL, 0 },
   { "tls",           "metadata.sha1_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_sha1_fingerprint_enabled), NULL, 1 },
-
   { "tls",           "metadata.ja3c_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3c_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja3s_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3s_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja4c_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja4c_fingerprint_enabled), NULL, 1 },
 
   { "smtp",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled), NULL,1 },
+
   { "imap",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(imap_opportunistic_tls_enabled), NULL, 1 },
+
   { "pop",           "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled), NULL, 1 },
+
   { "ftp",           "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), NULL, 1 },
+
   { "stun",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
   { "stun",          "max_packets_extra_dissection",            "6", "0", "255", CFG_PARAM_INT, __OFF(stun_max_packets_extra_dissection), NULL, 1 },
   { "stun",          "metadata.attribute.mapped_address",       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_mapped_address_enabled), NULL, 1 },
@@ -11465,8 +11526,15 @@ static const struct cfg_param {
 
   { "dns",           "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), NULL, 1 },
   { "dns",           "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), NULL, 1 },
+
   { "http",          "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), NULL, 1 },
+
   { "ookla",         "dpi.aggressiveness",                      "0x01", "0", "1", CFG_PARAM_INT, __OFF(ookla_aggressiveness), NULL, 1 },
+
+  { "zoom",          "max_packets_extra_dissection",            "4", "0", "255", CFG_PARAM_INT, __OFF(zoom_max_packets_extra_dissection), NULL, 1 },
+
+  { "rtp",           "search_for_stun",                         "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(rtp_search_for_stun), NULL, 1 },
+
   { "$PROTO_NAME_OR_ID", "log",                                 "disable", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(debug_bitmask), NULL, 1 },
   { "$PROTO_NAME_OR_ID", "ip_list.load",                        "1", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(ip_list_bitmask), NULL, 0 },
 
