@@ -8521,6 +8521,7 @@ static int ndpi_do_guess(struct ndpi_detection_module_struct *ndpi_str, struct n
 
 /* ********************************************************************************* */
 
+#ifndef __KERNEL__
 static void fpc_update(struct ndpi_detection_module_struct *ndpi_str,
                        struct ndpi_flow_struct *flow,
 		       u_int16_t fpc_master, u_int16_t fpc_app,
@@ -8545,7 +8546,7 @@ static void fpc_check_ip(struct ndpi_detection_module_struct *ndpi_str,
     fpc_update(ndpi_str, flow, NDPI_PROTOCOL_UNKNOWN,
                flow->guessed_protocol_id_by_ip, NDPI_FPC_CONFIDENCE_IP);
 }
-
+#endif
 /* ********************************************************************************* */
 
 static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detection_module_struct *ndpi_str,
@@ -8690,7 +8691,9 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
     if(ndpi_do_guess(ndpi_str, flow, &ret) == -1)
       return(ret);
 
+#ifndef __KERNEL__
     fpc_check_ip(ndpi_str, flow);
+#endif
   }
 
   num_calls = ndpi_check_flow_func(ndpi_str, flow, &ndpi_selection_packet);
