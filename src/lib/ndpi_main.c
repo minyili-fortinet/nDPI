@@ -2359,6 +2359,14 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "ZUG", NDPI_PROTOCOL_CATEGORY_CRYPTO_CURRENCY,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_JRMI,
+			  "JRMI", NDPI_PROTOCOL_CATEGORY_RPC,
+			  ndpi_build_default_ports(ports_a, 1099, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_RIPE_ATLAS,
+              "RipeAtlas", NDPI_PROTOCOL_CATEGORY_NETWORK,
+              ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+              ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -3351,8 +3359,6 @@ void ndpi_global_deinit(struct ndpi_global_context *g_ctx) {
       ndpi_lru_free_cache(g_ctx->bittorrent_global_cache);
     if(g_ctx->stun_global_cache)
       ndpi_lru_free_cache(g_ctx->stun_global_cache);
-    if(g_ctx->stun_zoom_global_cache)
-      ndpi_lru_free_cache(g_ctx->stun_zoom_global_cache);
     if(g_ctx->tls_cert_global_cache)
       ndpi_lru_free_cache(g_ctx->tls_cert_global_cache);
     if(g_ctx->mining_global_cache)
@@ -3402,6 +3408,7 @@ struct ndpi_detection_module_struct *ndpi_init_detection_module(struct ndpi_glob
   }
 
   ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, host_protocol_list);
+  ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, host_protocol_list_6);
 
   ndpi_str->ip_risk_mask = ndpi_ptree_create();
 
@@ -3845,6 +3852,9 @@ void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str) {
     if(ndpi_str->cfg.risk_crawler_bot_list_enabled) {
       ndpi_init_ptree_ipv4(ndpi_str->ip_risk->v4, ndpi_http_crawler_bot_protocol_list);
       ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk->v6, ndpi_http_crawler_bot_protocol_list_6);
+      /* Hard-coded lists */
+      ndpi_init_ptree_ipv4(ndpi_str->ip_risk->v4, ndpi_http_crawler_bot_hardcoded_protocol_list);
+      ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->ip_risk->v6, ndpi_http_crawler_bot_hardcoded_protocol_list_6);
     }
   }
 }
@@ -3969,22 +3979,6 @@ int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) 
     if(!ndpi_str->msteams_cache) {
       NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
                    ndpi_str->cfg.msteams_cache_num_entries);
-    }
-  }
-  if(ndpi_str->cfg.stun_zoom_cache_num_entries > 0) {
-    if(ndpi_str->cfg.stun_zoom_cache_scope == NDPI_LRUCACHE_SCOPE_GLOBAL) {
-      if(!ndpi_str->g_ctx->stun_zoom_global_cache) {
-        ndpi_str->g_ctx->stun_zoom_global_cache = ndpi_lru_cache_init(ndpi_str->cfg.stun_zoom_cache_num_entries,
-                                                                      ndpi_str->cfg.stun_zoom_cache_ttl, 1);
-      }
-      ndpi_str->stun_zoom_cache = ndpi_str->g_ctx->stun_zoom_global_cache;
-    } else {
-      ndpi_str->stun_zoom_cache = ndpi_lru_cache_init(ndpi_str->cfg.stun_zoom_cache_num_entries,
-                                                      ndpi_str->cfg.stun_zoom_cache_ttl, 0);
-    }
-    if(!ndpi_str->stun_zoom_cache) {
-      NDPI_LOG_ERR(ndpi_str, "Error allocating lru cache (num_entries %u)\n",
-                   ndpi_str->cfg.stun_zoom_cache_num_entries);
     }
   }
 
@@ -4327,10 +4321,6 @@ void ndpi_exit_detection_module(struct ndpi_detection_module_struct *ndpi_str) {
     if(!ndpi_str->cfg.stun_cache_scope &&
        ndpi_str->stun_cache)
       ndpi_lru_free_cache(ndpi_str->stun_cache);
-
-    if(!ndpi_str->cfg.stun_zoom_cache_scope &&
-       ndpi_str->stun_zoom_cache)
-      ndpi_lru_free_cache(ndpi_str->stun_zoom_cache);
 
     if(!ndpi_str->cfg.tls_cert_cache_scope &&
        ndpi_str->tls_cert_cache)
@@ -5170,7 +5160,7 @@ int load_category_file_fd(struct ndpi_detection_module_struct *ndpi_str,
       continue;
     }
 
-    if(ndpi_load_category(ndpi_str, line, category_id, NULL) > 0)
+    if(ndpi_load_category(ndpi_str, line, category_id, NULL) >= 0)
       num_loaded++;
   }
 
@@ -6366,6 +6356,15 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
 
   /* ZUG */
   init_zug_dissector(ndpi_str, &a);
+
+  /* JRMI Java Remote Method Invocation*/
+  init_jrmi_dissector(ndpi_str, &a);
+
+  /* (Magellan) Ripe Atlas */
+  init_ripe_atlas_dissector(ndpi_str, &a);
+
+  /* Cloudflare WARP */
+  init_cloudflare_warp_dissector(ndpi_str, &a);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
@@ -7904,13 +7903,6 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
     ret.app_protocol = flow->detected_protocol_stack[0];
   }
 
-  /* Does it looks like Zoom (via STUN)? */
-  if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
-     stun_search_into_zoom_cache(ndpi_str, flow)) {
-    ndpi_set_detected_protocol(ndpi_str, flow, NDPI_PROTOCOL_ZOOM, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI_PARTIAL_CACHE);
-    ret.app_protocol = flow->detected_protocol_stack[0];
-  }
-
   /* Does it looks like Ookla? */
   if(ret.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
      ntohs(flow->s_port) == 8080 && ookla_search_into_cache(ndpi_str, flow)) {
@@ -8529,6 +8521,33 @@ static int ndpi_do_guess(struct ndpi_detection_module_struct *ndpi_str, struct n
 
 /* ********************************************************************************* */
 
+static void fpc_update(struct ndpi_detection_module_struct *ndpi_str,
+                       struct ndpi_flow_struct *flow,
+		       u_int16_t fpc_master, u_int16_t fpc_app,
+		       ndpi_fpc_confidence_t fpc_confidence)
+{
+  NDPI_LOG_DBG(ndpi_str, "FPC %d.%d/%s -> %d.%d/%s\n",
+               flow->fpc.master_protocol, flow->fpc.app_protocol,
+               ndpi_fpc_confidence_get_name(flow->fpc.confidence),
+               fpc_master, fpc_app,
+               ndpi_fpc_confidence_get_name(fpc_confidence));
+  flow->fpc.master_protocol = fpc_master;
+  flow->fpc.app_protocol = fpc_app;
+  flow->fpc.confidence = fpc_confidence;
+}
+
+/* ********************************************************************************* */
+
+static void fpc_check_ip(struct ndpi_detection_module_struct *ndpi_str,
+                         struct ndpi_flow_struct *flow)
+{
+  if(flow->guessed_protocol_id_by_ip != NDPI_PROTOCOL_UNKNOWN)
+    fpc_update(ndpi_str, flow, NDPI_PROTOCOL_UNKNOWN,
+               flow->guessed_protocol_id_by_ip, NDPI_FPC_CONFIDENCE_IP);
+}
+
+/* ********************************************************************************* */
+
 static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detection_module_struct *ndpi_str,
 							    struct ndpi_flow_struct *flow,
 							    const unsigned char *packet_data,
@@ -8670,6 +8689,8 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 
     if(ndpi_do_guess(ndpi_str, flow, &ret) == -1)
       return(ret);
+
+    fpc_check_ip(ndpi_str, flow);
   }
 
   num_calls = ndpi_check_flow_func(ndpi_str, flow, &ndpi_selection_packet);
@@ -9651,6 +9672,25 @@ const char *ndpi_confidence_get_name(ndpi_confidence_t confidence)
 /* ****************************************************** */
 #ifndef __KERNEL__
 
+const char *ndpi_fpc_confidence_get_name(ndpi_fpc_confidence_t fpc_confidence)
+{
+  switch(fpc_confidence) {
+  case NDPI_FPC_CONFIDENCE_UNKNOWN:
+    return "Unknown";
+
+  case NDPI_FPC_CONFIDENCE_IP:
+    return "IP address";
+
+  case NDPI_FPC_CONFIDENCE_DNS:
+    return "DNS";
+
+  default:
+    return "Invalid"; /* Out of sync with ndpi_fpc_confidence_t definition */
+  }
+}
+
+/* ****************************************************** */
+
 const char *ndpi_category_get_name(struct ndpi_detection_module_struct *ndpi_str,
 				   ndpi_protocol_category_t category) {
   if((!ndpi_str) || (category >= NDPI_PROTOCOL_NUM_CATEGORIES)) {
@@ -9822,19 +9862,56 @@ int ndpi_get_category_id(struct ndpi_detection_module_struct *ndpi_str, char *ca
 #ifndef __KERNEL__
 /* ****************************************************** */
 
+
+static char *default_ports_string(char *ports_str,u_int16_t *default_ports){
+
+    //dont display zero ports on help screen
+    if (default_ports[0] == 0)
+      //- for readability
+      return "-";
+
+    int j=0;
+    do
+    {
+      //max port len 5(eg 65535) + comma + nul
+      char port[7];
+      sprintf(port,"%d,",default_ports[j]);
+      strcat(ports_str,port);
+      j++;
+    } while (j < MAX_DEFAULT_PORTS && default_ports[j]!= 0);
+
+    //remove last comma
+    ports_str[strlen(ports_str)-1] = '\0';
+
+    return ports_str;
+
+}
+
+/* ****************************************************** */
+
+
 void ndpi_dump_protocols(struct ndpi_detection_module_struct *ndpi_str, FILE *dump_out) {
   int i;
 
   if(!ndpi_str || !dump_out) return;
 
-  for(i = 0; i < (int) ndpi_str->ndpi_num_supported_protocols; i++)
-    fprintf(dump_out, "%3d %8d %-22s %-10s %-8s %-12s %s\n",
+  for(i = 0; i < (int) ndpi_str->ndpi_num_supported_protocols; i++) {
+    //max port size(eg 65535) * 5 + 4 commas + nul
+    char udp_ports[30] = "";
+    char tcp_ports[30] = "";
+
+    fprintf(dump_out, "%3d %8d %-22s %-10s %-8s %-12s %-18s %-31s %-31s\n",
 	   i, ndpi_map_ndpi_id_to_user_proto_id(ndpi_str, i),
 	   ndpi_str->proto_defaults[i].protoName,
 	   ndpi_get_l4_proto_name(ndpi_get_l4_proto_info(ndpi_str, i)),
 	   ndpi_str->proto_defaults[i].isAppProtocol ? "" : "X",
 	   ndpi_get_proto_breed_name(ndpi_str->proto_defaults[i].protoBreed),
-	   ndpi_category_get_name(ndpi_str, ndpi_str->proto_defaults[i].protoCategory));
+	   ndpi_category_get_name(ndpi_str, ndpi_str->proto_defaults[i].protoCategory),
+     default_ports_string(udp_ports,ndpi_str->proto_defaults[i].udp_default_ports),
+     default_ports_string(tcp_ports,ndpi_str->proto_defaults[i].tcp_default_ports)
+     );
+
+  }
 }
 
 /* ********************************** */
@@ -10489,9 +10566,6 @@ int ndpi_get_lru_cache_stats(struct ndpi_global_context *g_ctx,
     return 0;
   case NDPI_LRUCACHE_MSTEAMS:
     ndpi_lru_get_stats(is_local ? ndpi_struct->msteams_cache : g_ctx->msteams_global_cache, stats);
-    return 0;
-  case NDPI_LRUCACHE_STUN_ZOOM:
-    ndpi_lru_get_stats(is_local ? ndpi_struct->stun_zoom_cache : g_ctx->stun_zoom_global_cache, stats);
     return 0;
   default:
     return -1;
@@ -11584,11 +11658,6 @@ static const struct cfg_param {
   { NULL,            "lru.msteams.size",                        "1024", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_num_entries), NULL , 0 },
   { NULL,            "lru.msteams.ttl",                         "60", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_ttl), NULL , 0 },
   { NULL,            "lru.msteams.scope",                       "0", "0", "1", CFG_PARAM_INT, __OFF(msteams_cache_scope), clbk_only_with_global_ctx , 0 },
-
-  { NULL,            "lru.stun_zoom.size",                      "1024", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_num_entries), NULL , 0 },
-  { NULL,            "lru.stun_zoom.ttl",                       "60", "0", "16777215", CFG_PARAM_INT, __OFF(stun_zoom_cache_ttl), NULL , 0 },
-  { NULL,            "lru.stun_zoom.scope",                     "0", "0", "1", CFG_PARAM_INT, __OFF(stun_zoom_cache_scope), clbk_only_with_global_ctx , 0 },
-
 
   { NULL, NULL, NULL, NULL, NULL, 0, -1 , NULL, 0 },
 };

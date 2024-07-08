@@ -90,6 +90,11 @@
 /fuzz/fuzz_gcrypt_gcm
 /fuzz/fuzz_gcrypt_cipher
 /fuzz/fuzz_ndpi_reader_payload_analyzer
+/fuzz/fuzz_ndpi_reader_pl7m_simplest
+/fuzz/fuzz_ndpi_reader_pl7m_simplest_internal
+/fuzz/fuzz_ndpi_reader_pl7m
+/fuzz/fuzz_ndpi_reader_pl7m_64k
+/fuzz/fuzz_ndpi_reader_pl7m_internal
 /fuzz/fuzz_filecfg_protocols
 /fuzz/fuzz_filecfg_categories
 /fuzz/fuzz_filecfg_category
@@ -101,6 +106,11 @@
 /fuzz/fuzz_readerutils_parseprotolist
 /fuzz/fuzz_ndpi_reader_alloc_fail_seed_corpus.zip
 /fuzz/fuzz_ndpi_reader_seed_corpus.zip
+/fuzz/fuzz_ndpi_reader_pl7m_seed_corpus.zip
+/fuzz/fuzz_ndpi_reader_pl7m_64k_seed_corpus.zip
+/fuzz/fuzz_ndpi_reader_pl7m_internal_seed_corpus.zip
+/fuzz/fuzz_ndpi_reader_pl7m_simplest_seed_corpus.zip
+/fuzz/fuzz_ndpi_reader_pl7m_simplest_internal_seed_corpus.zip
 /fuzz/fuzz_quic_get_crypto_data_seed_corpus.zip
 /fuzz/fuzz_community_id_seed_corpus.zip
 /fuzz/fuzz_is_stun_udp_seed_corpus.zip
@@ -164,6 +174,7 @@
 /src/lib/libndpi.so*
 /src/lib/protocols/.deps/
 /src/lib/third_party/src/.deps/
+/src/lib/third_party/src/fuzz/.deps/
 /tags
 /tests/dga/dga_evaluate
 /tests/dga/dga_evaluate.exe

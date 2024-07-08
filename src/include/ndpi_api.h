@@ -643,6 +643,15 @@ extern "C" {
 				     ndpi_protocol_category_t category);
 
   /**
+   * Get FPC confidence as string
+   *
+   * @par     confidence      = the confidence value
+   * @return  the string name of the confidence result
+   *
+   */
+  const char* ndpi_fpc_confidence_get_name(ndpi_fpc_confidence_t fpc_confidence);
+
+  /**
    * Set protocol category string
    *
    * @par     mod           = the detection module
@@ -1296,16 +1305,6 @@ extern "C" {
    * @return 0 on success, a negative number otherwise
    */
   int ndpi_serialize_uint32_float(ndpi_serializer *serializer, u_int32_t key, float value, const char *format /* e.f. "%.2f" */);
-
-  /**
-   * Serialize a 32-bit unsigned int key and a double value
-   * @param serializer The serializer handle
-   * @param key The field name or ID
-   * @param value The field value
-   * @param format The float value format
-   * @return 0 on success, a negative number otherwise
-   */
-  int ndpi_serialize_uint32_double(ndpi_serializer *serializer, u_int32_t key, double value, const char *format /* e.f. "%.2f" */);
 
   /**
    * Serialize a 32-bit unsigned int key and a double value

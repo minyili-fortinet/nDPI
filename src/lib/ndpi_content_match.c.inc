@@ -20,6 +20,34 @@
 
 /* ****************************************************** */
 
+
+static ndpi_network ndpi_http_crawler_bot_hardcoded_protocol_list[] = {
+
+ /* GPTBot: https://openai.com/gptbot-ranges.txt */
+ /* TODO:  are we able to autogenerate this list? */
+ { 0x34E69800 /* 52.230.152.0/24 */, 24, NDPI_HTTP_CRAWLER_BOT },
+ { 0x34E96A00 /* 52.233.106.0/24 */, 24, NDPI_HTTP_CRAWLER_BOT },
+
+ /* ChatGPT-User bot: https://platform.openai.com/docs/plugins/bot */
+ /* TODO:  are we able to autogenerate this list? */
+ { 0x17628EB0 /* 23.98.142.176/28 */, 28, NDPI_HTTP_CRAWLER_BOT },
+ { 0x2854B4E0 /* 40.84.180.224/28 */, 28, NDPI_HTTP_CRAWLER_BOT },
+ { 0x0D41F0F0 /* 13.65.240.240/28 */, 28, NDPI_HTTP_CRAWLER_BOT },
+ { 0x1461BD60 /* 20.97.189.96/28 */, 28, NDPI_HTTP_CRAWLER_BOT },
+ { 0x14A14BD0 /* 20.161.75.208/28 */, 28, NDPI_HTTP_CRAWLER_BOT },
+ { 0x34E14BD0 /* 52.225.75.208/28 */, 28, NDPI_HTTP_CRAWLER_BOT },
+ { 0x349C4D90 /* 52.156.77.144/28 */, 28, NDPI_HTTP_CRAWLER_BOT },
+ { 0x2854B440 /* 40.84.180.64/28 */, 28, NDPI_HTTP_CRAWLER_BOT },
+
+ /* End */
+ { 0x0, 0, 0 }
+};
+
+static ndpi_network6 ndpi_http_crawler_bot_hardcoded_protocol_list_6[] = {
+ /* End */
+ { NULL, 0, 0 },
+};
+
 static ndpi_network host_protocol_list[] = {
   /*
     OCS GO (Orange Cinéma Séries)
@@ -295,12 +323,31 @@ static ndpi_network host_protocol_list[] = {
   { 0xADC70000 /* 173.199.0.0/18 */, 18, NDPI_PROTOCOL_GOTO },
   { 0x17EFE000 /* 23.239.224.0/19 */, 19, NDPI_PROTOCOL_GOTO },
 
+
+  /* CloudflareWarp: https://developers.cloudflare.com/cloudflare-one/connections/connect-devices/warp/deployment/firewall/
+     TODO:  are we able to autogenerate this list?
+  */
+  { 0xA29FC100 /* 162.159.193.0/24 */, 24, NDPI_PROTOCOL_CLOUDFLARE_WARP },
+  { 0xA29FC000 /* 162.159.192.0/24 */, 24, NDPI_PROTOCOL_CLOUDFLARE_WARP },
+  { 0xA29FC500 /* 162.159.197.0/24 */, 24, NDPI_PROTOCOL_CLOUDFLARE_WARP },
+
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_content_match_host_protocol_list.c.inc"
 #endif
 
   /* End */
   { 0x0, 0, 0 }
+};
+
+static ndpi_network6 host_protocol_list_6[] = {
+
+ /* See the ipv4 list for a description */
+ { "2606:4700:100::", 48, NDPI_PROTOCOL_CLOUDFLARE_WARP },
+ { "2606:4700:102::", 48, NDPI_PROTOCOL_CLOUDFLARE_WARP },
+
+ /* End */
+ { NULL, 0, 0 }
 };
 
 /* ****************************************************** */
@@ -666,6 +713,7 @@ ndpi_protocol_match host_match[] =
    { "twitter.",                                  "Twitter",          NDPI_PROTOCOL_TWITTER, NDPI_PROTOCOL_CATEGORY_SOCIAL_NETWORK, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "twimg.com",                                 "Twitter",          NDPI_PROTOCOL_TWITTER, NDPI_PROTOCOL_CATEGORY_SOCIAL_NETWORK, NDPI_PROTOCOL_FUN , NDPI_PROTOCOL_DEFAULT_LEVEL},
    { "t.co",                                      "Twitter",          NDPI_PROTOCOL_TWITTER, NDPI_PROTOCOL_CATEGORY_SOCIAL_NETWORK, NDPI_PROTOCOL_FUN , NDPI_PROTOCOL_DEFAULT_LEVEL},
+   { "x.com",                                     "Twitter",          NDPI_PROTOCOL_TWITTER, NDPI_PROTOCOL_CATEGORY_SOCIAL_NETWORK, NDPI_PROTOCOL_FUN , NDPI_PROTOCOL_DEFAULT_LEVEL},
 
    { "viber.com",                                "Viber",            NDPI_PROTOCOL_VIBER, NDPI_PROTOCOL_CATEGORY_CHAT, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_DEFAULT_LEVEL },
    { "cdn.viber.com",                            "Viber",            NDPI_PROTOCOL_VIBER, NDPI_PROTOCOL_CATEGORY_CHAT, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_DEFAULT_LEVEL },

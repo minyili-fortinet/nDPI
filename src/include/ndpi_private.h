@@ -184,7 +184,6 @@ struct ndpi_global_context {
 
   /* NDPI_PROTOCOL_STUN and subprotocols */
   struct ndpi_lru_cache *stun_global_cache;
-  struct ndpi_lru_cache *stun_zoom_global_cache;
 
   /* NDPI_PROTOCOL_TLS and subprotocols */
   struct ndpi_lru_cache *tls_cert_global_cache;
@@ -246,9 +245,6 @@ struct ndpi_detection_module_config_struct {
   int msteams_cache_num_entries;
   int msteams_cache_ttl;
   int msteams_cache_scope;
-  int stun_zoom_cache_num_entries;
-  int stun_zoom_cache_ttl;
-  int stun_zoom_cache_scope;
 
   /* Protocols */
 
@@ -395,7 +391,6 @@ struct ndpi_detection_module_struct {
 
   /* NDPI_PROTOCOL_STUN and subprotocols */
   struct ndpi_lru_cache *stun_cache;
-  struct ndpi_lru_cache *stun_zoom_cache;
 
   /* NDPI_PROTOCOL_TLS and subprotocols */
   struct ndpi_lru_cache *tls_cert_cache;
@@ -725,7 +720,6 @@ void ndpi_bittorrent_done(struct ndpi_detection_module_struct *ndpi_struct);
 int ndpi_bittorrent_gc(struct hash_ip4p_table *ht,int key,time_t now);
 
 /* Stun */
-int stun_search_into_zoom_cache(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
 int is_stun(struct ndpi_detection_module_struct *ndpi_struct,
             struct ndpi_flow_struct *flow,
             u_int16_t *app_proto);
@@ -983,6 +977,9 @@ void init_iqiyi_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_in
 void init_egd_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_cod_mobile_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_zug_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_jrmi_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_ripe_atlas_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_cloudflare_warp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 
