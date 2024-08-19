@@ -630,6 +630,15 @@ extern "C" {
    */
   const char* ndpi_confidence_get_name(ndpi_confidence_t confidence);
 
+  /**
+   * Get FPC confidence as string
+   *
+   * @par     confidence      = the confidence value
+   * @return  the string name of the confidence result
+   *
+   */
+  const char* ndpi_fpc_confidence_get_name(ndpi_fpc_confidence_t fpc_confidence);
+
 #ifndef __KERNEL__
   /**
    * Get protocol category as string
@@ -641,15 +650,6 @@ extern "C" {
    */
   const char* ndpi_category_get_name(struct ndpi_detection_module_struct *ndpi_mod,
 				     ndpi_protocol_category_t category);
-
-  /**
-   * Get FPC confidence as string
-   *
-   * @par     confidence      = the confidence value
-   * @return  the string name of the confidence result
-   *
-   */
-  const char* ndpi_fpc_confidence_get_name(ndpi_fpc_confidence_t fpc_confidence);
 
   /**
    * Set protocol category string

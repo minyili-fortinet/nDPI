@@ -2379,6 +2379,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Nano", NDPI_PROTOCOL_CATEGORY_CRYPTO_CURRENCY,
 			  ndpi_build_default_ports(ports_a, 7075, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_OPENWIRE,
+			  "OpenWire", NDPI_PROTOCOL_CATEGORY_RPC,
+			  ndpi_build_default_ports(ports_a, 61616, 0, 0, 0, 0),  /* TCP */
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0)); /* UDP */
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -3377,6 +3381,8 @@ void ndpi_global_deinit(struct ndpi_global_context *g_ctx) {
       ndpi_lru_free_cache(g_ctx->mining_global_cache);
     if(g_ctx->msteams_global_cache)
       ndpi_lru_free_cache(g_ctx->msteams_global_cache);
+    if(g_ctx->fpc_dns_global_cache)
+      ndpi_lru_free_cache(g_ctx->fpc_dns_global_cache);
 
     ndpi_free(g_ctx);
   }
@@ -3993,6 +3999,24 @@ int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) 
                    ndpi_str->cfg.msteams_cache_num_entries);
     }
   }
+ 
+  if(ndpi_str->cfg.fpc_dns_cache_num_entries > 0) {
+    if(ndpi_str->cfg.fpc_dns_cache_scope == NDPI_LRUCACHE_SCOPE_GLOBAL) {
+      if(!ndpi_str->g_ctx->fpc_dns_global_cache) {
+        ndpi_str->g_ctx->fpc_dns_global_cache = ndpi_lru_cache_init(ndpi_str->cfg.fpc_dns_cache_num_entries,
+                                                                    ndpi_str->cfg.fpc_dns_cache_ttl, 1);
+      }
+      ndpi_str->fpc_dns_cache = ndpi_str->g_ctx->fpc_dns_global_cache;
+    } else {
+      ndpi_str->fpc_dns_cache = ndpi_lru_cache_init(ndpi_str->cfg.fpc_dns_cache_num_entries,
+                                                    ndpi_str->cfg.fpc_dns_cache_ttl, 0);
+    }
+    if(!ndpi_str->fpc_dns_cache) {
+      NDPI_LOG_ERR(ndpi_str, "Error allocating lru fpc_dns_cache (num_entries %u)\n",
+                   ndpi_str->cfg.fpc_dns_cache_num_entries);
+         
+    }
+  }
 
   ndpi_automa * const automa[] = { &ndpi_str->host_automa,
                                    &ndpi_str->tls_cert_subject_automa,
@@ -4345,6 +4369,10 @@ void ndpi_exit_detection_module(struct ndpi_detection_module_struct *ndpi_str) {
     if(!ndpi_str->cfg.msteams_cache_scope &&
        ndpi_str->msteams_cache)
       ndpi_lru_free_cache(ndpi_str->msteams_cache);
+    
+    if(!ndpi_str->cfg.fpc_dns_cache_scope &&
+       ndpi_str->fpc_dns_cache)
+      ndpi_lru_free_cache(ndpi_str->fpc_dns_cache);
 
     if(ndpi_str->protocols)    ndpi_ptree_destroy(ndpi_str->protocols);
     if(ndpi_str->ip_risk_mask) ndpi_ptree_destroy(ndpi_str->ip_risk_mask);
@@ -4525,33 +4553,41 @@ static u_int16_t guess_protocol_id(struct ndpi_detection_module_struct *ndpi_str
 	/* Run some basic consistency tests */
 
 	if(packet->payload_packet_len < sizeof(struct ndpi_icmphdr)) {
-	  ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, NULL);
-	}
-#ifndef __KERNEL__ 
-	else {
+	  char buf[64];
+
+	  snprintf(buf, sizeof(buf), "Packet too short (%d vs %u)",
+		   packet->payload_packet_len, (unsigned int)sizeof(struct ndpi_icmphdr));
+	  ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, buf);
+	} else {
 	  u_int8_t icmp_type = (u_int8_t)packet->payload[0];
 	  u_int8_t icmp_code = (u_int8_t)packet->payload[1];
 
 	  /* https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml */
 	  if(((icmp_type >= 44) && (icmp_type <= 252))
-	     || (icmp_code > 15))
-	    ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, NULL);
+	     || (icmp_code > 15)) {
+	    char buf[64];
+	    
+	    snprintf(buf, sizeof(buf), "Invalid type (%u)/code(%u)",
+		     icmp_type, icmp_code);
 
+	    ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, buf);
+	  }
+	  
 	  if(packet->payload_packet_len > sizeof(struct ndpi_icmphdr)) {
+#ifndef __KERNEL__
 	    if(ndpi_str->cfg.compute_entropy && (flow->skip_entropy_check == 0)) {
 	      flow->entropy = ndpi_entropy(packet->payload + sizeof(struct ndpi_icmphdr),
 	                                   packet->payload_packet_len - sizeof(struct ndpi_icmphdr));
 	      ndpi_entropy2risk(flow);
 	    }
-
+#endif
 	    u_int16_t chksm = icmp4_checksum(packet->payload, packet->payload_packet_len);
 	    
 	    if(chksm) {
-	      ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, NULL);
+	      ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, "Invalid ICMP checksum");
 	    }
 	  }
 	}
-#endif
       }
       return(NDPI_PROTOCOL_IP_ICMP);
     case NDPI_IGMP_PROTOCOL_TYPE:
@@ -4568,16 +4604,27 @@ static u_int16_t guess_protocol_id(struct ndpi_detection_module_struct *ndpi_str
       if(flow && packet->payload) {
 	/* Run some basic consistency tests */
 
-	if(packet->payload_packet_len < sizeof(struct ndpi_icmp6hdr))
-	  ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, NULL);
-	else {
+	if(packet->payload_packet_len < sizeof(struct ndpi_icmp6hdr)) {
+	  char buf[64];
+	
+	  snprintf(buf, sizeof(buf), "Packet too short (%d vs %u)",
+		   packet->payload_packet_len, (unsigned int)sizeof(struct ndpi_icmp6hdr));
+	  
+	  ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, buf);
+	} else {
 	  u_int8_t icmp6_type = (u_int8_t)packet->payload[0];
 	  u_int8_t icmp6_code = (u_int8_t)packet->payload[1];
 
 	  /* https://en.wikipedia.org/wiki/Internet_Control_Message_Protocol_for_IPv6 */
 	  if(((icmp6_type >= 5) && (icmp6_type <= 127))
-	     || ((icmp6_code >= 156) && (icmp6_type != 255)))
-	    ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, NULL);
+	     || ((icmp6_code >= 156) && (icmp6_type != 255))) {
+ 	    char buf[64];
+	    
+	    snprintf(buf, sizeof(buf), "Invalid type (%u)/code(%u)",
+		     icmp6_type, icmp6_code);
+	    
+	    ndpi_set_risk(flow, NDPI_MALFORMED_PACKET, buf);
+	  }
 	}
       }
       return(NDPI_PROTOCOL_IP_ICMPV6);
@@ -6381,6 +6428,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* Nano Cryptocurrency Protocol */
   init_nano_dissector(ndpi_str, &a);
 
+  /* OpenWire */
+  init_openwire_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -7498,6 +7548,32 @@ u_int16_t ndpi_guess_host_protocol_id(struct ndpi_detection_module_struct *ndpi_
 
 /* ********************************************************************************* */
 
+static u_int64_t make_fpc_dns_cache_key(struct ndpi_flow_struct *flow) {
+  u_int64_t key;
+ 
+  if(flow->is_ipv6)
+    key = ndpi_quick_hash64((const char *)flow->s_address.v6, 16);
+  else
+    key = (u_int64_t)(flow->s_address.v4);
+
+  return key;
+}
+
+/* ********************************************************************************* */
+
+u_int64_t fpc_dns_cache_key_from_dns_info(struct ndpi_flow_struct *flow) {
+  u_int64_t key;
+
+  if(flow->protos.dns.is_rsp_addr_ipv6)
+    key = ndpi_quick_hash64((const char *)&flow->protos.dns.rsp_addr.ipv6, 16);
+  else
+    key = (u_int64_t)(flow->protos.dns.rsp_addr.ipv4);
+
+  return key;
+}
+
+/* ********************************************************************************* */
+
 static u_int64_t make_msteams_key(struct ndpi_flow_struct *flow, u_int8_t use_client) {
   u_int64_t key;
 
@@ -8529,12 +8605,12 @@ static int ndpi_do_guess(struct ndpi_detection_module_struct *ndpi_str, struct n
 
 /* ********************************************************************************* */
 
-#ifndef __KERNEL__
 static void fpc_update(struct ndpi_detection_module_struct *ndpi_str,
                        struct ndpi_flow_struct *flow,
 		       u_int16_t fpc_master, u_int16_t fpc_app,
 		       ndpi_fpc_confidence_t fpc_confidence)
 {
+
   NDPI_LOG_DBG(ndpi_str, "FPC %d.%d/%s -> %d.%d/%s\n",
                flow->fpc.master_protocol, flow->fpc.app_protocol,
                ndpi_fpc_confidence_get_name(flow->fpc.confidence),
@@ -8547,14 +8623,41 @@ static void fpc_update(struct ndpi_detection_module_struct *ndpi_str,
 
 /* ********************************************************************************* */
 
-static void fpc_check_ip(struct ndpi_detection_module_struct *ndpi_str,
-                         struct ndpi_flow_struct *flow)
+static void fpc_check_eval(struct ndpi_detection_module_struct *ndpi_str,
+                           struct ndpi_flow_struct *flow)
 {
-  if(flow->guessed_protocol_id_by_ip != NDPI_PROTOCOL_UNKNOWN)
+  u_int16_t fpc_dns_cached_proto;
+
+
+  if(!ndpi_str->cfg.fpc_enabled)
+    return;
+
+  /* Order by most reliable logic */
+
+  /* DPI */
+  if(flow->detected_protocol_stack[0] != NDPI_PROTOCOL_UNKNOWN) {
+    fpc_update(ndpi_str, flow, flow->detected_protocol_stack[1],
+               flow->detected_protocol_stack[0], NDPI_FPC_CONFIDENCE_DPI);
+    return;
+  }
+
+  /* Check via fpc DNS cache */
+  if(ndpi_str->fpc_dns_cache &&
+     ndpi_lru_find_cache(ndpi_str->fpc_dns_cache, make_fpc_dns_cache_key(flow),
+                         &fpc_dns_cached_proto, 0 /* Don't remove it as it can be used for other connections */,
+                         ndpi_get_current_time(flow))) {
+    fpc_update(ndpi_str, flow, NDPI_PROTOCOL_UNKNOWN,
+               fpc_dns_cached_proto, NDPI_FPC_CONFIDENCE_DNS);
+    return;
+  }
+
+  /* Check via IP */
+  if(flow->guessed_protocol_id_by_ip != NDPI_PROTOCOL_UNKNOWN) {
     fpc_update(ndpi_str, flow, NDPI_PROTOCOL_UNKNOWN,
                flow->guessed_protocol_id_by_ip, NDPI_FPC_CONFIDENCE_IP);
+    return;
+  }
 }
-#endif
 /* ********************************************************************************* */
 
 static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detection_module_struct *ndpi_str,
@@ -8698,10 +8801,6 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 
     if(ndpi_do_guess(ndpi_str, flow, &ret) == -1)
       return(ret);
-
-#ifndef __KERNEL__
-    fpc_check_ip(ndpi_str, flow);
-#endif
   }
 
   num_calls = ndpi_check_flow_func(ndpi_str, flow, &ndpi_selection_packet);
@@ -8899,6 +8998,10 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
     ndpi_entropy2risk(flow);
   }
 #endif
+
+  /* First Packet Classification */
+  if(flow->all_packets_counter == 1)
+    fpc_check_eval(ndpi_str, flow);
 
   return(ret);
 }
@@ -9681,7 +9784,6 @@ const char *ndpi_confidence_get_name(ndpi_confidence_t confidence)
 }
 
 /* ****************************************************** */
-#ifndef __KERNEL__
 
 const char *ndpi_fpc_confidence_get_name(ndpi_fpc_confidence_t fpc_confidence)
 {
@@ -9695,12 +9797,17 @@ const char *ndpi_fpc_confidence_get_name(ndpi_fpc_confidence_t fpc_confidence)
   case NDPI_FPC_CONFIDENCE_DNS:
     return "DNS";
 
+  case NDPI_FPC_CONFIDENCE_DPI:
+    return "DPI";
+
   default:
     return "Invalid"; /* Out of sync with ndpi_fpc_confidence_t definition */
   }
 }
 
 /* ****************************************************** */
+
+#ifndef __KERNEL__
 
 const char *ndpi_category_get_name(struct ndpi_detection_module_struct *ndpi_str,
 				   ndpi_protocol_category_t category) {
@@ -10548,6 +10655,9 @@ int ndpi_get_lru_cache_stats(struct ndpi_global_context *g_ctx,
     return 0;
   case NDPI_LRUCACHE_MSTEAMS:
     ndpi_lru_get_stats(is_local ? ndpi_struct->msteams_cache : g_ctx->msteams_global_cache, stats);
+    return 0;
+  case NDPI_LRUCACHE_FPC_DNS:
+    ndpi_lru_get_stats(is_local ? ndpi_struct->fpc_dns_cache : g_ctx->fpc_dns_global_cache, stats);
     return 0;
   default:
     return -1;
@@ -11604,6 +11714,7 @@ static const struct cfg_param {
   { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(libgcrypt_init), NULL, 0 },
   { NULL,            "dpi.guess_on_giveup",                     "0x3", "0", "3", CFG_PARAM_INT, __OFF(guess_on_giveup), NULL, 1 },
   { NULL,            "dpi.compute_entropy",                     "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(compute_entropy), NULL, 0 },
+  { NULL,            "fpc",                                     "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fpc_enabled), NULL, 1 },
 
   { NULL,            "flow_risk_lists.load",                    "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(flow_risk_lists_enabled), NULL, 0 },
 
@@ -11641,7 +11752,11 @@ static const struct cfg_param {
   { NULL,            "lru.msteams.ttl",                         "60", "0", "16777215", CFG_PARAM_INT, __OFF(msteams_cache_ttl), NULL , 0 },
   { NULL,            "lru.msteams.scope",                       "0", "0", "1", CFG_PARAM_INT, __OFF(msteams_cache_scope), clbk_only_with_global_ctx , 0 },
 
-  { NULL, NULL, NULL, NULL, NULL, 0, -1 , NULL, 0 },
+  { NULL,            "lru.fpc_dns.size",                        "1024", "0", "16777215", CFG_PARAM_INT, __OFF(fpc_dns_cache_num_entries), NULL, 0 },
+  { NULL,            "lru.fpc_dns.ttl",                         "60", "0", "16777215", CFG_PARAM_INT, __OFF(fpc_dns_cache_ttl), NULL, 0 },
+  { NULL,            "lru.fpc_dns.scope",                       "0", "0", "1", CFG_PARAM_INT, __OFF(fpc_dns_cache_scope), clbk_only_with_global_ctx, 0 },
+  
+  { NULL, NULL, NULL, NULL, NULL, 0, -1, NULL },
 };
 
 #undef __OFF

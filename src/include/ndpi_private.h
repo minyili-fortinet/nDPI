@@ -193,6 +193,9 @@ struct ndpi_global_context {
 
   /* NDPI_PROTOCOL_MSTEAMS */
   struct ndpi_lru_cache *msteams_global_cache;
+  
+  /* FPC DNS cache */
+  struct ndpi_lru_cache *fpc_dns_global_cache;
 };
 
 #define CFG_MAX_LEN	256
@@ -220,6 +223,7 @@ struct ndpi_detection_module_config_struct {
   int libgcrypt_init;
   int guess_on_giveup;
   int compute_entropy;
+  int fpc_enabled;
   
   char filename_config[CFG_MAX_LEN];
 
@@ -245,7 +249,10 @@ struct ndpi_detection_module_config_struct {
   int msteams_cache_num_entries;
   int msteams_cache_ttl;
   int msteams_cache_scope;
-
+  int fpc_dns_cache_num_entries;
+  int fpc_dns_cache_ttl;
+  int fpc_dns_cache_scope;
+  
   /* Protocols */
 
   int tls_certificate_expire_in_x_days;
@@ -400,6 +407,9 @@ struct ndpi_detection_module_struct {
 
   /* NDPI_PROTOCOL_MSTEAMS */
   struct ndpi_lru_cache *msteams_cache;
+  
+  /* FPC DNS cache */
+  struct ndpi_lru_cache *fpc_dns_cache;
 
   /* *** If you add a new LRU cache, please update lru_cache_type above! *** */
 
@@ -661,6 +671,9 @@ int load_config_file_fd(struct ndpi_detection_module_struct *ndpi_str, FILE *fd)
 int load_category_file_fd(struct ndpi_detection_module_struct *ndpi_str,
 			  FILE *fd, ndpi_protocol_category_t category_id);
 #endif
+
+u_int64_t fpc_dns_cache_key_from_dns_info(struct ndpi_flow_struct *flow);
+
 
 /* TLS */
 int processClientServerHello(struct ndpi_detection_module_struct *ndpi_struct,
@@ -979,6 +992,7 @@ void init_jrmi_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int
 void init_ripe_atlas_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_cloudflare_warp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_nano_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_openwire_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 
