@@ -644,8 +644,6 @@ u_int ndpi_search_tcp_or_udp_raw(struct ndpi_detection_module_struct *ndpi_struc
 				 struct ndpi_flow_struct *flow,
 				 u_int32_t saddr, u_int32_t daddr);
 
-u_int32_t ip_port_hash_funct(u_int32_t ip, u_int16_t port);
-
 char* ndpi_intoav4(unsigned int addr, char* buf, u_int16_t bufLen);
 
 u_int16_t icmp4_checksum(u_int8_t const * const buf, size_t len);
@@ -980,6 +978,7 @@ void init_zug_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int3
 void init_jrmi_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ripe_atlas_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_cloudflare_warp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_nano_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 
 #endif
 

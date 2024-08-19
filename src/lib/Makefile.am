@@ -161,6 +161,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/mumble.c \
 		     protocols/munin.c \
 		     protocols/mysql.c \
+		     protocols/nano.c \
 		     protocols/natpmp.c \
 		     protocols/nats.c \
 		     protocols/nest_log_sink.c \
