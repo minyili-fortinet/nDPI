@@ -393,7 +393,7 @@ static void checkTLSSubprotocol(struct ndpi_detection_module_struct *ndpi_struct
 	ndpi_set_detected_protocol(ndpi_struct, flow, cached_proto, __get_master(ndpi_struct, flow), NDPI_CONFIDENCE_DPI_CACHE);
 #ifndef __KERNEL__ 
 	{
-	ndpi_protocol ret = { __get_master(ndpi_struct, flow), cached_proto, NDPI_PROTOCOL_UNKNOWN /* unused */,
+	ndpi_protocol ret = { { __get_master(ndpi_struct, flow), cached_proto }, NDPI_PROTOCOL_UNKNOWN /* unused */,
 		NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL };
 	flow->category = ndpi_get_proto_category(ndpi_struct, ret);
 	}
@@ -783,16 +783,11 @@ void processCertificateElements(struct ndpi_detection_module_struct *ndpi_struct
       if(rc == 0) {
 	/* Match found */
 	u_int16_t proto_id = (u_int16_t)val;
-//	ndpi_protocol ret = { __get_master(ndpi_struct, flow), proto_id, NDPI_PROTOCOL_UNKNOWN /* unused */,
-//#ifndef __KERNEL__
-//		NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL
-//#endif
-//	};
 
 	ndpi_set_detected_protocol(ndpi_struct, flow, proto_id, __get_master(ndpi_struct, flow), NDPI_CONFIDENCE_DPI);
 #ifndef __KERNEL__
 	{
-	ndpi_protocol ret = { __get_master(ndpi_struct, flow), proto_id, NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
+	ndpi_protocol ret = { { __get_master(ndpi_struct, flow), proto_id }, NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
 	flow->category = ndpi_get_proto_category(ndpi_struct, ret);
 	}
 #endif
@@ -1435,7 +1430,7 @@ static int ndpi_search_tls_udp(struct ndpi_detection_module_struct *ndpi_struct,
       /* DTLS mid session: no need to further inspect the flow */
       ndpi_set_detected_protocol(ndpi_struct, flow, NDPI_PROTOCOL_DTLS, NDPI_PROTOCOL_UNKNOWN, NDPI_CONFIDENCE_DPI);
 #ifndef __KERNEL__
-      ndpi_protocol ret = { __get_master(ndpi_struct, flow), NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_UNKNOWN /* unused */, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
+      ndpi_protocol ret = { { __get_master(ndpi_struct, flow), NDPI_PROTOCOL_UNKNOWN }, NDPI_PROTOCOL_UNKNOWN /* unused */, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
       flow->category = ndpi_get_proto_category(ndpi_struct, ret);
 #endif
       flow->tls_quic.certificate_processed = 1; /* Fake, to avoid extra dissection */
@@ -2980,8 +2975,8 @@ compute_ja3c:
 				risk_ja3_str, len | AC_FEATURE_EXACT, &val) == -1;
 	        }
 #endif
-	        if(rc == 0)
-	              ndpi_set_risk(flow, NDPI_MALICIOUS_JA3, flow->protos.tls_quic.ja3_client);
+                if(rc == 0)
+	              ndpi_set_risk(flow, NDPI_MALICIOUS_FINGERPRINT, flow->protos.tls_quic.ja3_client);
 	      }
 
 	      if(ndpi_struct->cfg.tls_ja4c_fingerprint_enabled) {

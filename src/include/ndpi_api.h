@@ -1765,7 +1765,12 @@ extern "C" {
   /* ******************************* */
 
   void ndpi_md5(const u_char *data, size_t data_len, u_char hash[16]);
-  u_int32_t ndpi_crc32(const void* data, size_t n_bytes);
+  void ndpi_sha256(const u_char *data, size_t data_len, u_int8_t sha_hash[32]);
+  
+  u_int16_t ndpi_crc16_ccit(const void* data, size_t n_bytes);
+  u_int16_t ndpi_crc16_ccit_false(const void *data, size_t n_bytes);
+  u_int16_t ndpi_crc16_xmodem(const void *data, size_t n_bytes);
+  u_int16_t ndpi_crc16_x25(const void* data, size_t n_bytes);
   u_int32_t ndpi_nearest_power_of_two(u_int32_t x);
 
   /* ******************************* */
@@ -1813,6 +1818,7 @@ extern "C" {
   u_int16_t ndpi_crc16_ccit_false(const void *data, size_t n_bytes);
   u_int16_t ndpi_crc16_xmodem(const void *data, size_t n_bytes);
   u_int16_t ndpi_crc16_x25(const void* data, size_t n_bytes);
+  u_int32_t ndpi_crc32(const void *data, size_t length, u_int32_t crc);
 
   u_int32_t ndpi_quick_hash(const unsigned char *str, u_int str_len);
   const char* ndpi_risk2str(ndpi_risk_enum risk);

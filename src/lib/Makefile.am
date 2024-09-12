@@ -42,6 +42,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/amazon_video.c \
 		     protocols/apple_push.c \
 		     protocols/armagetron.c \
+		     protocols/atg.c \
 		     protocols/avast.c \
 		     protocols/avast_securedns.c \
 		     protocols/amqp.c \
@@ -64,6 +65,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/citrix.c \
 		     protocols/cloudflare_warp.c \
 		     protocols/cpha.c \
+		     protocols/cnp-ip.c \
 		     protocols/coap.c \
 		     protocols/cod_mobile.c \
 		     protocols/collectd.c \
@@ -241,6 +243,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/tls.c \
 		     protocols/threema.c \
 		     protocols/tplink_shp.c \
+		     protocols/trdp.c \
 		     protocols/tuya_lp.c \
 		     protocols/teredo.c \
 		     protocols/riotgames.c \

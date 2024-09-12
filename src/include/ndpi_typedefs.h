@@ -153,7 +153,7 @@ typedef enum {
   NDPI_HTTP_SUSPICIOUS_CONTENT,
   NDPI_RISKY_ASN,
   NDPI_RISKY_DOMAIN,
-  NDPI_MALICIOUS_JA3,
+  NDPI_MALICIOUS_FINGERPRINT,
   NDPI_MALICIOUS_SHA1_CERTIFICATE,
   NDPI_DESKTOP_OR_FILE_SHARING_SESSION, /* 30 */
   NDPI_TLS_UNCOMMON_ALPN,
@@ -177,7 +177,7 @@ typedef enum {
   NDPI_HTTP_OBSOLETE_SERVER,
   NDPI_PERIODIC_FLOW,          /* Set in case a flow repeats at a specific pace [used by apps on top of nDPI] */
   NDPI_MINOR_ISSUES,           /* Generic packet issues (e.g. DNS with 0 TTL) */
-  NDPI_TCP_ISSUES,             /* 50 */ /* TCP issues such as connection failed or scan */
+  NDPI_TCP_ISSUES,    /* 50 */ /* TCP issues such as connection failed or scan */
   NDPI_FULLY_ENCRYPTED,        /* This (unknown) session is fully encrypted */
   NDPI_TLS_ALPN_SNI_MISMATCH,  /* Invalid ALPN/SNI combination */
   NDPI_MALWARE_HOST_CONTACTED, /* Flow client contacted a malware host */
@@ -1219,19 +1219,23 @@ typedef struct _ndpi_automa {
 
 typedef void ndpi_str_hash;
 
-struct ndpi_fpc_info {
-  u_int16_t master_protocol;
-  u_int16_t app_protocol;
-  ndpi_fpc_confidence_t confidence;
-};
-
-typedef struct ndpi_proto {
+typedef struct {
   /*
     Note
     below we do not use ndpi_protocol_id_t as users can define their own
     custom protocols and thus the typedef could be too short in size.
   */
-  u_int16_t master_protocol /* e.g. HTTP */, app_protocol /* e.g. FaceBook */, protocol_by_ip;
+  u_int16_t master_protocol /* e.g. HTTP */, app_protocol /* e.g. FaceBook */;
+} ndpi_master_app_protocol;
+
+struct ndpi_fpc_info {
+  ndpi_master_app_protocol proto;
+  ndpi_fpc_confidence_t confidence;
+};
+
+typedef struct ndpi_proto {
+  ndpi_master_app_protocol proto;
+  u_int16_t protocol_by_ip;
 #ifndef __KERNEL__
   ndpi_protocol_category_t category;
   void *custom_category_userdata;
@@ -1239,9 +1243,9 @@ typedef struct ndpi_proto {
 } ndpi_protocol;
 
 #ifndef __KERNEL__
-  #define NDPI_PROTOCOL_NULL { NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL }
+  #define NDPI_PROTOCOL_NULL { { NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN }, NDPI_PROTOCOL_UNKNOWN, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL }
 #else
-  #define NDPI_PROTOCOL_NULL { NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN }
+  #define NDPI_PROTOCOL_NULL { { NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN }, NDPI_PROTOCOL_UNKNOWN }
 #endif
 
 #define NUM_CUSTOM_CATEGORIES      5
