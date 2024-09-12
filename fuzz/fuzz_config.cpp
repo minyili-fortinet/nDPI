@@ -151,6 +151,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   if(fuzzed_data.ConsumeBool()) {
     value = fuzzed_data.ConsumeIntegralInRange(0, 1 + 1);
     snprintf(cfg_value, sizeof(cfg_value), "%d", value);
+    ndpi_set_config(ndpi_info_mod, "tls", "subclassification", cfg_value);
+  }
+  if(fuzzed_data.ConsumeBool()) {
+    value = fuzzed_data.ConsumeIntegralInRange(0, 1 + 1);
+    snprintf(cfg_value, sizeof(cfg_value), "%d", value);
+    ndpi_set_config(ndpi_info_mod, "quic", "subclassification", cfg_value);
+  }
+  if(fuzzed_data.ConsumeBool()) {
+    value = fuzzed_data.ConsumeIntegralInRange(0, 1 + 1);
+    snprintf(cfg_value, sizeof(cfg_value), "%d", value);
     ndpi_set_config(ndpi_info_mod, "smtp", "tls_dissection", cfg_value);
   }
   if(fuzzed_data.ConsumeBool()) {
@@ -207,6 +217,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     value = fuzzed_data.ConsumeIntegralInRange(0, 1 + 1);
     snprintf(cfg_value, sizeof(cfg_value), "%d", value);
     ndpi_set_config(ndpi_info_mod, "http", "process_response", cfg_value);
+  }
+  if(fuzzed_data.ConsumeBool()) {
+    value = fuzzed_data.ConsumeIntegralInRange(0, 1 + 1);
+    snprintf(cfg_value, sizeof(cfg_value), "%d", value);
+    ndpi_set_config(ndpi_info_mod, "http", "subclassification", cfg_value);
   }
   if(fuzzed_data.ConsumeBool()) {
     value = fuzzed_data.ConsumeIntegralInRange(0, 0x01 + 1);
@@ -488,7 +503,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   ndpi_get_proto_by_name(ndpi_info_mod, NULL); /* Error */
   ndpi_get_proto_by_name(ndpi_info_mod, "foo"); /* Invalid protocol */
   ndpi_get_proto_name(ndpi_info_mod, pid);
-  ndpi_get_protocol_id(ndpi_info_mod, protoname);
 
   struct in_addr pin;
   struct in6_addr pin6;
@@ -570,7 +584,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   ndpi_get_flow_error_code(&flow);
   ndpi_get_flow_risk_info(&flow, out, sizeof(out), 1);
   ndpi_get_flow_ndpi_proto(&flow, &p2);
-  ndpi_is_proto(p, NDPI_PROTOCOL_TLS);
+  ndpi_is_proto(p.proto, NDPI_PROTOCOL_TLS);
   ndpi_http_method2str(flow.http.method);
   ndpi_is_subprotocol_informative(p.proto.app_protocol);
   ndpi_get_http_method(bool_value ? &flow : NULL);

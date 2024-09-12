@@ -706,14 +706,34 @@ extern "C" {
   char* ndpi_get_proto_breed_name(ndpi_protocol_breed_t breed_id);
 
   /**
-   * Return the ID of the protocol
+   * Return the name of the protocol given its ID.
    *
    * @par     ndpi_mod   = the detection module
-   * @par     proto      = the protocol name
+   * @par     name       = the protocol name. You can specify TLS or YouYube but not TLS.YouTube (se ndpi_get_protocol_by_name in this case)
    * @return  the ID of the protocol
    *
    */
-  int ndpi_get_protocol_id(struct ndpi_detection_module_struct *ndpi_mod, char *proto);
+  extern u_int16_t ndpi_get_proto_by_name(struct ndpi_detection_module_struct *ndpi_mod, const char *name);
+  
+  /**
+   * Return the name of the protocol given its ID
+   *
+   * @par     ndpi_mod   = the detection module
+   * @par     id         = the protocol id
+   * @return  the name of the protocol
+   *
+   */
+  extern char* ndpi_get_proto_by_id(struct ndpi_detection_module_struct *ndpi_mod, u_int id);
+
+  /**
+   * Return the name of the protocol given its ID. You can specify TLS.YouTube or just TLS
+   *
+   * @par     ndpi_mod   = the detection module
+   * @par     id         = the protocol id
+   * @return  the name of the protocol
+   *
+   */  
+  extern ndpi_master_app_protocol ndpi_get_protocol_by_name(struct ndpi_detection_module_struct *ndpi_str, const char *name);  
 
   /**
    * Return the ID of the category
@@ -1064,7 +1084,10 @@ extern "C" {
 
   u_int16_t ndpi_get_lower_proto(ndpi_protocol proto);
   u_int16_t ndpi_get_upper_proto(ndpi_protocol proto);
-
+  bool ndpi_is_proto(ndpi_master_app_protocol proto, u_int16_t p);
+  bool ndpi_is_proto_unknown(ndpi_master_app_protocol proto);
+  bool ndpi_is_proto_equals(ndpi_master_app_protocol to_check, ndpi_master_app_protocol to_match, bool exact_match_only);
+  
   ndpi_proto_defaults_t* ndpi_get_proto_defaults(struct ndpi_detection_module_struct *ndpi_mod);
   u_int ndpi_get_ndpi_num_supported_protocols(struct ndpi_detection_module_struct *ndpi_mod);
   u_int ndpi_get_ndpi_num_custom_protocols(struct ndpi_detection_module_struct *ndpi_mod);
@@ -1822,11 +1845,13 @@ extern "C" {
 
   u_int32_t ndpi_quick_hash(const unsigned char *str, u_int str_len);
   const char* ndpi_risk2str(ndpi_risk_enum risk);
+  const char* ndpi_risk2code(ndpi_risk_enum risk);
+  ndpi_risk_enum ndpi_code2risk(const char* risk);
   const char* ndpi_severity2str(ndpi_risk_severity s);
   ndpi_risk_info* ndpi_risk2severity(ndpi_risk_enum risk);
   u_int16_t ndpi_risk2score(ndpi_risk risk,
 			    u_int16_t *client_score, u_int16_t *server_score);
-
+  char* print_ndpi_address_port(ndpi_address_port *ap, char *buf, u_int buf_len);
   u_int8_t ndpi_check_issuerdn_risk_exception(struct ndpi_detection_module_struct *ndpi_str,
 					      char *issuerDN);
   u_int8_t ndpi_check_flow_risk_exceptions(struct ndpi_detection_module_struct *ndpi_str,
