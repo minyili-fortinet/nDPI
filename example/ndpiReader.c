@@ -692,6 +692,7 @@ static void help(u_int long_help) {
 
   NDPI_PROTOCOL_BITMASK all;
   struct ndpi_detection_module_struct *ndpi_str = ndpi_init_detection_module(NULL);
+
   NDPI_BITMASK_SET_ALL(all);
   ndpi_set_protocol_detection_bitmask2(ndpi_str, &all);
 
@@ -855,8 +856,8 @@ void extcap_config() {
   int i;
   ndpi_proto_defaults_t *proto_defaults;
   NDPI_PROTOCOL_BITMASK all;
-
   struct ndpi_detection_module_struct *ndpi_str = ndpi_init_detection_module(NULL);
+
   if(!ndpi_str) exit(0);
 
   NDPI_BITMASK_SET_ALL(all);
@@ -1368,8 +1369,15 @@ static void parseOptions(int argc, char **argv) {
     case '9':
     {
       struct ndpi_detection_module_struct *ndpi_str = ndpi_init_detection_module(NULL);
+      NDPI_PROTOCOL_BITMASK all;
+
+      NDPI_BITMASK_SET_ALL(all);
+      ndpi_set_protocol_detection_bitmask2(ndpi_str, &all);
+      ndpi_finalize_initialization(ndpi_str);
+
       extcap_packet_filter = ndpi_get_proto_by_name(ndpi_str, optarg);
       if(extcap_packet_filter == NDPI_PROTOCOL_UNKNOWN) extcap_packet_filter = atoi(optarg);
+
       ndpi_exit_detection_module(ndpi_str);
       break;
     }
@@ -6186,9 +6194,14 @@ void domainSearchUnitTest() {
   u_int16_t class_id;
   struct ndpi_detection_module_struct *ndpi_str = ndpi_init_detection_module(NULL);
   u_int8_t trace = 0;
+  NDPI_PROTOCOL_BITMASK all;
 
   assert(ndpi_str);
   assert(sc);
+
+  NDPI_BITMASK_SET_ALL(all);
+  ndpi_set_protocol_detection_bitmask2(ndpi_str, &all);
+  ndpi_finalize_initialization(ndpi_str);
 
   ndpi_domain_classify_add(ndpi_str, sc, NDPI_PROTOCOL_NTOP, ".ntop.org");
   ndpi_domain_classify_add(ndpi_str, sc, NDPI_PROTOCOL_NTOP, domain);
@@ -6205,7 +6218,7 @@ void domainSearchUnitTest() {
 
   u_int32_t s = ndpi_domain_classify_size(sc);
   if(trace) printf("ndpi_domain_classify size: %u \n",s);
-  
+
 
   ndpi_domain_classify_free(sc);
   ndpi_exit_detection_module(ndpi_str);
@@ -6217,9 +6230,14 @@ void domainSearchUnitTest2() {
   struct ndpi_detection_module_struct *ndpi_str = ndpi_init_detection_module(NULL);
   ndpi_domain_classify *c = ndpi_domain_classify_alloc();
   u_int16_t class_id = 9;
+  NDPI_PROTOCOL_BITMASK all;
 
   assert(ndpi_str);
   assert(c);
+
+  NDPI_BITMASK_SET_ALL(all);
+  ndpi_set_protocol_detection_bitmask2(ndpi_str, &all);
+  ndpi_finalize_initialization(ndpi_str);
 
   ndpi_domain_classify_add(ndpi_str, c, class_id, "ntop.org");
   ndpi_domain_classify_add(ndpi_str, c, class_id, "apple.com");
