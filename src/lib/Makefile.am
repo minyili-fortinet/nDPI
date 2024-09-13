@@ -144,6 +144,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/lotus_notes.c \
 		     protocols/line.c \
 		     protocols/lisp.c \
+		     protocols/lustre.c \
 		     protocols/mail_imap.c \
 		     protocols/mail_pop.c \
 		     protocols/mail_smtp.c \
