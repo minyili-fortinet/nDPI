@@ -37,6 +37,7 @@ ndpi_fds.application_protocol = ProtoField.new("nDPI Application Protocol", "ndp
 ndpi_fds.name                 = ProtoField.new("nDPI Protocol Name", "ndpi.protocol.name", ftypes.STRING)
 ndpi_fds.flow_risk            = ProtoField.new("nDPI Flow Risk", "ndpi.flow_risk", ftypes.UINT64, nil, base.HEX)
 ndpi_fds.flow_score           = ProtoField.new("nDPI Flow Score", "ndpi.flow_score", ftypes.UINT32)
+ndpi_fds.flow_risk_info       = ProtoField.new("nDPI Flow Risk Info", "ndpi.flow_risk_info", ftypes.STRING)
 
 ndpi_fds.metadata_list        = ProtoField.new("nDPI Metadata List", "ndpi.metadata_list", ftypes.NONE)
 ndpi_fds.metadata             = ProtoField.new("nDPI Metadata", "ndpi.metadata", ftypes.NONE)
@@ -136,6 +137,7 @@ ntop_fds.appl_latency_rtt = ProtoField.new("Application Latency RTT (msec)", "nt
 local f_eth_source        = Field.new("eth.src")
 local f_eth_trailer       = Field.new("eth.trailer")
 local f_vlan_trailer      = Field.new("vlan.trailer")
+local f_sll_trailer       = Field.new("sll.trailer")
 local f_vlan_id           = Field.new("vlan.id")
 local f_arp_opcode        = Field.new("arp.opcode")
 local f_arp_sender_mac    = Field.new("arp.src.hw_mac")
@@ -1055,20 +1057,30 @@ function ndpi_proto.dissector(tvb, pinfo, tree)
    if(dissect_ndpi_trailer) then
       local eth_trailer = {f_eth_trailer()}
       local vlan_trailer = {f_vlan_trailer()}
+      local sll_trailer = {f_sll_trailer()}
 
       -- nDPI trailer is usually the (only one) ethernet trailer.
-      -- But, depending on Wireshark configuration and on L2 protocols, the
+      -- But, depending on Wireshark configuration, on L2 protocols and on data link type, the
       -- situation may be more complex. Let's try to handle the most common cases:
       --  1) with (multiple) ethernet trailers, nDPI trailer is usually the last one
       --  2) with VLAN encapsulation, nDPI trailer is usually recognized as vlan trailer
+      --  3) with Linux "cooked" capture encapsulation, nDPI trailer is usually recognized as sll trailer
+      -- Note that it might not work with PPP-like encapsulations
       if(eth_trailer[#eth_trailer] ~= nil or
-         vlan_trailer[#vlan_trailer] ~= nil) then
+         vlan_trailer[#vlan_trailer] ~= nil or
+         sll_trailer[#sll_trailer] ~= nil) then
 
 	 local ndpi_trailer
+	 local trailer_tvb
 	 if (eth_trailer[#eth_trailer] ~= nil) then
 	     ndpi_trailer = getval(eth_trailer[#eth_trailer])
-	 else
+	     trailer_tvb = eth_trailer[#eth_trailer].range()
+	 elseif(vlan_trailer[#vlan_trailer] ~= nil) then
 	     ndpi_trailer = getval(vlan_trailer[#vlan_trailer])
+	     trailer_tvb = vlan_trailer[#vlan_trailer].range()
+	 else
+	     ndpi_trailer = getval(sll_trailer[#sll_trailer])
+	     trailer_tvb = sll_trailer[#sll_trailer].range()
 	 end
 	 local magic = string.sub(ndpi_trailer, 1, 11)
 
@@ -1076,7 +1088,6 @@ function ndpi_proto.dissector(tvb, pinfo, tree)
 	    local ndpikey, srckey, dstkey, flowkey, flow_risk
 	    local flow_risk_tree, metadata_list_tree, metadata_tree
 	    local name
-	    local trailer_tvb          = tvb(tvb:len() - 294 , 290) -- The last 4 bytes are the CRC. Even if nDPI needs to update it, it is not part of the nDPI trailer, strictly speaking
 	    local ndpi_subtree         = tree:add(ndpi_proto, trailer_tvb, "nDPI Protocol")
 	    
 	    ndpi_subtree:add(ndpi_fds.magic, trailer_tvb(0, 4))
@@ -1113,18 +1124,19 @@ function ndpi_proto.dissector(tvb, pinfo, tree)
 	    if(flow_score > 0) then
 	       local level
 	       if(flow_score <= 10) then     -- NDPI_SCORE_RISK_LOW
-		  level = PI_NOTE
+		  level = PI_CHAT
 	       elseif(flow_score <= 50) then -- NDPI_SCORE_RISK_MEDIUM
-		  level = PI_WARN
+		  level = PI_NOTE
 	       else
-		  level = PI_ERROR
+		  level = PI_WARN
 	       end
 	       
 	       ndpi_subtree:add_expert_info(PI_PROTOCOL, level, "Non zero score")
 	    end
 
-	    ndpi_subtree:add(ndpi_fds.name, trailer_tvb(18, 16))
-	    name = trailer_tvb(18, 16):string()
+	    ndpi_subtree:add(ndpi_fds.flow_risk_info, trailer_tvb(18, 32))
+	    ndpi_subtree:add(ndpi_fds.name, trailer_tvb(50, 16))
+	    name = trailer_tvb(50, 16):string()
 
 	    if(application_protocol ~= 0) then	       
 	       -- Set protocol name in the wireshark protocol column (if not Unknown)
@@ -1133,9 +1145,9 @@ function ndpi_proto.dissector(tvb, pinfo, tree)
 	    end
 
 	    -- Metadata
-	    local offset = 34
+	    local offset = 66
 	    metadata_list_tree = ndpi_subtree:add(ndpi_fds.metadata_list, trailer_tvb(offset, 256))
-	    while offset + 4 < 294 do
+	    while offset + 4 < 326 do
 
 	       local mtd_type = trailer_tvb(offset, 2):int();
 	       local mtd_length = trailer_tvb(offset + 2, 2):int();

@@ -98,6 +98,7 @@
 #include "inc_generated/ndpi_protonvpn_in_match.c.inc"
 #include "inc_generated/ndpi_protonvpn_out_match.c.inc"
 #include "inc_generated/ndpi_mullvad_match.c.inc"
+#include "inc_generated/ndpi_nordvpn_match.c.inc"
 #include "inc_generated/ndpi_asn_telegram.c.inc"
 #include "inc_generated/ndpi_asn_apple.c.inc"
 #include "inc_generated/ndpi_asn_twitter.c.inc"
@@ -2425,6 +2426,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "TRDP", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 17225, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 17224, 17225, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_LUSTRE,
+			  "Lustre", NDPI_PROTOCOL_CATEGORY_DATA_TRANSFER,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -3759,6 +3764,10 @@ void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str) {
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_MULLVAD)) {
     ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_mullvad_protocol_list);
     ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_mullvad_protocol_list_6);
+  }
+  if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_NORDVPN)) {
+    ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_nordvpn_protocol_list);
+    ndpi_init_ptree_ipv6(ndpi_str, ndpi_str->protocols->v6, ndpi_protocol_nordvpn_protocol_list_6);
   }
   if(is_ip_list_enabled(ndpi_str, NDPI_PROTOCOL_TELEGRAM)) {
     ndpi_init_ptree_ipv4(ndpi_str->protocols->v4, ndpi_protocol_telegram_protocol_list);
@@ -6482,6 +6491,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
 
   /* Train Real Time Data Protocol */
   init_trdp_dissector(ndpi_str, &a);
+
+  /* Lustre */
+  init_lustre_dissector(ndpi_str, &a);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
