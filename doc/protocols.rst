@@ -938,3 +938,30 @@ References: `Main site: <https://www.lustre.org/>`_
 NordVPN is a VPN service.
 
 References: `Main site: <https://nordvpn.com>`_
+
+
+.. _Proto 427:
+
+`NDPI_PROTOCOL_SURFSHARK`
+========================
+Surfshark is a brand of VPN services offered by the Netherlands-based company Surfshark B.V.
+
+References: `Main site: <https://surfshark.com/>`_
+
+
+.. _Proto 428:
+
+`NDPI_PROTOCOL_CACTUSVPN`
+========================
+CactusVPN is a VPN service.
+
+References: `Main site: <https://cactusvpn.com/>`_
+
+
+.. _Proto 429:
+
+`NDPI_PROTOCOL_WINDSCRIBE`
+=========================
+Windscribe is a commercial, cross-platform virtual private network (VPN) service provider based in Canada.
+
+References: `Main site: <https://windscribe.com/>`_
