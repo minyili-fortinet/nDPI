@@ -20,6 +20,8 @@ libndpi_a_include_HEADERS = ../include/ndpi_api.h \
 			     third_party/include/hll.h \
 			     third_party/include/libcache.h \
 			     third_party/include/ndpi_sha256.h \
+			     third_party/include/kdtree.h \
+			     third_party/include/ball.h \
 			     third_party/include/shoco.h
 
 libndpi_a_SOURCES = ndpi_content_match.c.inc \
@@ -296,6 +298,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     third_party/src/hll/hll.c \
 		     third_party/src/gcrypt_light.c \
 		     third_party/src/ndpi_sha256.c \
+		     third_party/src/ball.c \
+		     third_party/src/kdtree.c \
 		     third_party/src/shoco.c
 
 lib_LIBRARIES = libndpi.a
