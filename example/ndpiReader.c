@@ -5972,6 +5972,25 @@ void memmemUnitTest(void) {
 
 /* *********************************************** */
 
+void mahalanobisUnitTest()
+{
+  /* Example based on: https://supplychenmanagement.com/2019/03/06/calculating-mahalanobis-distance/ */
+
+  const float i_s[3 * 3] = {  0.0482486100061447, -0.00420645518018837, -0.0138921893248235,
+                             -0.00420645518018836, 0.00177288408892603, -0.00649813703331057,
+                             -0.0138921893248235, -0.00649813703331056,  0.066800436339011 }; /* Inverted covar matrix */
+  const float u[3] = { 22.8, 180.0, 9.2 }; /* Means vector */
+  u_int32_t x[3] = { 26, 167, 12 }; /* Point */
+  float md;
+
+  md = ndpi_mahalanobis_distance(x, 3, u, i_s);
+  /* It is a bit tricky to test float equality on different archs -> loose check.
+   * md sholud be 1.3753 */
+  assert(md >= 1.37 && md <= 1.38);
+}
+
+/* *********************************************** */
+
 void filterUnitTest() {
 #if 0
   ndpi_filter* f = ndpi_filter_alloc();
@@ -6232,13 +6251,15 @@ void cryptDecryptUnitTest() {
   u_char enc_dec_key[64] = "9dedb817e5a8805c1de62eb8982665b9a2b4715174c34d23b9a46ffafacfb2a7" /* SHA256("nDPI") */;
   const char *test_string = "The quick brown fox jumps over the lazy dog";
   char *enc, *dec;
+  u_int16_t e_len, d_len, t_len = strlen(test_string);
   
-  enc = ndpi_quick_encrypt(test_string, strlen(test_string), enc_dec_key);
+  enc = ndpi_quick_encrypt(test_string, t_len, &e_len, enc_dec_key);
   assert(enc != NULL);
-  dec = ndpi_quick_decrypt((const char*)enc, strlen(enc), enc_dec_key);
+  dec = ndpi_quick_decrypt((const char*)enc, e_len, &d_len, enc_dec_key);
   assert(dec != NULL);
+  assert(t_len == d_len);
   
-  assert(strcmp(dec, test_string) == 0);
+  assert(strncmp(dec, test_string, e_len) == 0);
 
   ndpi_free(enc);
   ndpi_free(dec);
@@ -6412,7 +6433,7 @@ int main(int argc, char **argv) {
     printf("nDPI Library version mismatch: please make sure this code and the nDPI library are in sync\n");
     return(-1);
   }
-
+  
   if(!skip_unit_tests) {
 #ifndef DEBUG_TRACE
     /* Skip tests when debugging */
@@ -6463,6 +6484,7 @@ int main(int argc, char **argv) {
     strnstrUnitTest();
     strncasestrUnitTest();
     memmemUnitTest();
+    mahalanobisUnitTest();
 #endif
   }
 

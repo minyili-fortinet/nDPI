@@ -217,7 +217,7 @@ static ndpi_risk_info ndpi_known_risks[] = {
   { NDPI_MALWARE_HOST_CONTACTED,                NDPI_RISK_SEVERE, CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_BINARY_DATA_TRANSFER,                  NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
   { NDPI_PROBING_ATTEMPT,                       NDPI_RISK_MEDIUM, CLIENT_FAIR_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
-  { NDPI_OBFUSCATED_TRAFFIC,                    NDPI_RISK_HIGH, CLIENT_HIGH_RISK_PERCENTAGE, NDPI_BOTH_ACCOUNTABLE },
+  { NDPI_OBFUSCATED_TRAFFIC,                    NDPI_RISK_HIGH,   CLIENT_HIGH_RISK_PERCENTAGE, NDPI_BOTH_ACCOUNTABLE },
 
   /* Leave this as last member */
   { NDPI_MAX_RISK,                              NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_NO_ACCOUNTABILITY   }
@@ -6950,6 +6950,9 @@ void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
 
     if(flow->flow_payload != NULL)
       ndpi_free(flow->flow_payload);
+
+    if(flow->tls_quic.obfuscated_heur_state)
+      ndpi_free(flow->tls_quic.obfuscated_heur_state);
   }
 }
 
@@ -8539,6 +8542,7 @@ static void ndpi_reset_packet_line_info(struct ndpi_packet_struct *packet) {
     packet->server_line.len = 0, packet->http_method.ptr = NULL, packet->http_method.len = 0,
     packet->http_response.ptr = NULL, packet->http_response.len = 0,
     packet->forwarded_line.ptr = NULL, packet->forwarded_line.len = 0;
+    packet->upgrade_line.ptr = NULL, packet->upgrade_line.len = 0;
 }
 
 /* ********************************************************************************* */
@@ -9269,6 +9273,7 @@ static void parse_single_packet_line(struct ndpi_detection_module_struct *ndpi_s
                                      { "Authorization:", &packet->authorization_line },
                                      { NULL, NULL} };
   struct header_line headers_u[] = { { "User-agent:", &packet->user_agent_line },
+                                     { "Upgrade:", &packet->upgrade_line },
                                      { NULL, NULL} };
   struct header_line headers_c[] = { { "Content-Disposition:", &packet->content_disposition_line },
                                      { "Content-type:", &packet->content_line },
@@ -11811,6 +11816,8 @@ static const struct cfg_param {
   { "tls",           "mem_buf_size_limit",                      "16384", "0", "32768", CFG_PARAM_INT, __OFF(tls_buf_size_limit), NULL, 1 },
   { "tls",           "certificate_expiration_threshold",        "30", "0", "365", CFG_PARAM_INT, __OFF(tls_certificate_expire_in_x_days), NULL, 1 },
   { "tls",           "application_blocks_tracking",             "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_app_blocks_tracking_enabled), NULL, 0 },
+  { "tls",           "dpi.heuristics",                          "0x00", "0", "0x07", CFG_PARAM_INT, __OFF(tls_heuristics), NULL , 1},
+  { "tls",           "dpi.heuristics.max_packets_extra_dissection", "25", "0", "255", CFG_PARAM_INT, __OFF(tls_heuristics_max_packets), NULL, 1 },
   { "tls",           "metadata.sha1_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_sha1_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja3c_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3c_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja3s_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3s_fingerprint_enabled), NULL, 1 },
