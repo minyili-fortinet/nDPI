@@ -237,6 +237,7 @@ struct ndpi_packet_trailer {
   u_int32_t magic; /* WIRESHARK_NTOP_MAGIC */
   ndpi_master_app_protocol proto;
   char name[16];
+  u_int8_t flags;
   ndpi_risk flow_risk;
   u_int16_t flow_score;
   u_int16_t flow_risk_info_len;
@@ -249,7 +250,7 @@ struct ndpi_packet_trailer {
 
 static pcap_dumper_t *extcap_dumper = NULL;
 static pcap_t *extcap_fifo_h = NULL;
-static char extcap_buf[16384];
+static char extcap_buf[65536 + sizeof(struct ndpi_packet_trailer)];
 static char *extcap_capture_fifo    = NULL;
 static u_int16_t extcap_packet_filter = (u_int16_t)-1;
 static int do_extcap_capture = 0;
@@ -692,6 +693,10 @@ static void help(u_int long_help) {
          "  -A                        | Dump internal statistics (LRU caches / Patricia trees / Ahocarasick automas / ...\n"
          "  -M                        | Memory allocation stats on data-path (only by the library).\n"
 	 "                            | It works only on single-thread configuration\n"
+         "  --openvp_heuristics       | Enable OpenVPN heuristics.\n"
+         "                            | It is a shortcut to --cfg=openvpn.heuristics,0x01\n"
+         "  --tls_heuristics          | Enable TLS heuristics.\n"
+         "                            | It is a shortcut to --cfg=tls.heuristics,0x07\n"
          "  --cfg=proto,param,value   | Configure the specific attribute of this protocol\n"
          ,
          human_readeable_string_len,
@@ -751,6 +756,8 @@ static void help(u_int long_help) {
 
 
 #define OPTLONG_VALUE_CFG		3000
+#define OPTLONG_VALUE_OPENVPN_HEURISTICS	3001
+#define OPTLONG_VALUE_TLS_HEURISTICS		3002
 
 static struct option longopts[] = {
   /* mandatory extcap options */
@@ -794,6 +801,8 @@ static struct option longopts[] = {
   { "quiet", no_argument, NULL, 'q'},
 
   { "cfg", required_argument, NULL, OPTLONG_VALUE_CFG},
+  { "openvpn_heuristics", no_argument, NULL, OPTLONG_VALUE_OPENVPN_HEURISTICS},
+  { "tls_heuristics", no_argument, NULL, OPTLONG_VALUE_TLS_HEURISTICS},
 
   {0, 0, 0, 0}
 };
@@ -887,7 +896,7 @@ void extcap_config() {
   protos = (struct ndpi_proto_sorter*)ndpi_malloc(sizeof(struct ndpi_proto_sorter) * ndpi_num_supported_protocols);
   if(!protos) exit(0);
 
-  printf("arg {number=%d}{call=--ndpi-proto-filter}{display=nDPI Protocol Filter}{type=selector}{group=Filter}"
+  printf("arg {number=%d}{call=--ndpi-proto-filter}{display=nDPI Protocol Filter}{type=selector}{group=Options}"
          "{tooltip=nDPI Protocol to be filtered}\n", argidx);
 
   printf("value {arg=%d}{value=%d}{display=%s}{default=true}\n", argidx, (u_int32_t)-1, "No nDPI filtering");
@@ -904,6 +913,12 @@ void extcap_config() {
            protos[i].name, protos[i].id);
 
   ndpi_free(protos);
+  argidx++;
+
+  printf("arg {number=%d}{call=--openvp_heuristics}{display=Enable Obfuscated OpenVPN heuristics}"
+	 "{tooltip=Enable Obfuscated OpenVPN heuristics}{type=boolflag}{group=Options}\n", argidx++);
+  printf("arg {number=%d}{call=--tls_heuristics}{display=Enable Obfuscated TLS heuristics}"
+	 "{tooltip=Enable Obfuscated TLS heuristics}{type=boolflag}{group=Options}\n", argidx++);
 
   ndpi_exit_detection_module(ndpi_str);
 
@@ -1360,6 +1375,20 @@ static void parseOptions(int argc, char **argv) {
         exit(1);
       }
       reader_log_level = 0;
+      break;
+
+    case OPTLONG_VALUE_OPENVPN_HEURISTICS:
+      if(reader_add_cfg("openvpn", "dpi.heuristics", "0x01", 1) == 1) {
+        printf("Invalid cfg [num:%d/%d]\n", num_cfgs, MAX_NUM_CFGS);
+        exit(1);
+      }
+      break;
+
+    case OPTLONG_VALUE_TLS_HEURISTICS:
+      if(reader_add_cfg("tls", "dpi.heuristics", "0x07", 1) == 1) {
+        printf("Invalid cfg [num:%d/%d]\n", num_cfgs, MAX_NUM_CFGS);
+        exit(1);
+      }
       break;
 
       /* Extcap */
@@ -2812,7 +2841,7 @@ static int is_realtime_protocol(ndpi_protocol proto)
 static void dump_realtime_protocol(struct ndpi_workflow * workflow, struct ndpi_flow_info *flow)
 {
   FILE *out = results_file ? results_file : stdout;
-  char srcip[64], dstip[64];
+  char srcip[70], dstip[70];
   char ip_proto[64], app_name[64];
   char date[64];
   int ret = is_realtime_protocol(flow->detected_protocol);
@@ -4584,13 +4613,19 @@ static void ndpi_process_packet(u_char *args,
     memcpy(extcap_buf, packet, h.caplen);
     memset(trailer, 0, sizeof(struct ndpi_packet_trailer));
     trailer->magic = htonl(WIRESHARK_NTOP_MAGIC);
+    if(flow) {
+      trailer->flags = flow->current_pkt_from_client_to_server;
+      trailer->flags |= (flow->detection_completed << 2);
+    } else {
+      trailer->flags = 0 | (2 << 2);
+    }
     trailer->flow_risk = htonl64(flow_risk);
     trailer->flow_score = htons(ndpi_risk2score(flow_risk, &cli_score, &srv_score));
     trailer->flow_risk_info_len = ntohs(WIRESHARK_FLOW_RISK_INFO_SIZE);
-    if(flow->risk_str) {
+    if(flow && flow->risk_str) {
       strncpy(trailer->flow_risk_info, flow->risk_str, sizeof(trailer->flow_risk_info));
-      trailer->flow_risk_info[sizeof(trailer->flow_risk_info) - 1] = '\0';
     }
+    trailer->flow_risk_info[sizeof(trailer->flow_risk_info) - 1] = '\0';
     trailer->proto.master_protocol = htons(p.proto.master_protocol), trailer->proto.app_protocol = htons(p.proto.app_protocol);
     ndpi_protocol2name(ndpi_thread_info[thread_id].workflow->ndpi_struct, p, trailer->name, sizeof(trailer->name));
 

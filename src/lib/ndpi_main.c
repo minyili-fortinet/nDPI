@@ -4566,6 +4566,8 @@ void ndpi_exit_detection_module(struct ndpi_detection_module_struct *ndpi_str) {
 static default_ports_tree_node_t *ndpi_get_guessed_protocol_id(struct ndpi_detection_module_struct *ndpi_str,
                                                                u_int8_t proto, u_int16_t sport, u_int16_t dport) {
   default_ports_tree_node_t node;
+  /* Set use_sport to config value if direction detection is enabled */
+  int use_sport = ndpi_str->cfg.direction_detect_enabled ? ndpi_str->cfg.use_client_port_in_guess : 1;
 
   if(sport && dport) {
     const void *ret;
@@ -4574,7 +4576,7 @@ static default_ports_tree_node_t *ndpi_get_guessed_protocol_id(struct ndpi_detec
     ret = ndpi_tfind(&node, (proto == IPPROTO_TCP) ? (void *) &ndpi_str->tcpRoot : (void *) &ndpi_str->udpRoot,
 		     default_ports_tree_node_t_cmp);
 
-    if(ret == NULL) {
+    if(ret == NULL && use_sport) {
       node.default_port = sport;
       ret = ndpi_tfind(&node, (proto == IPPROTO_TCP) ? (void *) &ndpi_str->tcpRoot : (void *) &ndpi_str->udpRoot,
 		       default_ports_tree_node_t_cmp);
@@ -6990,7 +6992,7 @@ static int ndpi_init_packet(struct ndpi_detection_module_struct *ndpi_str,
 			    const u_int64_t current_time_ms,
 			    const unsigned char *packet_data,
 			    unsigned short packetlen,
-			    const struct ndpi_flow_input_info *input_info) {
+			    struct ndpi_flow_input_info *input_info) {
   struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_str);
   const struct ndpi_iphdr *decaps_iph = NULL;
   u_int16_t l3len;
@@ -7455,6 +7457,14 @@ static void ndpi_connection_tracking(struct ndpi_detection_module_struct *ndpi_s
 	ndpi_unset_risk(flow, NDPI_UNIDIRECTIONAL_TRAFFIC); /* Clear bit */
       }
     }
+
+    if(ndpi_str->input_info &&
+       ndpi_str->input_info->in_pkt_dir == NDPI_IN_PKT_DIR_UNKNOWN) {
+      if(current_pkt_from_client_to_server(ndpi_str, flow))
+        ndpi_str->input_info->in_pkt_dir = NDPI_IN_PKT_DIR_C_TO_S;
+      else
+        ndpi_str->input_info->in_pkt_dir = NDPI_IN_PKT_DIR_S_TO_C;
+    }
 }
 
 /* ************************************************ */
@@ -7625,6 +7635,7 @@ u_int16_t ndpi_guess_host_protocol_id(struct ndpi_detection_module_struct *ndpi_
 #ifndef __KERNEL__
   struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_str);
   u_int16_t ret = NDPI_PROTOCOL_UNKNOWN;
+  int use_client = ndpi_str->cfg.use_client_ip_in_guess;
 
   if(packet->iph) {
     struct in_addr addr;
@@ -7633,7 +7644,7 @@ u_int16_t ndpi_guess_host_protocol_id(struct ndpi_detection_module_struct *ndpi_
     addr.s_addr = flow->s_address.v4;
     ret = ndpi_network_port_ptree_match(ndpi_str, &addr, flow->s_port);
 
-    if(ret == NDPI_PROTOCOL_UNKNOWN) {
+    if(ret == NDPI_PROTOCOL_UNKNOWN && use_client) {
       addr.s_addr = flow->c_address.v4;
       ret = ndpi_network_port_ptree_match(ndpi_str, &addr, flow->c_port);
     }
@@ -7644,7 +7655,7 @@ u_int16_t ndpi_guess_host_protocol_id(struct ndpi_detection_module_struct *ndpi_
     addr = *(struct in6_addr *)&flow->s_address.v6;
     ret = ndpi_network_port_ptree6_match(ndpi_str, &addr, flow->s_port);
 
-    if(ret == NDPI_PROTOCOL_UNKNOWN) {
+    if(ret == NDPI_PROTOCOL_UNKNOWN && use_client) {
       addr = *(struct in6_addr *)&flow->c_address.v6;
       ret = ndpi_network_port_ptree6_match(ndpi_str, &addr, flow->c_port);
     }
@@ -8163,7 +8174,7 @@ void ndpi_process_extra_packet(struct ndpi_detection_module_struct *ndpi_str,
 			       struct ndpi_flow_struct *flow,
 			       const unsigned char *packet_data, const unsigned short packetlen,
 			       const u_int64_t current_time_ms,
-			       const struct ndpi_flow_input_info *input_info) {
+			       struct ndpi_flow_input_info *input_info) {
   if(flow == NULL)
     return;
 
@@ -8786,7 +8797,7 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 							    const unsigned char *packet_data,
 							    const unsigned short packetlen,
 							    const u_int64_t current_time_ms,
-							    const struct ndpi_flow_input_info *input_info) {
+							    struct ndpi_flow_input_info *input_info) {
   struct ndpi_packet_struct *packet;
   NDPI_SELECTION_BITMASK_PROTOCOL_SIZE ndpi_selection_packet;
   u_int32_t num_calls = 0;
@@ -8819,6 +8830,10 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
   if(ndpi_str->cfg.max_packets_to_process > 0 && flow->num_processed_pkts >= ndpi_str->cfg.max_packets_to_process) {
     flow->extra_packets_func = NULL; /* To allow ndpi_extra_dissection_possible() to fail */
     flow->fail_with_unknown = 1;
+    /* Let's try to update ndpi_str->input_info->in_pkt_dir even in this case.
+     * It is quite uncommon, so we are not going to spend a lot of resources here... */
+    if(ndpi_init_packet(ndpi_str, flow, current_time_ms, packet_data, packetlen, input_info) == 0)
+      ndpi_connection_tracking(ndpi_str, flow);
     return(ret); /* Avoid spending too much time with this flow */
   }
 
@@ -9132,7 +9147,7 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct *ndpi_str,
 					    struct ndpi_flow_struct *flow, const unsigned char *packet_data,
 					    const unsigned short packetlen, const u_int64_t current_time_ms,
-					    const struct ndpi_flow_input_info *input_info) {
+					    struct ndpi_flow_input_info *input_info) {
   ndpi_protocol p  = ndpi_internal_detection_process_packet(ndpi_str, flow, packet_data,
 							    packetlen, current_time_ms,
 							    input_info);
@@ -11869,6 +11884,8 @@ static const struct cfg_param {
   { NULL,            "packets_limit_per_flow",                  "32", "0", "255", CFG_PARAM_INT, __OFF(max_packets_to_process), NULL, 1 },
   { NULL,            "flow.direction_detection",                "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(direction_detect_enabled), NULL, 0 },
   { NULL,            "flow.track_payload",                      "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(track_payload_enabled), NULL, 0 },
+  { NULL,            "flow.use_client_ip_in_guess",             "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(use_client_ip_in_guess), NULL, 1},
+  { NULL,            "flow.use_client_port_in_guess",           "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(use_client_port_in_guess), NULL, 1},
   { NULL,            "tcp_ack_payload_heuristic",               "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tcp_ack_paylod_heuristic), NULL, 1 },
   { NULL,            "fully_encrypted_heuristic",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fully_encrypted_heuristic), NULL, 1 },
   { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(libgcrypt_init), NULL, 0 },

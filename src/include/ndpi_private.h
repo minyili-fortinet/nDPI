@@ -226,6 +226,8 @@ struct ndpi_detection_module_config_struct {
   int compute_entropy;
   int fpc_enabled;
   int guess_ip_before_port;
+  int use_client_ip_in_guess;
+  int use_client_port_in_guess;
   
   char filename_config[CFG_MAX_LEN];
 
@@ -449,7 +451,7 @@ struct ndpi_detection_module_struct {
 #else
   struct ndpi_packet_struct packet[NR_CPUS];
 #endif
-  const struct ndpi_flow_input_info *input_info;
+  struct ndpi_flow_input_info *input_info;
 
 #ifdef HAVE_NBPF
   u_int8_t num_nbpf_custom_proto;

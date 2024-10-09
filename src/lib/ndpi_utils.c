@@ -3504,20 +3504,28 @@ int64_t ndpi_strtonum(const char *numstr, int64_t minval,
 /* ****************************************************** */
 
 char* ndpi_strrstr(const char *haystack, const char *needle) {
-  char *ret = NULL;
-  
-  while(true) {
-    char *s = strstr(haystack, needle);
-    
-    if(s == NULL || s[0] == '\0')
-      break;
-    else {
-      ret = s;
-      haystack = &s[1]; /* Skip the first char */
-    }
+  if (!haystack || !needle) {
+    return NULL;
   }
 
-  return(ret);
+  if (*needle == '\0') {
+    return (char*) haystack + strlen(haystack);
+  }
+
+  const char *last_occurrence = NULL;
+
+  while (true) {
+    const char *current_pos = strstr(haystack, needle);
+
+    if (!current_pos) {
+      break;
+    }
+
+    last_occurrence = current_pos;
+    haystack = current_pos + 1;
+  }
+
+  return (char*) last_occurrence;
 }
 
 /* ******************************************* */
@@ -3755,7 +3763,7 @@ u_int ndpi_hex2bin(u_char *out, u_int out_len, u_char* in, u_int in_len) {
 u_int ndpi_bin2hex(u_char *out, u_int out_len, u_char* in, u_int in_len) {
   u_int i, j;
 
-  if (out_len < (in_len*2)+1) {
+  if (out_len < (in_len*2)) {
     out[0] = '\0';
     return(0);
   }
