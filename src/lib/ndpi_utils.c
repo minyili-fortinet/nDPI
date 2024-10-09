@@ -2115,6 +2115,9 @@ const char* ndpi_risk2str(ndpi_risk_enum risk) {
   case NDPI_PROBING_ATTEMPT:
     return("Probing Attempt");
 
+  case NDPI_OBFUSCATED_TRAFFIC:
+    return("Obfuscated Traffic");
+
   default:
     ndpi_snprintf(buf, sizeof(buf), "%d", (int)risk);
     return(buf);
@@ -2239,6 +2242,8 @@ const char* ndpi_risk2code(ndpi_risk_enum risk) {
     return STRINGIFY(NDPI_BINARY_DATA_TRANSFER);
   case NDPI_PROBING_ATTEMPT:
     return STRINGIFY(NDPI_PROBING_ATTEMPT);
+  case NDPI_OBFUSCATED_TRAFFIC:
+    return STRINGIFY(NDPI_OBFUSCATED_TRAFFIC);
 
   default:
     return("Unknown risk");
@@ -2360,6 +2365,8 @@ ndpi_risk_enum ndpi_code2risk(const char* risk) {
     return(NDPI_BINARY_DATA_TRANSFER);
   else if(strcmp(STRINGIFY(NDPI_PROBING_ATTEMPT), risk) == 0)
     return(NDPI_PROBING_ATTEMPT);
+  else if(strcmp(STRINGIFY(NDPI_OBFUSCATED_TRAFFIC), risk) == 0)
+    return(NDPI_OBFUSCATED_TRAFFIC);
   else
     return(NDPI_MAX_RISK);
 }
@@ -3659,22 +3666,35 @@ static u_int8_t is_ndpi_proto(struct ndpi_flow_struct *flow, u_int16_t id) {
 
 /* ****************************************************** */
 
-bool ndpi_serialize_flow_fingerprint(struct ndpi_flow_struct *flow, ndpi_serializer *serializer) {
+bool ndpi_serialize_flow_fingerprint(struct ndpi_detection_module_struct *ndpi_str,
+				     struct ndpi_flow_struct *flow, ndpi_serializer *serializer) {
   if(is_ndpi_proto(flow, NDPI_PROTOCOL_TLS) || is_ndpi_proto(flow, NDPI_PROTOCOL_QUIC)) {
     if((flow->protos.tls_quic.ja4_client_raw != NULL)
        || (flow->protos.tls_quic.ja4_client[0] != '\0')) {
 
       if(flow->protos.tls_quic.ja4_client_raw != NULL)
 	ndpi_serialize_string_string(serializer, "JA4r", flow->protos.tls_quic.ja4_client_raw);
-      
+
       ndpi_serialize_string_string(serializer, "JA4", flow->protos.tls_quic.ja4_client);
+
+      if(flow->host_server_name[0] != '\0') {
+	ndpi_serialize_string_string(serializer, "sni", flow->host_server_name);
+
+	ndpi_serialize_string_string(serializer, "sni_domain",
+				     ndpi_get_host_domain(ndpi_str,
+							  flow->host_server_name));
+      }
+
       return(true);
     }
   } else if(is_ndpi_proto(flow, NDPI_PROTOCOL_DHCP)
 	    && (flow->protos.dhcp.fingerprint[0] != '\0')) {
     ndpi_serialize_string_string(serializer, "options", flow->protos.dhcp.options);
     ndpi_serialize_string_string(serializer, "fingerprint", flow->protos.dhcp.fingerprint);
-    
+
+    if(flow->protos.dhcp.class_ident[0] != '\0')
+      ndpi_serialize_string_string(serializer, "class_identifier", flow->protos.dhcp.class_ident);
+
     return(true);
   } else if(is_ndpi_proto(flow, NDPI_PROTOCOL_SSH)
 	    && (flow->protos.ssh.hassh_client[0] != '\0')) {
@@ -3683,7 +3703,7 @@ bool ndpi_serialize_flow_fingerprint(struct ndpi_flow_struct *flow, ndpi_seriali
     ndpi_serialize_string_string(serializer, "client_signature", flow->protos.ssh.client_signature);
     ndpi_serialize_string_string(serializer, "hassh_server", flow->protos.ssh.hassh_server);
     ndpi_serialize_string_string(serializer, "server_signature", flow->protos.ssh.server_signature);
-    
+
     return(true);
   }
 

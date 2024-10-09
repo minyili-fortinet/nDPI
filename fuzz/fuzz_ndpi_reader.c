@@ -22,6 +22,7 @@ u_int8_t human_readeable_string_len = 5;
 u_int8_t max_num_udp_dissected_pkts = 0, max_num_tcp_dissected_pkts = 0; /* Disable limits at application layer */;
 int malloc_size_stats = 0;
 FILE *fingerprint_fp = NULL;
+bool do_load_lists = false;
 
 extern void ndpi_report_payload_stats(FILE *out);
 
@@ -89,6 +90,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     ndpi_set_config(workflow->ndpi_struct, "stun", "max_packets_extra_dissection", "255");
     ndpi_set_config(workflow->ndpi_struct, "zoom", "max_packets_extra_dissection", "255");
     ndpi_set_config(workflow->ndpi_struct, "rtp", "search_for_stun", "1");
+    ndpi_set_config(workflow->ndpi_struct, "openvpn", "dpi.heuristics", "0x01");
+    ndpi_set_config(workflow->ndpi_struct, "openvpn", "dpi.heuristics.num_messages", "255");
 
     ndpi_finalize_initialization(workflow->ndpi_struct);
 

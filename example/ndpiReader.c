@@ -92,13 +92,12 @@ static ndpi_serialization_format serialization_format = ndpi_serialization_forma
 static char* domain_to_check = NULL;
 static char* ip_port_to_check = NULL;
 static u_int8_t ignore_vlanid = 0;
-
 FILE *fingerprint_fp         = NULL; /**< for flow fingerprint export */
-
 
 /** User preferences **/
 u_int8_t enable_realtime_output = 0, enable_protocol_guess = NDPI_GIVEUP_GUESS_BY_PORT | NDPI_GIVEUP_GUESS_BY_IP, enable_payload_analyzer = 0, num_bin_clusters = 0, extcap_exit = 0;
 u_int8_t verbose = 0, enable_flow_stats = 0;
+bool do_load_lists = false;
 
 struct cfg {
   char *proto;
@@ -221,12 +220,11 @@ struct receiver {
 struct receiver *receivers = NULL, *topReceivers = NULL;
 
 #define WIRESHARK_NTOP_MAGIC 0x19680924
-#define WIRESHARK_METADATA_SIZE	256
+#define WIRESHARK_METADATA_SIZE		192
+#define WIRESHARK_FLOW_RISK_INFO_SIZE	128
 
 #define WIRESHARK_METADATA_SERVERNAME	0x01
-#define WIRESHARK_METADATA_JA3C		0x02
-#define WIRESHARK_METADATA_JA3S		0x03
-#define WIRESHARK_METADATA_JA4C		0x04
+#define WIRESHARK_METADATA_JA4C		0x02
 
 struct ndpi_packet_tlv {
   u_int16_t type;
@@ -238,12 +236,14 @@ PACK_ON
 struct ndpi_packet_trailer {
   u_int32_t magic; /* WIRESHARK_NTOP_MAGIC */
   ndpi_master_app_protocol proto;
+  char name[16];
   ndpi_risk flow_risk;
   u_int16_t flow_score;
-  char flow_risk_info[32];
-  char name[16];
+  u_int16_t flow_risk_info_len;
+  char flow_risk_info[WIRESHARK_FLOW_RISK_INFO_SIZE];
   /* TLV of attributes. Having a max and fixed size for all the metadata
      is not efficient but greatly improves detection of the trailer by Wireshark */
+  u_int16_t metadata_len;
   unsigned char metadata[WIRESHARK_METADATA_SIZE];
 } PACK_OFF;
 
@@ -1122,11 +1122,13 @@ static void parseOptions(int argc, char **argv) {
         printf("Unable to write on fingerprint file %s: %s\n", optarg, strerror(errno));
         exit(1);
       }
-      
+
       if(reader_add_cfg("tls", "metadata.ja4r_fingerprint", "1", 1) == -1) {
 	printf("Unable to enable JA4r fingerprints\n");
 	exit(1);
       }
+
+      do_load_lists = true;
       break;
 
     case 'i':
@@ -1453,7 +1455,7 @@ static void parseOptions(int argc, char **argv) {
     exit(0);
 
   printCSVHeader();
-  
+
 #ifndef USE_DPDK
   if(do_extcap_capture) {
     quiet_mode = 1;
@@ -4584,6 +4586,7 @@ static void ndpi_process_packet(u_char *args,
     trailer->magic = htonl(WIRESHARK_NTOP_MAGIC);
     trailer->flow_risk = htonl64(flow_risk);
     trailer->flow_score = htons(ndpi_risk2score(flow_risk, &cli_score, &srv_score));
+    trailer->flow_risk_info_len = ntohs(WIRESHARK_FLOW_RISK_INFO_SIZE);
     if(flow->risk_str) {
       strncpy(trailer->flow_risk_info, flow->risk_str, sizeof(trailer->flow_risk_info));
       trailer->flow_risk_info[sizeof(trailer->flow_risk_info) - 1] = '\0';
@@ -4596,6 +4599,7 @@ static void ndpi_process_packet(u_char *args,
        We export them only once */
     /* TODO: boundary check. Right now there is always enough room, but we should check it if we are
        going to extend the list of the metadata exported */
+    trailer->metadata_len = ntohs(WIRESHARK_METADATA_SIZE);
     struct ndpi_packet_tlv *tlv = (struct ndpi_packet_tlv *)trailer->metadata;
     int tot_len = 0;
     if(flow && flow->detection_completed == 1) {
@@ -4603,22 +4607,6 @@ static void ndpi_process_packet(u_char *args,
         tlv->type = ntohs(WIRESHARK_METADATA_SERVERNAME);
         tlv->length = ntohs(sizeof(flow->host_server_name));
         memcpy(tlv->data, flow->host_server_name, sizeof(flow->host_server_name));
-        /* TODO: boundary check */
-        tot_len += 4 + htons(tlv->length);
-        tlv = (struct ndpi_packet_tlv *)&trailer->metadata[tot_len];
-      }
-      if(flow->ssh_tls.ja3_client[0] != '\0') {
-        tlv->type = ntohs(WIRESHARK_METADATA_JA3C);
-        tlv->length = ntohs(sizeof(flow->ssh_tls.ja3_client));
-        memcpy(tlv->data, flow->ssh_tls.ja3_client, sizeof(flow->ssh_tls.ja3_client));
-        /* TODO: boundary check */
-        tot_len += 4 + htons(tlv->length);
-        tlv = (struct ndpi_packet_tlv *)&trailer->metadata[tot_len];
-      }
-      if(flow->ssh_tls.ja3_server[0] != '\0') {
-        tlv->type = ntohs(WIRESHARK_METADATA_JA3S);
-        tlv->length = ntohs(sizeof(flow->ssh_tls.ja3_server));
-        memcpy(tlv->data, flow->ssh_tls.ja3_server, sizeof(flow->ssh_tls.ja3_server));
         /* TODO: boundary check */
         tot_len += 4 + htons(tlv->length);
         tlv = (struct ndpi_packet_tlv *)&trailer->metadata[tot_len];
@@ -6213,7 +6201,7 @@ void ballTreeUnitTest() {
 			    num_columns, nun_results);
 
   assert(result.n_samples == 2);
-  
+
   for (i = 0; i < result.n_samples; i++) {
     printf("{\"knn_idx\": [");
     for (j = 0; j < result.n_neighbors; j++)

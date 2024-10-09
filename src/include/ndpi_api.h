@@ -2356,7 +2356,8 @@ extern "C" {
 
   /* ******************************* */
 
-  bool ndpi_serialize_flow_fingerprint(struct ndpi_flow_struct *flow, ndpi_serializer *serializer);
+  bool ndpi_serialize_flow_fingerprint(struct ndpi_detection_module_struct *ndpi_str,
+				       struct ndpi_flow_struct *flow, ndpi_serializer *serializer);
   
   /* ******************************* */
 
