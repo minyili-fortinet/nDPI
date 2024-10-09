@@ -8101,6 +8101,20 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
     ndpi_set_risk(flow, NDPI_FULLY_ENCRYPTED, NULL);
   }
 
+  /* If guess_ip_before_port is enabled, classify by-ip first */
+  if((ndpi_str->cfg.guess_ip_before_port))
+  {
+    if((ndpi_str->cfg.guess_on_giveup & NDPI_GIVEUP_GUESS_BY_IP) &&
+    ret.proto.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
+    flow->guessed_protocol_id_by_ip != NDPI_PROTOCOL_UNKNOWN) {
+
+    ndpi_set_detected_protocol(ndpi_str, flow,
+			       flow->guessed_protocol_id_by_ip,
+			       ret.proto.master_protocol,
+			       NDPI_CONFIDENCE_MATCH_BY_IP);
+    ret.proto.app_protocol = flow->detected_protocol_stack[0];
+    }
+  }
   /* Classification by-port */
   if((ndpi_str->cfg.guess_on_giveup & NDPI_GIVEUP_GUESS_BY_PORT) &&
      ret.proto.app_protocol == NDPI_PROTOCOL_UNKNOWN) {
@@ -8117,9 +8131,9 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
       ret.proto.app_protocol = flow->detected_protocol_stack[0];
     }
   }
-
-  /* Classification by-ip, as last effort */
-  if((ndpi_str->cfg.guess_on_giveup & NDPI_GIVEUP_GUESS_BY_IP) &&
+  /* Classification by-ip, as last effort if guess_ip_before_port is disabled*/
+  if(!(ndpi_str->cfg.guess_ip_before_port) &&
+     (ndpi_str->cfg.guess_on_giveup & NDPI_GIVEUP_GUESS_BY_IP) &&
      ret.proto.app_protocol == NDPI_PROTOCOL_UNKNOWN &&
      flow->guessed_protocol_id_by_ip != NDPI_PROTOCOL_UNKNOWN) {
 
@@ -11852,6 +11866,7 @@ static const struct cfg_param {
   { NULL,            "fully_encrypted_heuristic",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fully_encrypted_heuristic), NULL, 1 },
   { NULL,            "libgcrypt.init",                          "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(libgcrypt_init), NULL, 0 },
   { NULL,            "dpi.guess_on_giveup",                     "0x3", "0", "3", CFG_PARAM_INT, __OFF(guess_on_giveup), NULL, 1 },
+  { NULL,            "dpi.guess_ip_before_port",                "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(guess_ip_before_port), NULL, 1},
   { NULL,            "dpi.compute_entropy",                     "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(compute_entropy), NULL, 0 },
   { NULL,            "fpc",                                     "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fpc_enabled), NULL, 1 },
 

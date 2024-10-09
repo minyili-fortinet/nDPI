@@ -6228,6 +6228,24 @@ void ballTreeUnitTest() {
 
 /* *********************************************** */
 
+void cryptDecryptUnitTest() {
+  u_char enc_dec_key[64] = "9dedb817e5a8805c1de62eb8982665b9a2b4715174c34d23b9a46ffafacfb2a7" /* SHA256("nDPI") */;
+  const char *test_string = "The quick brown fox jumps over the lazy dog";
+  char *enc, *dec;
+  
+  enc = ndpi_quick_encrypt(test_string, strlen(test_string), enc_dec_key);
+  assert(enc != NULL);
+  dec = ndpi_quick_decrypt((const char*)enc, strlen(enc), enc_dec_key);
+  assert(dec != NULL);
+  
+  assert(strcmp(dec, test_string) == 0);
+
+  ndpi_free(enc);
+  ndpi_free(dec);
+}
+
+/* *********************************************** */
+
 void encodeDomainsUnitTest() {
   NDPI_PROTOCOL_BITMASK all;
   struct ndpi_detection_module_struct *ndpi_str = ndpi_init_detection_module(NULL);
@@ -6282,6 +6300,9 @@ void domainsUnitTest() {
     ndpi_set_protocol_detection_bitmask2(ndpi_str, &all);
 
     assert(ndpi_load_domain_suffixes(ndpi_str, (char*)lists_path) == 0);
+
+    assert(strcmp(ndpi_get_host_domain(ndpi_str, "extension.femetrics.grammarly.io"), "grammarly.io") == 0);
+    assert(strcmp(ndpi_get_host_domain(ndpi_str, "www.ovh.commander1.com"), "commander1.com") == 0);
 
     assert(strcmp(ndpi_get_host_domain_suffix(ndpi_str, "www.chosei.chiba.jp", &suffix_id), "chosei.chiba.jp") == 0);
     assert(strcmp(ndpi_get_host_domain_suffix(ndpi_str, "www.unipi.it", &suffix_id), "it") == 0);
@@ -6405,6 +6426,7 @@ int main(int argc, char **argv) {
     exit(0);
 #endif
 
+    cryptDecryptUnitTest();
     kdUnitTest();
     encodeDomainsUnitTest();
     loadStressTest();

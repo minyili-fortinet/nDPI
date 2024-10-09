@@ -285,6 +285,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     third_party/include/ahocorasick.h \
 		     third_party/include/ndpi_patricia.h \
 		     third_party/include/libcache.h \
+		     third_party/include/aes.h \
 		     third_party/src/ahocorasick.c \
 		     third_party/src/ndpi_md5.c \
 		     third_party/src/ndpi_sha1.c \
@@ -300,7 +301,8 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     third_party/src/ndpi_sha256.c \
 		     third_party/src/ball.c \
 		     third_party/src/kdtree.c \
-		     third_party/src/shoco.c
+		     third_party/src/shoco.c \
+		     third_party/src/aes.c
 
 lib_LIBRARIES = libndpi.a
 

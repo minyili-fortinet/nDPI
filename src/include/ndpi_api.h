@@ -1951,17 +1951,17 @@ extern "C" {
     - https://varshasaini.in/k-nearest-neighbor-knn-algorithm-in-machine-learning/
 
     NOTE:
-    with ball tree, data is a vector of vector pointers (no array)    
-  */  
+    with ball tree, data is a vector of vector pointers (no array)
+  */
   ndpi_btree* ndpi_btree_init(double **data, u_int32_t n_rows, u_int32_t n_columns);
   ndpi_knn ndpi_btree_query(ndpi_btree *b, double **query_data,
 			    u_int32_t query_data_num_rows, u_int32_t query_data_num_columns,
 			    u_int32_t max_num_results);
   void ndpi_free_knn(ndpi_knn knn);
   void ndpi_free_btree(ndpi_btree *tree);
-  
+
   /* ******************************* */
-  
+
   /*
    * Finds outliers using Z-score
    * Z-Score = (Value - Mean) / StdDev
@@ -2337,8 +2337,8 @@ extern "C" {
   int64_t ndpi_strtonum(const char *numstr, int64_t minval, int64_t maxval, const char **errstrp, int base);
   int ndpi_vsnprintf(char * str, size_t size, char const * format, va_list va_args);
   int ndpi_snprintf(char * str, size_t size, char const * format, ...);
-  struct tm *ndpi_gmtime_r(const time_t *timep,
-                           struct tm *result);
+  struct tm *ndpi_gmtime_r(const time_t *timep, struct tm *result);
+  char* ndpi_strrstr(const char *haystack, const char *needle);
 
   /* ******************************* */
 
@@ -2356,9 +2356,19 @@ extern "C" {
 
   /* ******************************* */
 
+  char* ndpi_quick_encrypt(const char *cleartext_msg,
+			   u_int16_t cleartext_msg_len,
+			   u_char encrypt_key[64]);
+  
+  char* ndpi_quick_decrypt(const char *encrypted_msg,
+			   u_int16_t encrypted_msg_len,
+			   u_char decrypt_key[64]);
+ 
+  /* ******************************* */
+
   bool ndpi_serialize_flow_fingerprint(struct ndpi_detection_module_struct *ndpi_str,
 				       struct ndpi_flow_struct *flow, ndpi_serializer *serializer);
-  
+
   /* ******************************* */
 
   const char *ndpi_lru_cache_idx_to_name(lru_cache_type idx);
