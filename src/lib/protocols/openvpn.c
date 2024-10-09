@@ -275,7 +275,7 @@ static int search_heur_opcode_common(struct ndpi_detection_module_struct* ndpi_s
                                      struct ndpi_flow_struct* flow,
                                      u_int8_t first_byte) {
   u_int8_t opcode, found  = 0, i;
-  int dir = ndpi_struct->packet.packet_direction;
+  int dir = (ndpi_get_packet_struct(ndpi_struct))->packet_direction;
 
   opcode = first_byte & P_OPCODE_MASK;
 

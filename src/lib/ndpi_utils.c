@@ -3682,7 +3682,6 @@ u_int ndpi_encode_domain(struct ndpi_detection_module_struct *ndpi_str,
   return(out_idx);
 }
 
-#endif
 
 /* ****************************************************** */
 
@@ -3739,6 +3738,7 @@ bool ndpi_serialize_flow_fingerprint(struct ndpi_detection_module_struct *ndpi_s
 
   return(false);
 }
+#endif
 
 /* ****************************************************** */
 
@@ -3860,7 +3860,7 @@ char* ndpi_quick_decrypt(const char *encrypted_msg,
 
   if(allocated_decoded_string < (content_len+1)) {
     /* Buffer size failure */
-    free(content);
+    ndpi_free(content);
     return(NULL);
   }
 

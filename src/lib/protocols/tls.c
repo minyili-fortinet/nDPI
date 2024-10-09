@@ -470,9 +470,10 @@ static int tls_obfuscated_heur_search_again(struct ndpi_detection_module_struct*
       else
         ndpi_set_risk(flow, NDPI_OBFUSCATED_TRAFFIC, "Obfuscated TLS-in-HTTP-WebSocket traffic");
     }
-
+#ifndef __KERNEL__
     ndpi_protocol ret = { { __get_master(ndpi_struct, flow), NDPI_PROTOCOL_UNKNOWN }, NDPI_PROTOCOL_UNKNOWN /* unused */, NDPI_PROTOCOL_CATEGORY_UNSPECIFIED, NULL};
     flow->category = ndpi_get_proto_category(ndpi_struct, ret);
+#endif
   }
   NDPI_EXCLUDE_PROTO(ndpi_struct, flow); /* Not necessary in extra-dissection data path,
                                             but we need it with the plain heuristic */

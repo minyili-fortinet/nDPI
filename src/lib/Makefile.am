@@ -80,6 +80,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/dhcpv6.c \
 		     protocols/diameter.c \
 		     protocols/discord.c \
+		     protocols/dingtalk.c \
 		     protocols/dlep.c \
 		     protocols/dns.c \
 		     protocols/dnscrypt.c \

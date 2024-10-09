@@ -502,6 +502,11 @@ static void ndpi_free_flow_tls_data(struct ndpi_flow_info *flow) {
     flow->dhcp_class_ident = NULL;
   }
 
+  if(flow->server_hostname) {
+    ndpi_free(flow->server_hostname);
+    flow->server_hostname = NULL;
+  }
+
   if(flow->bittorent_hash) {
     ndpi_free(flow->bittorent_hash);
     flow->bittorent_hash = NULL;
@@ -1101,6 +1106,9 @@ static void dump_flow_fingerprint(struct ndpi_workflow * workflow,
 						    flow->detected_protocol,
 						    buf, sizeof(buf)));
 
+    if(flow->server_hostname)
+      ndpi_serialize_string_string(&serializer, "server_hostname", flow->server_hostname);
+    
     buffer = ndpi_serializer_get_buffer(&serializer, &buffer_len);
     fprintf(fingerprint_fp, "%s\n", buffer);
   }
@@ -1155,7 +1163,6 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
       flow->bittorent_hash = ndpi_malloc(avail);
 
       if(flow->bittorent_hash) {
-
         for(i=0, j = 0; i < sizeof(flow->ndpi_flow->protos.bittorrent.hash); i++) {
           snprintf(&flow->bittorent_hash[j], avail-j, "%02x",
 	          flow->ndpi_flow->protos.bittorrent.hash[i]);
@@ -1432,6 +1439,24 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
                 sizeof(flow->http.user_agent),
                 "%s", (flow->ndpi_flow->http.user_agent ? flow->ndpi_flow->http.user_agent : ""));
 
+  {
+    ndpi_ip_addr_t ip_addr;
+    struct ndpi_address_cache_item *c;
+    
+    memset(&ip_addr, 0, sizeof(ip_addr));
+    
+    if(flow->ip_version == 4)
+      ip_addr.ipv4 = flow->dst_ip;
+    else
+      memcpy(&ip_addr.ipv6, &flow->dst_ip6, sizeof(struct ndpi_in6_addr));
+
+    c = ndpi_cache_address_find(workflow->ndpi_struct, ip_addr);
+				
+    if(c) {
+      flow->server_hostname = ndpi_strdup(c->hostname);
+    }
+  }
+
   if (workflow->ndpi_serialization_format != ndpi_serialization_format_unknown) {
     if (ndpi_flow2json(workflow->ndpi_struct, flow->ndpi_flow,
                        flow->ip_version, flow->protocol,
@@ -1447,6 +1472,9 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
 
     ndpi_serialize_string_uint32(&flow->ndpi_flow_serializer, "detection_completed", flow->detection_completed);
     ndpi_serialize_string_uint32(&flow->ndpi_flow_serializer, "check_extra_packets", flow->check_extra_packets);
+
+    if(flow->server_hostname)
+      ndpi_serialize_string_string(&flow->ndpi_flow_serializer, "server_hostname", flow->server_hostname);
   }
 
   if(flow->detection_completed && (!flow->check_extra_packets)) {

@@ -1,9 +1,12 @@
 #ifndef _AES_H_
 #define _AES_H_
 
+#ifndef __KERNEL__
 #include <stdint.h>
 #include <stddef.h>
-
+#else
+#include "ndpi_kernel_compat.h"
+#endif
 // #define the macros below to 1/0 to enable/disable the mode of operation.
 //
 // CBC enables AES encryption in CBC-mode of operation.
