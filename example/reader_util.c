@@ -81,6 +81,7 @@ extern u_int8_t enable_flow_stats, enable_payload_analyzer;
 extern u_int8_t verbose, human_readeable_string_len;
 extern u_int8_t max_num_udp_dissected_pkts /* 24 */, max_num_tcp_dissected_pkts /* 80 */;
 static u_int32_t flow_id = 0;
+extern FILE *fingerprint_fp;
 
 u_int8_t enable_doh_dot_detection = 0;
 
@@ -471,7 +472,7 @@ static void ndpi_free_flow_tls_data(struct ndpi_flow_info *flow) {
     ndpi_free(flow->dhcp_fingerprint);
     flow->dhcp_fingerprint = NULL;
   }
-  
+
   if(flow->dhcp_class_ident) {
     ndpi_free(flow->dhcp_class_ident);
     flow->dhcp_class_ident = NULL;
@@ -486,7 +487,7 @@ static void ndpi_free_flow_tls_data(struct ndpi_flow_info *flow) {
     ndpi_free(flow->telnet.username);
     flow->telnet.username = NULL;
   }
-  
+
   if(flow->telnet.password) {
     ndpi_free(flow->telnet.password);
     flow->telnet.password = NULL;
@@ -793,7 +794,7 @@ static struct ndpi_flow_info *get_ndpi_flow_info(struct ndpi_workflow * workflow
   flow.protocol = iph->protocol, flow.vlan_id = vlan_id;
   flow.src_ip = iph->saddr, flow.dst_ip = iph->daddr;
   flow.src_port = htons(*sport), flow.dst_port = htons(*dport);
-  flow.hashval = hashval = flow.protocol + ntohl(flow.src_ip) + ntohl(flow.dst_ip) 
+  flow.hashval = hashval = flow.protocol + ntohl(flow.src_ip) + ntohl(flow.dst_ip)
     + ntohs(flow.src_port) + ntohs(flow.dst_port);
 
 #if 0
@@ -1050,10 +1051,45 @@ u_int8_t plen2slot(u_int16_t plen) {
 
 /* ****************************************************** */
 
+static void dump_flow_fingerprint(struct ndpi_workflow * workflow,
+				  struct ndpi_flow_info *flow) {
+  ndpi_serializer serializer;
+  bool rc;
+  
+  if(ndpi_init_serializer(&serializer, ndpi_serialization_format_json) == -1)
+    return;
+
+  ndpi_serialize_start_of_block(&serializer, "fingerprint");
+  rc = ndpi_serialize_flow_fingerprint(flow->ndpi_flow, &serializer);
+  ndpi_serialize_end_of_block(&serializer);
+
+  if(rc) {
+    char buf[64], *buffer;
+    u_int32_t buffer_len;
+
+    ndpi_serialize_string_uint32(&serializer, "proto", flow->protocol);
+    ndpi_serialize_string_string(&serializer, "cli_ip", flow->src_name);
+    ndpi_serialize_string_uint32(&serializer, "cli_port", ntohs(flow->src_port));
+    ndpi_serialize_string_string(&serializer, "srv_ip", flow->dst_name);
+    ndpi_serialize_string_uint32(&serializer, "srv_port", ntohs(flow->dst_port));
+    ndpi_serialize_string_string(&serializer, "proto",
+				 ndpi_protocol2name(workflow->ndpi_struct,
+						    flow->detected_protocol,
+						    buf, sizeof(buf)));
+
+    buffer = ndpi_serializer_get_buffer(&serializer, &buffer_len);
+    fprintf(fingerprint_fp, "%s\n", buffer);
+  }
+  
+  ndpi_term_serializer(&serializer);  
+}
+
+/* ****************************************************** */
+
 void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_flow_info *flow) {
   u_int i, is_quic = 0;
   char out[128], *s;
-  
+
   if(!flow->ndpi_flow) return;
 
   flow->info_type = INFO_INVALID;
@@ -1061,8 +1097,8 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
   s = ndpi_get_flow_risk_info(flow->ndpi_flow, out, sizeof(out), 0 /* text */);
 
   if(s != NULL)
-    flow->risk_str = ndpi_strdup(s);  
-  
+    flow->risk_str = ndpi_strdup(s);
+
   flow->confidence = flow->ndpi_flow->confidence;
 
   flow->fpc = flow->ndpi_flow->fpc;
@@ -1076,7 +1112,7 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
     ndpi_snprintf(flow->mining.currency, sizeof(flow->mining.currency), "%s",
 		  flow->ndpi_flow->protos.mining.currency);
   }
-  
+
   flow->risk = flow->ndpi_flow->risk;
 
   if(is_ndpi_proto(flow, NDPI_PROTOCOL_DHCP)) {
@@ -1093,7 +1129,7 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
     if(flow->ndpi_flow->protos.bittorrent.hash[0] != '\0') {
       u_int avail = sizeof(flow->ndpi_flow->protos.bittorrent.hash) * 2 + 1;
       flow->bittorent_hash = ndpi_malloc(avail);
-      
+
       if(flow->bittorent_hash) {
 
         for(i=0, j = 0; i < sizeof(flow->ndpi_flow->protos.bittorrent.hash); i++) {
@@ -1102,7 +1138,7 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
 
           j += 2;
         }
-	
+
         flow->bittorent_hash[j] = '\0';
       }
     }
@@ -1134,7 +1170,7 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
   /* SERVICE_LOCATION */
   else if(is_ndpi_proto(flow, NDPI_PROTOCOL_SERVICE_LOCATION)) {
     size_t i;
-    
+
     flow->info_type = INFO_GENERIC;
     flow->info[0] = 0;
     if (flow->ndpi_flow->protos.slp.url_count > 0)
@@ -1142,7 +1178,7 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
 
     for (i = 0; i < flow->ndpi_flow->protos.slp.url_count; ++i) {
       size_t length = strlen(flow->info);
-      
+
       strncat(flow->info + length, flow->ndpi_flow->protos.slp.url[i],
               sizeof(flow->info) - length);
       length = strlen(flow->info);
@@ -1334,7 +1370,7 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
   memcpy(&flow->stun.other_address, &flow->ndpi_flow->stun.other_address, sizeof(ndpi_address_port));
 
   flow->multimedia_flow_type = flow->ndpi_flow->flow_multimedia_type;
-  
+
   /* HTTP metadata are "global" not in `flow->ndpi_flow->protos` union; for example, we can have
      HTTP/BitTorrent and in that case we want to export also HTTP attributes */
   if(is_ndpi_proto(flow, NDPI_PROTOCOL_HTTP)
@@ -1367,17 +1403,20 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
       LOG(NDPI_LOG_ERROR, "flow2json failed\n");
       return;
     }
-    
+
     ndpi_serialize_string_uint32(&flow->ndpi_flow_serializer, "detection_completed", flow->detection_completed);
     ndpi_serialize_string_uint32(&flow->ndpi_flow_serializer, "check_extra_packets", flow->check_extra_packets);
   }
 
-  if(flow->detection_completed && (!flow->check_extra_packets)) {   
+  if(flow->detection_completed && (!flow->check_extra_packets)) {
     flow->flow_payload = flow->ndpi_flow->flow_payload, flow->flow_payload_len = flow->ndpi_flow->flow_payload_len;
     flow->ndpi_flow->flow_payload = NULL; /* We'll free the memory */
 
     if(workflow->flow_callback != NULL)
       workflow->flow_callback(workflow, flow, workflow->flow_callback_userdata);
+
+    if(fingerprint_fp)
+      dump_flow_fingerprint(workflow, flow);
 
     ndpi_free_flow_info_half(flow);
   }
@@ -1883,7 +1922,7 @@ static bool ndpi_is_valid_vxlan(const struct pcap_pkthdr *header, const u_char *
   struct ndpi_udphdr *udp = (struct ndpi_udphdr *)&packet[ip_offset+ip_len];
   u_int offset = ip_offset + ip_len + sizeof(struct ndpi_udphdr);
   /**
-   * rfc-7348 
+   * rfc-7348
    *    VXLAN Header:  This is an 8-byte field that has:
 
     - Flags (8 bits): where the I flag MUST be set to 1 for a valid
@@ -1921,8 +1960,8 @@ static inline u_int ndpi_skip_vxlan(u_int16_t ip_offset, u_int16_t ip_len){
   return ip_offset + ip_len + sizeof(struct ndpi_udphdr) + sizeof(struct ndpi_vxlanhdr);
 }
 
-static uint32_t ndpi_is_valid_gre_tunnel(const struct pcap_pkthdr *header, 
-                const u_char *packet, const u_int16_t ip_offset, 
+static uint32_t ndpi_is_valid_gre_tunnel(const struct pcap_pkthdr *header,
+                const u_char *packet, const u_int16_t ip_offset,
                 const u_int16_t ip_len) {
   if(header->caplen < ip_offset + ip_len + sizeof(struct ndpi_gre_basehdr))
     return 0; /* Too short for GRE header*/
@@ -1966,7 +2005,7 @@ static uint32_t ndpi_is_valid_gre_tunnel(const struct pcap_pkthdr *header,
       return 0;
     if(NDPI_GRE_IS_STRICT(grehdr->flags))
       return 0;
-    if(grehdr->protocol != NDPI_GRE_PROTO_PPP) 
+    if(grehdr->protocol != NDPI_GRE_PROTO_PPP)
       return 0;
     /*key field*/
     if(header->caplen < offset + 4)
@@ -2517,11 +2556,11 @@ struct ndpi_proto ndpi_workflow_process_packet(struct ndpi_workflow * workflow,
     if((offset = ndpi_is_valid_gre_tunnel(header, packet, ip_offset, ip_len))) {
       tunnel_type = ndpi_gre_tunnel;
       struct ndpi_gre_basehdr *grehdr = (struct ndpi_gre_basehdr*)&packet[ip_offset + ip_len];
-      if(grehdr->protocol == ntohs(ETH_P_IP) || grehdr->protocol == ntohs(ETH_P_IPV6)) { 
+      if(grehdr->protocol == ntohs(ETH_P_IP) || grehdr->protocol == ntohs(ETH_P_IPV6)) {
         ip_offset = offset;
-        goto iph_check; 
+        goto iph_check;
       } else if(grehdr->protocol ==  NDPI_GRE_PROTO_PPP) {  // ppp protocol
-        ip_offset = offset + NDPI_PPP_HDRLEN; 
+        ip_offset = offset + NDPI_PPP_HDRLEN;
         goto iph_check;
       } else {
         eth_offset = offset;

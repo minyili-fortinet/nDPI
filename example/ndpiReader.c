@@ -92,6 +92,10 @@ static ndpi_serialization_format serialization_format = ndpi_serialization_forma
 static char* domain_to_check = NULL;
 static char* ip_port_to_check = NULL;
 static u_int8_t ignore_vlanid = 0;
+
+FILE *fingerprint_fp         = NULL; /**< for flow fingerprint export */
+
+
 /** User preferences **/
 u_int8_t enable_realtime_output = 0, enable_protocol_guess = NDPI_GIVEUP_GUESS_BY_PORT | NDPI_GIVEUP_GUESS_BY_IP, enable_payload_analyzer = 0, num_bin_clusters = 0, extcap_exit = 0;
 u_int8_t verbose = 0, enable_flow_stats = 0;
@@ -618,7 +622,7 @@ static void help(u_int long_help) {
          "-i <file|device> "
 #endif
          "[-f <filter>][-s <duration>][-m <duration>][-b <num bin clusters>]\n"
-         "          [-p <protos>][-l <loops> [-q][-d][-h][-H][-D][-e <len>][-E][-t][-v <level>]\n"
+         "          [-p <protos>][-l <loops> [-q][-d][-h][-H][-D][-e <len>][-E <path>][-t][-v <level>]\n"
          "          [-n <threads>][-w <file>][-c <file>][-C <file>][-j <file>][-x <file>]\n"
          "          [-r <file>][-R][-j <file>][-S <file>][-T <num>][-U <num>] [-x <domain>]\n"
          "          [-a <mode>][-B proto_list]\n\n"
@@ -658,6 +662,7 @@ static void help(u_int long_help) {
          "                            | Default: %u:%u:%u:%u:%u\n"
          "  -c <path>                 | Load custom categories from the specified file\n"
          "  -C <path>                 | Write output in CSV format on the specified file\n"
+	 "  -E <path>                 | Write flow fingerprints on the specified file\n"
          "  -r <path>                 | Load risky domain file\n"
          "  -R                        | Print detected realtime protocols\n"
          "  -j <path>                 | Load malicious JA3 fingeprints\n"
@@ -1075,7 +1080,7 @@ static void parseOptions(int argc, char **argv) {
 #endif
 
   while((opt = getopt_long(argc, argv,
-			   "a:Ab:B:e:c:C:dDFf:g:G:i:Ij:k:K:S:hHp:pP:l:r:Rs:tu:v:V:n:rp:x:X:w:q0123:456:7:89:m:MT:U:",
+			   "a:Ab:B:e:E:c:C:dDFf:g:G:i:Ij:k:K:S:hHp:pP:l:r:Rs:tu:v:V:n:rp:x:X:w:q0123:456:7:89:m:MT:U:",
                            longopts, &option_idx)) != EOF) {
 #ifdef DEBUG_TRACE
     if(trace) fprintf(trace, " #### Handling option -%c [%s] #### \n", opt, optarg ? optarg : "");
@@ -1109,6 +1114,19 @@ static void parseOptions(int argc, char **argv) {
 
     case 'e':
       human_readeable_string_len = atoi(optarg);
+      break;
+
+    case 'E':
+      errno = 0;
+      if((fingerprint_fp = fopen(optarg, "w")) == NULL) {
+        printf("Unable to write on fingerprint file %s: %s\n", optarg, strerror(errno));
+        exit(1);
+      }
+      
+      if(reader_add_cfg("tls", "metadata.ja4r_fingerprint", "1", 1) == -1) {
+	printf("Unable to enable JA4r fingerprints\n");
+	exit(1);
+      }
       break;
 
     case 'i':
@@ -1434,9 +1452,8 @@ static void parseOptions(int argc, char **argv) {
   if(extcap_exit)
     exit(0);
 
-  if(csv_fp)
-    printCSVHeader();
-
+  printCSVHeader();
+  
 #ifndef USE_DPDK
   if(do_extcap_capture) {
     quiet_mode = 1;
@@ -6488,7 +6505,8 @@ int main(int argc, char **argv) {
   if(extcap_dumper) pcap_dump_close(extcap_dumper);
   if(extcap_fifo_h) pcap_close(extcap_fifo_h);
   if(enable_malloc_bins) ndpi_free_bin(&malloc_bins);
-  if(csv_fp)        fclose(csv_fp);
+  if(csv_fp)         fclose(csv_fp);
+  if(fingerprint_fp) fclose(fingerprint_fp);
 
   ndpi_free(_disabled_protocols);
 

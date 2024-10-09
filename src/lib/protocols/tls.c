@@ -1,7 +1,7 @@
 /*
  * tls.c - TLS/TLS/DTLS dissector
  *
- * Copyright (C) 2016-22 - ntop.org
+ * Copyright (C) 2016-24 - ntop.org
  *
  * nDPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -30,7 +30,7 @@
 #include "ndpi_private.h"
 #include "ahocorasick.h"
 
-/* #define JA4R_DECIMAL 1 */
+#define JA4R_DECIMAL 1 
 
 static void ndpi_search_tls_wrapper(struct ndpi_detection_module_struct *ndpi_struct,
 				    struct ndpi_flow_struct *flow);
@@ -1887,7 +1887,7 @@ static void ndpi_compute_ja4(struct ndpi_detection_module_struct *ndpi_struct,
 #endif
 
 #ifdef JA4R_DECIMAL
-  rc = snprintf(&ja4_r[ja4_r_len], sizeof(ja4_r)-ja4_r_len, " ");
+  rc = snprintf(&ja4_r[ja4_r_len], sizeof(ja4_r)-ja4_r_len, "_");
   if(rc > 0) ja4_r_len += rc;
 #endif
 
@@ -1896,7 +1896,7 @@ static void ndpi_compute_ja4(struct ndpi_detection_module_struct *ndpi_struct,
     if((ja->client.tls_extension[i] > 0) && (ja->client.tls_extension[i] != 0x10 /* ALPN extension */)) {
 #ifdef JA4R_DECIMAL
       rc = snprintf(&ja4_r[ja4_r_len], sizeof(ja4_r)-ja4_r_len, "%s%u", (num_extn > 0) ? "," : "", ja->client.tls_extension[i]);
-      if(rc > 0) ja4_r_len += rc;
+      if((rc > 0) && (ja4_r_len + rc < JA_STR_LEN)) ja4_r_len += rc; else break;
 #endif
 
       rc = ndpi_snprintf((char *)&tmp_str[tmp_str_len], JA_STR_LEN-tmp_str_len, "%s%04x",

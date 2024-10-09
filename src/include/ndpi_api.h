@@ -2356,6 +2356,10 @@ extern "C" {
 
   /* ******************************* */
 
+  bool ndpi_serialize_flow_fingerprint(struct ndpi_flow_struct *flow, ndpi_serializer *serializer);
+  
+  /* ******************************* */
+
   const char *ndpi_lru_cache_idx_to_name(lru_cache_type idx);
 
   /**
