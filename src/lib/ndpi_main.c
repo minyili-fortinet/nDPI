@@ -162,6 +162,8 @@ static u_int32_t _ticks_per_second = 1000;
 
 /* ****************************************** */
 
+#include "ndpi_os_fingerprint.c.inc"
+
 static ndpi_risk_info ndpi_known_risks[] = {
   { NDPI_NO_RISK,                               NDPI_RISK_LOW,    CLIENT_FAIR_RISK_PERCENTAGE, NDPI_NO_ACCOUNTABILITY  },
   { NDPI_URL_POSSIBLE_XSS,                      NDPI_RISK_SEVERE, CLIENT_HIGH_RISK_PERCENTAGE, NDPI_CLIENT_ACCOUNTABLE },
@@ -7101,86 +7103,110 @@ static int ndpi_init_packet(struct ndpi_detection_module_struct *ndpi_str,
 
   /* TCP / UDP detection */
   if(l4protocol == IPPROTO_TCP) {
-    u_int16_t header_len;
+    u_int16_t tcp_header_len;
 
-    if(l4_packet_len < 20 /* min size of tcp */)
+    if(l4_packet_len < sizeof(struct ndpi_tcphdr) /* min size of tcp */)
       return(1);
 
     /* tcp */
     packet->tcp = (struct ndpi_tcphdr *) l4ptr;
-    header_len = packet->tcp->doff * 4;
+    tcp_header_len = packet->tcp->doff * 4;
 
-    if(l4_packet_len >= header_len) {
-      if(flow->tcp.fingerprint == NULL) {
+    if(l4_packet_len >= tcp_header_len) {
+      if(ndpi_str->cfg.tcp_fingerprint_enabled &&
+         flow->tcp.fingerprint == NULL) {
 	u_int8_t *t = (u_int8_t*)packet->tcp;
-	u_int16_t flags = ntohs(*((u_int16_t*)&t[12]));
+	u_int16_t flags = ntohs(*((u_int16_t*)&t[12])) & 0xFFF;
+	u_int16_t syn_mask = TH_SYN | TH_ECE | TH_CWR;
 
-	if((flags & (TH_SYN | TH_ECE | TH_CWR)) == TH_SYN) {
-	  u_int8_t *options = (u_int8_t*)(&t[sizeof(struct ndpi_tcphdr)]);
+	if((flags & syn_mask) && ((flags & TH_ACK) == 0)) {
 	  char fingerprint[128], options_fp[128];
-	  u_int8_t i, fp_idx = 0, options_fp_idx = 0;
-	  u_int8_t options_len = header_len - sizeof(struct ndpi_tcphdr);
-	  u_int16_t tcp_win = ntohs(packet->tcp->window);
-	  u_int8_t ip_ttl;
-	  u_int8_t sha_hash[NDPI_SHA256_BLOCK_SIZE];
-	  
-	  if(packet->iph)
-	    ip_ttl = packet->iph->ttl;
-	  else
-	    ip_ttl = packet->iphv6->ip6_hdr.ip6_un1_hlim;
+	  u_int8_t i, fp_idx = 0, options_fp_len = 0;
 
-	  if(ip_ttl <= 32) ip_ttl = 32;
-	  else if(ip_ttl <= 64)  ip_ttl = 64;
-	  else if(ip_ttl <= 128) ip_ttl = 128;
-	  else if(ip_ttl <= 192) ip_ttl = 192;
-	  else ip_ttl = 255;
-	  
-	  fp_idx = snprintf(fingerprint, sizeof(fingerprint), "%u_%u_", ip_ttl, tcp_win);
-	  
-	  for(i=0; i<options_len; ) {
-	    u_int8_t kind = options[i];
-	    int rc;
+	  if(tcp_header_len > sizeof(struct ndpi_tcphdr)) {
+	    u_int8_t *options = (u_int8_t*)(&t[sizeof(struct ndpi_tcphdr)]);
+	    u_int8_t options_len = tcp_header_len - sizeof(struct ndpi_tcphdr);
+	    u_int16_t tcp_win = ntohs(packet->tcp->window);
+	    u_int8_t ip_ttl;
+	    u_int8_t sha_hash[NDPI_SHA256_BLOCK_SIZE];
 
-	    rc = snprintf(&options_fp[options_fp_idx], sizeof(options_fp)-options_fp_idx, "%02x", kind);
- 	    options_fp_idx += rc;
+	    if(packet->iph)
+	      ip_ttl = packet->iph->ttl;
+	    else
+	      ip_ttl = packet->iphv6->ip6_hdr.ip6_un1_hlim;
 
-	    if(kind == 0) /* EOF */
-	      break;
-	    else if(kind == 1) /* NOP */
-	      i++;
-	    else {
-	      u_int8_t len = options[i+1];
+	    if(ip_ttl <= 32) ip_ttl = 32;
+	    else if(ip_ttl <= 64)  ip_ttl = 64;
+	    else if(ip_ttl <= 128) ip_ttl = 128;
+	    else if(ip_ttl <= 192) ip_ttl = 192;
+	    else ip_ttl = 255;
 
-	      if(len == 0)
+	    fp_idx = snprintf(fingerprint, sizeof(fingerprint), "%u_%u_%u_", flags, ip_ttl, tcp_win);
+
+	    for(i=0; i<options_len; ) {
+	      u_int8_t kind = options[i];
+	      int rc;
+
+#ifdef DEBUG_TCP_OPTIONS
+	      printf("Option kind: %u\n", kind);
+#endif
+	      rc = snprintf(&options_fp[options_fp_len], sizeof(options_fp)-options_fp_len, "%02x", kind);
+	      if((rc < 0) || ((int)(options_fp_len + rc) == sizeof(options_fp))) break;
+
+	      options_fp_len += rc;
+
+	      if(kind == 0) /* EOF */
 		break;
-	      else if(kind == 8) {
-		/* Timestamp: ignore it */
-	      } else {
-		int j = i+2;
-		u_int8_t opt_len = len - 2;
+	      else if(kind == 1) /* NOP */
+		i++;
+	      else if((i+1) < options_len) {
+		u_int8_t len = options[i+1];
 
-		while(opt_len > 0) {
-		  rc = snprintf(&options_fp[options_fp_idx], sizeof(options_fp)-options_fp_idx, "%02x", options[j]);
-		  options_fp_idx += rc;
-		  j++, opt_len--;
+#ifdef DEBUG_TCP_OPTIONS
+		printf("\tOption len: %u\n", len);
+#endif
+
+		if(len == 0)
+		  break;
+		else if(kind == 8) {
+		  /* Timestamp: ignore it */
+		} else if(len > 2) {
+		  int j = i+2;
+		  u_int8_t opt_len = len - 2;
+
+		  while((opt_len > 0) && (j < options_len)) {
+		    rc = snprintf(&options_fp[options_fp_len], sizeof(options_fp)-options_fp_len, "%02x", options[j]);
+		    if((rc < 0) || ((int)(options_fp_len + rc) == sizeof(options_fp))) break;
+
+		    options_fp_len += rc;
+		    j++, opt_len--;
+		  }
 		}
+
+		i += len;
 	      }
+	    } /* for */
 
-	      i += len;
+	    ndpi_sha256((const u_char*)options_fp, options_fp_len, sha_hash);
+
+	    snprintf(&fingerprint[fp_idx], sizeof(fingerprint)-fp_idx, "%02x%02x%02x%02x%02x%02x",
+		     sha_hash[0], sha_hash[1], sha_hash[2],
+		     sha_hash[3], sha_hash[4], sha_hash[5]);
+
+	    flow->tcp.fingerprint = ndpi_strdup(fingerprint), flow->tcp.os_hint = os_hint_unknown;
+
+	    for(i=0; tcp_fps[i].fingerprint != NULL; i++) {
+	      if(strcmp(tcp_fps[i].fingerprint, fingerprint) == 0) {
+		flow->tcp.os_hint = tcp_fps[i].os;
+		break;
+	      }
 	    }
-	  } /* for */
-
-	  ndpi_sha256((const u_char*)options_fp, options_fp_idx, sha_hash);
-	  snprintf(&fingerprint[fp_idx], sizeof(fingerprint)-fp_idx, "%02x%02x%02x%02x%02x%02x",
-		   sha_hash[0], sha_hash[1], sha_hash[2],
-		   sha_hash[3], sha_hash[4], sha_hash[5]);
-
-	  flow->tcp.fingerprint = ndpi_strdup(fingerprint);
+	  }
 	}
       }
 
-      packet->payload_packet_len = l4_packet_len - header_len;
-      packet->payload = ((u_int8_t *) packet->tcp) + header_len;
+      packet->payload_packet_len = l4_packet_len - tcp_header_len;
+      packet->payload = ((u_int8_t *) packet->tcp) + tcp_header_len;
     } else {
       /* tcp header not complete */
       return(1);
@@ -11846,6 +11872,8 @@ static const struct cfg_param {
   { NULL,            "dpi.compute_entropy",                     "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(compute_entropy), NULL, 0 },
   { NULL,            "dpi.address_cache_size",                  "0", "0", "16777215", CFG_PARAM_INT, __OFF(address_cache_size), NULL, 0 },
   { NULL,            "fpc",                                     "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(fpc_enabled), NULL, 1 },
+
+  { NULL,            "metadata.tcp_fingerprint",                "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tcp_fingerprint_enabled), NULL, 1 },
 
   { NULL,            "flow_risk_lists.load",                    "1", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(flow_risk_lists_enabled), NULL, 0 },
 

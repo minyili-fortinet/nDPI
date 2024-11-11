@@ -1182,6 +1182,13 @@ static void process_ndpi_monitoring_info(struct ndpi_flow_info *flow) {
   if(!flow->ndpi_flow || !flow->ndpi_flow->monit)
     return;
 
+  if(flow->monitoring_state == 0 &&
+     flow->ndpi_flow->monitoring) {
+    /* We just moved to monitoring state */
+    flow->monitoring_state = 1;
+    flow->num_packets_before_monitoring = flow->ndpi_flow->packet_direction_complete_counter[0] + flow->ndpi_flow->packet_direction_complete_counter[1];
+  }
+
   /* In theory, we should check only for STUN.
      However since we sometimes might not have STUN in protocol classification
      (because we have only two protocols in flow->ndpi_flow->detected_protocol_stack[])
@@ -1595,9 +1602,14 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
 
   flow->multimedia_flow_type = flow->ndpi_flow->flow_multimedia_type;
 
-  if(flow->ndpi_flow->tcp.fingerprint)
-    flow->tcp_fingerprint = ndpi_strdup(flow->ndpi_flow->tcp.fingerprint);
+  if(flow->ndpi_flow->tcp.fingerprint) {
+    char buf[128];
 
+    snprintf(buf, sizeof(buf), "%s/%s", flow->ndpi_flow->tcp.fingerprint,
+	     ndpi_print_os_hint(flow->ndpi_flow->tcp.os_hint));
+    flow->tcp_fingerprint = ndpi_strdup(buf);
+  }
+  
   /* HTTP metadata are "global" not in `flow->ndpi_flow->protos` union; for example, we can have
      HTTP/BitTorrent and in that case we want to export also HTTP attributes */
   if(is_ndpi_proto(flow, NDPI_PROTOCOL_HTTP)
@@ -2338,6 +2350,7 @@ struct ndpi_proto ndpi_workflow_process_packet(struct ndpi_workflow * workflow,
   u_int16_t ip_offset = 0, ip_len;
   u_int16_t frag_off = 0, vlan_id = 0;
   u_int8_t proto = 0, recheck_type;
+  u_int8_t ip_ver, ppp_type;
   /*u_int32_t label;*/
   u_int32_t h_caplen,h_len;
   uint32_t nf_mark = 0;
@@ -2410,7 +2423,13 @@ struct ndpi_proto ndpi_workflow_process_packet(struct ndpi_workflow * workflow,
       type = ntohs(chdlc->proto_code);
     } else {
       ip_offset = eth_offset + 2;
-      type = ntohs(*((u_int16_t*)&packet[eth_offset]));
+      ppp_type = ntohs(*((u_int16_t*)&packet[eth_offset]));
+      if(ppp_type == 0x0021)
+        type = ETH_P_IP;
+      else if(ppp_type == 0x0057)
+        type = ETH_P_IPV6;
+      else
+        return(nproto);
     }
     break;
 
@@ -2504,6 +2523,15 @@ struct ndpi_proto ndpi_workflow_process_packet(struct ndpi_workflow * workflow,
 
   case DLT_RAW:
     ip_offset = eth_offset;
+    /* Heuristic: no explicit field with next protocol */
+    ip_ver = (packet[ip_offset] & 0xF0) >> 4;
+    if(ip_ver == 4)
+      type = ETH_P_IP;
+    else if(ip_ver == 6)
+      type = ETH_P_IPV6;
+    else
+      return(nproto);
+
     break;
 #ifdef linux
   case DLT_NFLOG:
@@ -2580,8 +2608,13 @@ struct ndpi_proto ndpi_workflow_process_packet(struct ndpi_workflow * workflow,
     recheck_type = 1;
     break;
 
-  default:
+  case ETH_P_IP:
+  case ETH_P_IPV6:
+    /* Good let's keep decoding */
     break;
+
+  default:
+    return(nproto);
   }
 
   if(recheck_type)
