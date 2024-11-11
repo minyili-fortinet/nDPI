@@ -407,7 +407,7 @@ bool ndpi_address_cache_insert(struct ndpi_address_cache *cache,
 }
 
 /* ***************************************************** */
-
+#ifndef __KERNEL__
 bool ndpi_address_cache_dump(struct ndpi_address_cache *cache,
 			     char *path, u_int32_t epoch_now) {
   FILE *fd = fopen(path, "w");
@@ -472,7 +472,7 @@ u_int32_t ndpi_address_cache_restore(struct ndpi_address_cache *cache, char *pat
   
   return(num_added);
 }
-
+#endif
 /* ***************************************************** */
 /* ***************************************************** */
 
@@ -500,7 +500,7 @@ struct ndpi_address_cache_item* ndpi_cache_address_find(struct ndpi_detection_mo
 }
 
 /* ***************************************************** */
-
+#ifndef __KERNEL__
 bool ndpi_cache_address_dump(struct ndpi_detection_module_struct *ndpi_struct, char *path, u_int32_t epoch_now) {
   if(ndpi_struct->address_cache == NULL) return(false);
 
@@ -520,7 +520,7 @@ u_int32_t ndpi_cache_address_restore(struct ndpi_detection_module_struct *ndpi_s
 
   return(ndpi_address_cache_restore(ndpi_struct->address_cache, path, epoch_now));
 }
-
+#endif
 /* ***************************************************** */
 
 u_int32_t ndpi_cache_address_flush_expired(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t epoch_now) {
