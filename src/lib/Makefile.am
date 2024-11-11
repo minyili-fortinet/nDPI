@@ -188,6 +188,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/openwire.c \
 		     protocols/ookla.c \
 		     protocols/oracle.c \
+		     protocols/paltalk.c \
 		     protocols/path_of_exile.c \
 		     protocols/pfcp.c \
 		     protocols/postgres.c \

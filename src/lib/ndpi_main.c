@@ -2476,6 +2476,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "DingTalk", NDPI_PROTOCOL_CATEGORY_CHAT,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_PALTALK,
+			  "Paltalk", NDPI_PROTOCOL_CATEGORY_CHAT,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
 
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main.c"
@@ -6567,6 +6571,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* DingTalk */
   init_dingtalk_dissector(ndpi_str, &a);
 
+  /* Paltalk */
+  init_paltalk_dissector(ndpi_str, &a);
+
 #ifdef CUSTOM_NDPI_PROTOCOLS
 #include "../../../nDPI-custom/custom_ndpi_main_init.c"
 #endif
@@ -6938,6 +6945,12 @@ void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
     if(flow->http.filename)
       ndpi_free(flow->http.filename);
 
+    if(flow->http.username)
+      ndpi_free(flow->http.username);
+
+    if(flow->http.password)
+      ndpi_free(flow->http.password);
+
     if(flow->kerberos_buf.pktbuf)
       ndpi_free(flow->kerberos_buf.pktbuf);
 
@@ -6993,6 +7006,8 @@ void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
 
     if(flow->tls_quic.obfuscated_heur_state)
       ndpi_free(flow->tls_quic.obfuscated_heur_state);
+    if(flow->tls_quic.obfuscated_heur_matching_set)
+      ndpi_free(flow->tls_quic.obfuscated_heur_matching_set);
   }
 }
 
@@ -9570,6 +9585,8 @@ void ndpi_parse_packet_line_info(struct ndpi_detection_module_struct *ndpi_str, 
     if((packet->payload[a] == 0x0d) && (packet->payload[a+1] == 0x0a)) {
       /* If end of line char sequence CR+NL "\r\n", process line */
 
+      flow->http.request_header_observed = 1;
+      
       if(((a + 3) < packet->payload_packet_len)
 	 && (packet->payload[a+2] == 0x0d)
 	 && (packet->payload[a+3] == 0x0a)) {
@@ -9639,8 +9656,7 @@ void ndpi_parse_packet_line_info_any(struct ndpi_detection_module_struct *ndpi_s
 
   for(a = 0; a < end; a++) {
     if(packet->payload[a] == 0x0a) {
-      packet->line[packet->parsed_lines].len = (u_int16_t)(
-							   ((size_t) &packet->payload[a]) - ((size_t) packet->line[packet->parsed_lines].ptr));
+      packet->line[packet->parsed_lines].len = (u_int16_t)(((size_t) &packet->payload[a]) - ((size_t) packet->line[packet->parsed_lines].ptr));
 
       if(a > 0 && packet->payload[a - 1] == 0x0d)
 	packet->line[packet->parsed_lines].len--;

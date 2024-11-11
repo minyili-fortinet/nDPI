@@ -52,7 +52,7 @@ extern int ndpi_search_tls_tcp(struct ndpi_detection_module_struct *ndpi_struct,
 
 int ndpi_search_tls_over_rdp(struct ndpi_detection_module_struct *ndpi_struct,
 			     struct ndpi_flow_struct *flow) {
-  const struct ndpi_packet_struct * const packet = &ndpi_struct->packet;
+  const struct ndpi_packet_struct * const packet = ndpi_get_packet_struct(ndpi_struct);
   
   if((packet->payload_packet_len > 1)
      && (packet->payload[0] == 0x16 /* This might be a TLS block */)) {

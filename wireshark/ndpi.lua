@@ -34,6 +34,7 @@ end
 
 local ndpi_proto = Proto("ndpi", "nDPI Protocol Interpreter")
 local tcp_fprint = Proto("ndpi.tcp_fingerprint", "TCP Fingerprint")
+local dhcp_fprint = Proto("ndpi.dhcp_fingerprint", "DHCP Fingerprint")
 
 ndpi_proto.fields = {}
 
@@ -44,6 +45,7 @@ ndpi_fds.network_protocol     = ProtoField.new("nDPI Network Protocol", "ndpi.pr
 ndpi_fds.application_protocol = ProtoField.new("nDPI Application Protocol", "ndpi.protocol.application", ftypes.UINT16, nil, base.DEC)
 ndpi_fds.name                 = ProtoField.new("nDPI Protocol Name", "ndpi.protocol.name", ftypes.STRING)
 ndpi_fds.flags                = ProtoField.new("nDPI Flags", "ndpi.flags", ftypes.UINT8, nil, base.HEX)
+
 local dir_types = {
    [0] = "Unknown Direction",
    [1] = "Client to Server Direction",
@@ -67,7 +69,8 @@ ndpi_fds.metadata             = ProtoField.new("nDPI Metadata", "ndpi.metadata",
 local mtd_types = {
    [0] = "Padding",
    [1] = "Server Name",
-   [2] = "JA4C"
+   [2] = "JA4C",
+   [3] = "TLS Heuristic Fingerprint",
 }
 ndpi_fds.metadata_type        = ProtoField.new("nDPI Metadata Type", "ndpi.metadata.type", ftypes.UINT16, mtd_types)
 ndpi_fds.metadata_length      = ProtoField.new("nDPI Metadata Length", "ndpi.metadata.length", ftypes.UINT16)
@@ -76,6 +79,16 @@ ndpi_fds.metadata_value       = ProtoField.new("nDPI Metadata Value", "ndpi.meta
 -- Specific fields
 ndpi_fds.metadata_server_name = ProtoField.new("nDPI Server Name", "ndpi.metadata.server_name", ftypes.STRING)
 ndpi_fds.metadata_ja4c        = ProtoField.new("nDPI JA4C", "ndpi.metadata.ja4c", ftypes.STRING)
+ndpi_fds.metadata             = ProtoField.new("nDPI Metadata", "ndpi.metadata", ftypes.NONE)
+ndpi_fds.metadata_tls_heuristic_fingerprint = ProtoField.new("nDPI TLS Heuristic Fingerprint", "ndpi.metadata.tls_heuristic_fingerprint", ftypes.NONE)
+ndpi_fds.metadata_tls_heuristic_fingerprint_bytes0 = ProtoField.new("Bytes[0]", "ndpi.metadata.tls_heuristic_fingerprint.bytes0", ftypes.UINT32)
+ndpi_fds.metadata_tls_heuristic_fingerprint_bytes1 = ProtoField.new("Bytes[1]", "ndpi.metadata.tls_heuristic_fingerprint.bytes1", ftypes.UINT32)
+ndpi_fds.metadata_tls_heuristic_fingerprint_bytes2 = ProtoField.new("Bytes[2]", "ndpi.metadata.tls_heuristic_fingerprint.bytes2", ftypes.UINT32)
+ndpi_fds.metadata_tls_heuristic_fingerprint_bytes3 = ProtoField.new("Bytes[3]", "ndpi.metadata.tls_heuristic_fingerprint.bytes3", ftypes.UINT32)
+ndpi_fds.metadata_tls_heuristic_fingerprint_pkts0 = ProtoField.new("Pkts[0]", "ndpi.metadata.tls_heuristic_fingerprint.pkts0", ftypes.UINT32)
+ndpi_fds.metadata_tls_heuristic_fingerprint_pkts1 = ProtoField.new("Pkts[1]", "ndpi.metadata.tls_heuristic_fingerprint.pkts1", ftypes.UINT32)
+ndpi_fds.metadata_tls_heuristic_fingerprint_pkts2 = ProtoField.new("Pkts[2]", "ndpi.metadata.tls_heuristic_fingerprint.pkts2", ftypes.UINT32)
+ndpi_fds.metadata_tls_heuristic_fingerprint_pkts3 = ProtoField.new("Pkts[3]", "ndpi.metadata.tls_heuristic_fingerprint.pkts3", ftypes.UINT32)
 
 
 local flow_risks = {}
@@ -160,6 +173,7 @@ ntop_fds.client_nw_rtt    = ProtoField.new("TCP client network RTT (msec)",  "nt
 ntop_fds.server_nw_rtt    = ProtoField.new("TCP server network RTT (msec)",  "ntop.latency.server_rtt", ftypes.FLOAT,  nil, base.NONE)
 ntop_fds.appl_latency_rtt = ProtoField.new("Application Latency RTT (msec)", "ntop.latency.appl_rtt",   ftypes.FLOAT,  nil, base.NONE)
 ntop_fds.tcp_fingerprint  = ProtoField.new("TCP Fingerprint",                "ntop.tcp_fingerprint",    ftypes.STRING, nil, base.NONE)
+ntop_fds.dhcp_fingerprint = ProtoField.new("DHCP Fingerprint",               "ntop.dhcp_fingerprint",   ftypes.STRING, nil, base.NONE)
 
 local f_eth_source        = Field.new("eth.src")
 local f_eth_trailer       = Field.new("eth.trailer")
@@ -1232,6 +1246,11 @@ function dhcp_dissector(tvb, pinfo, tree)
       end
 
       dhcp_fingerprints[srckey] = fingerprint
+
+      if(pinfo.visited == true) then
+	 local dhcp_f_entry = tree:add(ntop_proto, tvb())
+	 dhcp_f_entry:add(ntop_fds.dhcp_fingerprint, fingerprint)
+      end
    end
 end
 
@@ -1423,7 +1442,6 @@ function tcp_fingerprint(tvb, pinfo, tree, ip_version)
 	 else
 	    f_print = string.upper(num_tcp_flags.."_"..ip_ttl .."_".. tcp_win .."_".. fingerprint)
 	 end
-
 
 	 if(tcp_opt_debug) then tprint("Fingerprint: " .. f_print) end
 	 
@@ -1781,18 +1799,20 @@ function stun_dissector(tvb, pinfo, tree)
 	    stun_flows_table = stun_develop_table(stun_flows_table,key,key2,protocol)
 	 end
 
-	 local ndpi_subtree = tree:add(ndpi_proto, trailer_tvb, "nDPI Protocol")
-
 	 if(protocol ~= ndpi_proto_unknown) then
+	    local ndpi_subtree = tree:add(ndpi_proto, trailer_tvb, "nDPI Protocol")
 	    ndpi_subtree:add(ndpi_fds.name, protocol)
 	    stun_old_id_packet = id_packet
 	 elseif(protocol == ndpi_proto_unknown) then
 	    if stun_flows_table[key] ~= nil then
+	       local ndpi_subtree = tree:add(ndpi_proto, trailer_tvb, "nDPI Protocol")
 	       ndpi_subtree:add(ndpi_fds.name,stun_flows_table[key])
 	    elseif stun_flows_table[key2] ~= nil then
+	       local ndpi_subtree = tree:add(ndpi_proto, trailer_tvb, "nDPI Protocol")
 	       ndpi_subtree:add(ndpi_fds.name,stun_flows_table[key2])
 	    elseif stun_old_id_packet > id_packet then
 	       protocol = stun_processed_packets[key] ~= nil and stun_processed_packets[key] or stun_processed_packets[key2] ~= nil and stun_processed_packets[key2] or ndpi_proto_unknown
+	       local ndpi_subtree = tree:add(ndpi_proto, trailer_tvb, "nDPI Protocol")
 	       ndpi_subtree:add(ndpi_fds.name,protocol)
 	    end
 
@@ -1851,7 +1871,7 @@ function ndpi_proto.dissector(tvb, pinfo, tree)
 	    local ndpikey, srckey, dstkey, flowkey, flow_risk
 	    local flow_risk_tree, flow_risk_info_len, metadata_list_tree, metadata_tree, metadata_list_len
 	    local name
-	    local ndpi_subtree         = tree:add(ndpi_proto, trailer_tvb, "nDPI Protocol")
+	    local ndpi_subtree = tree:add(ndpi_proto, trailer_tvb, "nDPI Protocol")
 	    local application_protocol, mlen
 	    local offset = 0
 
@@ -1956,8 +1976,19 @@ function ndpi_proto.dissector(tvb, pinfo, tree)
 		  metadata_tree:append_text(" ServerName: " .. trailer_tvb(offset + 4, mtd_length):string())
 		  metadata_tree:add(ndpi_fds.metadata_server_name, trailer_tvb(offset + 4, mtd_length))
 	       elseif mtd_type == 2 then
-		  metadata_tree:append_text(" JA4C: " .. trailer_tvb(offset + 4, mtd_length):string())
-		  metadata_tree:add(ndpi_fds.metadata_ja4c, trailer_tvb(offset + 4, mtd_length))
+	          metadata_tree:append_text(" JA4C: " .. trailer_tvb(offset + 4, mtd_length):string())
+	          metadata_tree:add(ndpi_fds.metadata_ja4c, trailer_tvb(offset + 4, mtd_length))
+	       elseif mtd_type == 3 then
+	          metadata_tree:append_text(" TLS Heuristic Fingerprint")
+	          tls_tree = metadata_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint, trailer_tvb(offset + 4, mtd_length))
+	          tls_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint_bytes0, trailer_tvb(offset + 4, 4))
+	          tls_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint_bytes1, trailer_tvb(offset + 8, 4))
+	          tls_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint_bytes2, trailer_tvb(offset + 12, 4))
+	          tls_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint_bytes3, trailer_tvb(offset + 16, 4))
+	          tls_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint_pkts0, trailer_tvb(offset + 20, 4))
+	          tls_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint_pkts1, trailer_tvb(offset + 24, 4))
+	          tls_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint_pkts2, trailer_tvb(offset + 28, 4))
+	          tls_tree:add(ndpi_fds.metadata_tls_heuristic_fingerprint_pkts3, trailer_tvb(offset + 32, 4))
 	       else
 		  -- Generic field
 		  metadata_tree:add(ndpi_fds.metadata_value, trailer_tvb(offset + 4, mtd_length))

@@ -1081,7 +1081,7 @@ static struct ndpi_flow_info *get_ndpi_flow_info6(struct ndpi_workflow * workflo
 
 /* ****************************************************** */
 
-static u_int8_t is_ndpi_proto(struct ndpi_flow_info *flow, u_int16_t id) {
+u_int8_t is_ndpi_proto(struct ndpi_flow_info *flow, u_int16_t id) {
   if((flow->detected_protocol.proto.master_protocol == id)
      || (flow->detected_protocol.proto.app_protocol == id))
     return(1);
@@ -1592,6 +1592,10 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
     }
   }
 
+  if(flow->ndpi_flow->tls_quic.obfuscated_heur_state && flow->ndpi_flow->tls_quic.obfuscated_heur_matching_set)
+    memcpy(&flow->ssh_tls.obfuscated_heur_matching_set, flow->ndpi_flow->tls_quic.obfuscated_heur_matching_set,
+           sizeof(struct ndpi_tls_obfuscated_heuristic_matching_set));
+
   if(!monitoring_enabled) {
     add_to_address_port_list(&flow->stun.mapped_address, &flow->ndpi_flow->stun.mapped_address);
     add_to_address_port_list(&flow->stun.peer_address, &flow->ndpi_flow->stun.peer_address);
@@ -1618,12 +1622,15 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
     if(flow->ndpi_flow->http.url != NULL) {
       ndpi_snprintf(flow->http.url, sizeof(flow->http.url), "%s", flow->ndpi_flow->http.url);
     }
+    
     flow->http.response_status_code = flow->ndpi_flow->http.response_status_code;
     ndpi_snprintf(flow->http.content_type, sizeof(flow->http.content_type), "%s", flow->ndpi_flow->http.content_type ? flow->ndpi_flow->http.content_type : "");
     ndpi_snprintf(flow->http.server, sizeof(flow->http.server), "%s", flow->ndpi_flow->http.server ? flow->ndpi_flow->http.server : "");
     ndpi_snprintf(flow->http.request_content_type, sizeof(flow->http.request_content_type), "%s", flow->ndpi_flow->http.request_content_type ? flow->ndpi_flow->http.request_content_type : "");
     ndpi_snprintf(flow->http.nat_ip, sizeof(flow->http.nat_ip), "%s", flow->ndpi_flow->http.nat_ip ? flow->ndpi_flow->http.nat_ip : "");
     ndpi_snprintf(flow->http.filename, sizeof(flow->http.filename), "%s", flow->ndpi_flow->http.filename ? flow->ndpi_flow->http.filename : "");
+    ndpi_snprintf(flow->http.username, sizeof(flow->http.username), "%s", flow->ndpi_flow->http.username ? flow->ndpi_flow->http.username : "");
+    ndpi_snprintf(flow->http.password, sizeof(flow->http.password), "%s", flow->ndpi_flow->http.password ? flow->ndpi_flow->http.password : "");
   }
 
   ndpi_snprintf(flow->http.user_agent,

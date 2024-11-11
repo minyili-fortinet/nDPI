@@ -1347,6 +1347,11 @@ struct os_fingerprint {
   enum operating_system_hint os;
 };
 
+struct ndpi_tls_obfuscated_heuristic_matching_set {
+  u_int32_t bytes[4];
+  u_int32_t pkts[4];
+};
+
 struct ndpi_flow_struct {
   u_int16_t detected_protocol_stack[NDPI_PROTOCOL_SIZE];
 
@@ -1433,12 +1438,13 @@ struct ndpi_flow_struct {
   struct {
     ndpi_http_method method;
     u_int8_t request_version; /* 0=1.0 and 1=1.1. Create an enum for this? */
-    u_int8_t websocket:1, _pad:7;
+    u_int8_t websocket:1, request_header_observed:1, first_payload_after_header_observed:1, is_form:1, _pad:4;
     u_int16_t response_status_code; /* 200, 404, etc. */
     char *url, *content_type /* response */, *request_content_type /* e.g. for POST */, *user_agent, *server;
     char *detected_os; /* Via HTTP/QUIC User-Agent */
     char *nat_ip; /* Via HTTP X-Forwarded-For */
     char *filename; /* Via HTTP Content-Disposition */
+    char *username, *password;
   } http;
 
   ndpi_multimedia_flow_type flow_multimedia_type;
@@ -1462,6 +1468,7 @@ struct ndpi_flow_struct {
     message_t message[2]; /* Directions */
     u_int8_t certificate_processed:1, change_cipher_from_client:1, change_cipher_from_server:1, from_opportunistic_tls:1, pad:4;
     struct tls_obfuscated_heuristic_state *obfuscated_heur_state;
+    struct ndpi_tls_obfuscated_heuristic_matching_set *obfuscated_heur_matching_set;
   } tls_quic; /* Used also by DTLS and POPS/IMAPS/SMTPS/FTPS */
 
   union {
@@ -1701,8 +1708,8 @@ struct ndpi_flow_struct {
 _Static_assert(sizeof(((struct ndpi_flow_struct *)0)->protos) <= 264,
                "Size of the struct member protocols increased to more than 264 bytes, "
                "please check if this change is necessary.");
-_Static_assert(sizeof(struct ndpi_flow_struct) <= 1192,
-               "Size of the flow struct increased to more than 1192 bytes, "
+_Static_assert(sizeof(struct ndpi_flow_struct) <= 1216,
+               "Size of the flow struct increased to more than 1216 bytes, "
                "please check if this change is necessary.");
 #endif
 #endif
@@ -1740,7 +1747,8 @@ typedef enum {
   ndpi_serialization_format_tlv,
   ndpi_serialization_format_json,
   ndpi_serialization_format_csv,
-  ndpi_serialization_format_multiline_json
+  ndpi_serialization_format_multiline_json, /* new-line separated records */
+  ndpi_serialization_format_inner_json /* no outer braces */
 } ndpi_serialization_format;
 
 /* Note:
@@ -1781,6 +1789,7 @@ typedef enum {
 #define NDPI_SERIALIZER_STATUS_LIST      (1 << 5)
 #define NDPI_SERIALIZER_STATUS_SOL       (1 << 6)
 #define NDPI_SERIALIZER_STATUS_HDR_DONE  (1 << 7)
+#define NDPI_SERIALIZER_STATUS_CEOB      (1 << 8)
 
 typedef struct {
   u_int32_t size_used;
@@ -1806,6 +1815,7 @@ typedef struct {
   char csv_separator[2];
   u_int8_t has_snapshot;
   u_int8_t multiline_json_array;
+  u_int8_t inner_json;
   ndpi_private_serializer_status snapshot;
 } ndpi_private_serializer;
 

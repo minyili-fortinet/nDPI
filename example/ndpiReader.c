@@ -95,6 +95,10 @@ static char* ip_port_to_check = NULL;
 static u_int8_t ignore_vlanid = 0;
 FILE *fingerprint_fp         = NULL; /**< for flow fingerprint export */
 
+#ifdef CUSTOM_NDPI_PROTOCOLS
+#include "../../nDPI-custom/ndpiReader_defs.c"
+#endif
+
 /** User preferences **/
 char *addr_dump_path = NULL;
 u_int8_t enable_realtime_output = 0, enable_protocol_guess = NDPI_GIVEUP_GUESS_BY_PORT | NDPI_GIVEUP_GUESS_BY_IP, enable_payload_analyzer = 0, num_bin_clusters = 0, extcap_exit = 0;
@@ -229,6 +233,7 @@ struct receiver *receivers = NULL, *topReceivers = NULL;
 
 #define WIRESHARK_METADATA_SERVERNAME	0x01
 #define WIRESHARK_METADATA_JA4C		0x02
+#define WIRESHARK_METADATA_TLS_HEURISTICS_MATCHING_FINGERPRINT	0x03
 
 struct ndpi_packet_tlv {
   u_int16_t type;
@@ -288,7 +293,9 @@ static int dpdk_port_id = 0, dpdk_run_capture = 1;
 void test_lib(); /* Forward */
 
 extern void ndpi_report_payload_stats(FILE *out);
-extern int parse_proto_name_list(char *str, NDPI_PROTOCOL_BITMASK *bitmask, int inverted_logic);
+extern int parse_proto_name_list(char *str, NDPI_PROTOCOL_BITMASK *bitmask,
+				 int inverted_logic);
+extern u_int8_t is_ndpi_proto(struct ndpi_flow_info *flow, u_int16_t id);
 
 /* ********************************** */
 
@@ -815,6 +822,8 @@ static struct option longopts[] = {
   {0, 0, 0, 0}
 };
 
+static const char* longopts_short = "a:Ab:B:e:E:c:C:dDFf:g:G:i:Ij:k:K:S:hHp:pP:l:L:r:Rs:tu:v:V:n:rp:x:X:w:q0123:456:7:89:m:MN:T:U:";
+
 /* ********************************** */
 
 void extcap_interfaces() {
@@ -1102,9 +1111,7 @@ static void parseOptions(int argc, char **argv) {
   }
 #endif
 
-  while((opt = getopt_long(argc, argv,
-			   "a:Ab:B:e:E:c:C:dDFf:g:G:i:Ij:k:K:S:hHp:pP:l:L:r:Rs:tu:v:V:n:rp:x:X:w:q0123:456:7:89:m:MN:T:U:",
-                           longopts, &option_idx)) != EOF) {
+  while((opt = getopt_long(argc, argv, longopts_short, longopts, &option_idx)) != EOF) {
 #ifdef DEBUG_TRACE
     if(trace) fprintf(trace, " #### Handling option -%c [%s] #### \n", opt, optarg ? optarg : "");
 #endif
@@ -1886,6 +1893,9 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
     if(flow->telnet.username)  fprintf(out, "[Username: %s]", flow->telnet.username);
     if(flow->telnet.password)  fprintf(out, "[Password: %s]", flow->telnet.password);
 
+    if(flow->http.username[0])  fprintf(out, "[Username: %s]", flow->http.username);
+    if(flow->http.password[0])  fprintf(out, "[Password: %s]", flow->http.password);
+
     if(flow->host_server_name[0] != '\0') fprintf(out, "[Hostname/SNI: %s]", flow->host_server_name);
 
     switch (flow->info_type)
@@ -2293,6 +2303,10 @@ static void printFlowSerialized(struct ndpi_flow_info *flow)
     }
 
   fprintf(serialization_fp, "%.*s\n", (int)json_str_len, json_str);
+
+#ifdef CUSTOM_NDPI_PROTOCOLS
+#include "../../nDPI-custom/ndpiReader_flow_serialize.c"
+#endif
 }
 
 /* ********************************** */
@@ -3905,10 +3919,8 @@ static void printFlowsStats() {
 	}
       }
 
-      for(i=0; i<num_flows; i++)
-	{
-	  printFlowSerialized(all_flows[i].flow);
-	}
+      for(i=0; i<num_flows; i++)	
+	printFlowSerialized(all_flows[i].flow);	
     }
 
   ndpi_free(all_flows);
@@ -4472,9 +4484,10 @@ static int getNextPcapFileFromPlaylist(u_int16_t thread_id, char filename[], u_i
  * @brief Configure the pcap handle
  */
 static void configurePcapHandle(pcap_t * pcap_handle) {
-
+  if(!pcap_handle)
+    return;
+  
   if(bpfFilter != NULL) {
-
     if(!bpf_cfilter) {
       if(pcap_compile(pcap_handle, &bpf_code, bpfFilter, 1, 0xFFFFFF00) < 0) {
 	printf("pcap_compile error: '%s'\n", pcap_geterr(pcap_handle));
@@ -4482,6 +4495,7 @@ static void configurePcapHandle(pcap_t * pcap_handle) {
       }
       bpf_cfilter = &bpf_code;
     }
+    
     if(pcap_setfilter(pcap_handle, bpf_cfilter) < 0) {
       printf("pcap_setfilter error: '%s'\n", pcap_geterr(pcap_handle));
     } else {
@@ -4689,6 +4703,22 @@ static void ndpi_process_packet(u_char *args,
         tlv->type = ntohs(WIRESHARK_METADATA_JA4C);
         tlv->length = ntohs(sizeof(flow->ssh_tls.ja4_client));
         memcpy(tlv->data, flow->ssh_tls.ja4_client, sizeof(flow->ssh_tls.ja4_client));
+        /* TODO: boundary check */
+        tot_len += 4 + htons(tlv->length);
+        tlv = (struct ndpi_packet_tlv *)&trailer->metadata[tot_len];
+      }
+      if(flow->ssh_tls.obfuscated_heur_matching_set.pkts[0] != 0) {
+        tlv->type = ntohs(WIRESHARK_METADATA_TLS_HEURISTICS_MATCHING_FINGERPRINT);
+        tlv->length = ntohs(sizeof(struct ndpi_tls_obfuscated_heuristic_matching_set));
+        struct ndpi_tls_obfuscated_heuristic_matching_set *s =  (struct ndpi_tls_obfuscated_heuristic_matching_set *)tlv->data;
+        s->bytes[0] = ntohl(flow->ssh_tls.obfuscated_heur_matching_set.bytes[0]);
+        s->bytes[1] = ntohl(flow->ssh_tls.obfuscated_heur_matching_set.bytes[1]);
+        s->bytes[2] = ntohl(flow->ssh_tls.obfuscated_heur_matching_set.bytes[2]);
+        s->bytes[3] = ntohl(flow->ssh_tls.obfuscated_heur_matching_set.bytes[3]);
+        s->pkts[0] = ntohl(flow->ssh_tls.obfuscated_heur_matching_set.pkts[0]);
+        s->pkts[1] = ntohl(flow->ssh_tls.obfuscated_heur_matching_set.pkts[1]);
+        s->pkts[2] = ntohl(flow->ssh_tls.obfuscated_heur_matching_set.pkts[2]);
+        s->pkts[3] = ntohl(flow->ssh_tls.obfuscated_heur_matching_set.pkts[3]);
         /* TODO: boundary check */
         tot_len += 4 + htons(tlv->length);
         tlv = (struct ndpi_packet_tlv *)&trailer->metadata[tot_len];
@@ -6609,12 +6639,14 @@ int main(int argc, char **argv) {
 
   if(getenv("AHO_DEBUG"))
     ac_automata_enable_debug(1);
+
   parseOptions(argc, argv);
 
   if(domain_to_check) {
     ndpiCheckHostStringMatch(domain_to_check);
     exit(0);
   }
+  
   if(ip_port_to_check) {
     ndpiCheckIPMatch(ip_port_to_check);
     exit(0);
@@ -6628,6 +6660,10 @@ int main(int argc, char **argv) {
       num_bin_clusters = 1;
   }
 
+#ifdef CUSTOM_NDPI_PROTOCOLS
+#include "../../nDPI-custom/ndpiReader_init.c"
+#endif
+  
   if(!quiet_mode) {
     printf("\n-----------------------------------------------------------\n"
 	   "* NOTE: This is demo app to show *some* nDPI features.\n"
@@ -6663,6 +6699,10 @@ int main(int argc, char **argv) {
     ndpi_free(cfgs[i].param);
     ndpi_free(cfgs[i].value);
   }
+
+#ifdef CUSTOM_NDPI_PROTOCOLS
+#include "../../nDPI-custom/ndpiReader_term.c"
+#endif
 
 #ifdef DEBUG_TRACE
   if(trace) fclose(trace);
