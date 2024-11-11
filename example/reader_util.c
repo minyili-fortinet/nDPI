@@ -83,7 +83,7 @@ extern u_int8_t verbose, human_readeable_string_len;
 extern u_int8_t max_num_udp_dissected_pkts /* 24 */, max_num_tcp_dissected_pkts /* 80 */;
 static u_int32_t flow_id = 0;
 extern FILE *fingerprint_fp;
-
+extern char *addr_dump_path;
 u_int8_t enable_doh_dot_detection = 0;
 extern bool do_load_lists;
 extern int malloc_size_stats;
@@ -413,6 +413,7 @@ int parse_proto_name_list(char *str, NDPI_PROTOCOL_BITMASK *bitmask, int inverte
     else
       NDPI_BITMASK_DEL(*bitmask,proto);
   }
+
   ndpi_exit_detection_module(module);
   return 0;
 }
@@ -465,6 +466,7 @@ struct ndpi_workflow* ndpi_workflow_init(const struct ndpi_workflow_prefs * pref
 
   if(do_init_flows_root) {
     workflow->ndpi_flows_root = ndpi_calloc(workflow->prefs.num_roots, sizeof(void *));
+
     if(!workflow->ndpi_flows_root) {
       ndpi_exit_detection_module(module);
       ndpi_free(workflow);
@@ -556,6 +558,11 @@ static void ndpi_free_flow_tls_data(struct ndpi_flow_info *flow) {
     ndpi_free(flow->ssh_tls.encrypted_sni.esni);
     flow->ssh_tls.encrypted_sni.esni = NULL;
   }
+
+  if(flow->ssh_tls.ja4_client_raw) {
+    ndpi_free(flow->ssh_tls.ja4_client_raw);
+    flow->ssh_tls.ja4_client_raw = NULL;
+  }
 }
 
 /* ***************************************************** */
@@ -601,6 +608,9 @@ void ndpi_workflow_free(struct ndpi_workflow * workflow) {
   for(i=0; i<workflow->prefs.num_roots; i++)
     ndpi_tdestroy(workflow->ndpi_flows_root[i], ndpi_flow_info_freer);
 
+  if(addr_dump_path != NULL)
+    ndpi_cache_address_dump(workflow->ndpi_struct, addr_dump_path, 0);
+  
   ndpi_exit_detection_module(workflow->ndpi_struct);
   ndpi_free(workflow->ndpi_flows_root);
   ndpi_free(workflow);
@@ -1357,7 +1367,11 @@ void process_ndpi_collected_info(struct ndpi_workflow * workflow, struct ndpi_fl
 	     flow->ndpi_flow->protos.tls_quic.ja3_client);
     ndpi_snprintf(flow->ssh_tls.ja4_client, sizeof(flow->ssh_tls.ja4_client), "%s",
 	     flow->ndpi_flow->protos.tls_quic.ja4_client);
-    ndpi_snprintf(flow->ssh_tls.ja3_server, sizeof(flow->ssh_tls.ja3_server), "%s",
+
+    if(flow->ndpi_flow->protos.tls_quic.ja4_client_raw)
+      flow->ssh_tls.ja4_client_raw = strdup(flow->ndpi_flow->protos.tls_quic.ja4_client_raw);
+    
+   ndpi_snprintf(flow->ssh_tls.ja3_server, sizeof(flow->ssh_tls.ja3_server), "%s",
 	     flow->ndpi_flow->protos.tls_quic.ja3_server);
     flow->ssh_tls.server_unsafe_cipher = flow->ndpi_flow->protos.tls_quic.server_unsafe_cipher;
     flow->ssh_tls.server_cipher = flow->ndpi_flow->protos.tls_quic.server_cipher;
@@ -2163,6 +2177,11 @@ struct ndpi_proto ndpi_workflow_process_packet(struct ndpi_workflow * workflow,
   *flow_risk = 0 /* NDPI_NO_RISK */;
   *flow = NULL;
 
+  if((addr_dump_path != NULL) && (workflow->stats.raw_packet_count == 0)) {
+    /* At the first packet flush expired cached addresses */
+    ndpi_cache_address_flush_expired(workflow->ndpi_struct, header->ts.tv_sec);
+  }
+  
   /* Increment raw packet counter */
   workflow->stats.raw_packet_count++;
 
