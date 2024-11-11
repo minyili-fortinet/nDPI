@@ -1691,6 +1691,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "Dropbox", NDPI_PROTOCOL_CATEGORY_CLOUD,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 17500, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_SONOS,
+			  "Sonos", NDPI_PROTOCOL_CATEGORY_MUSIC,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 0 /* encrypted */, 1 /* app proto */, NDPI_PROTOCOL_FUN, NDPI_PROTOCOL_SPOTIFY,
 			  "Spotify", NDPI_PROTOCOL_CATEGORY_MUSIC,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
@@ -3970,6 +3974,17 @@ void ndpi_load_ip_lists(struct ndpi_detection_module_struct *ndpi_str) {
   }
 }
 
+/* *********************************************** */
+
+int is_monitoring_enabled(struct ndpi_detection_module_struct *ndpi_str, int protoId)
+{
+  if(NDPI_COMPARE_PROTOCOL_TO_BITMASK(ndpi_str->cfg.monitoring, protoId) == 0)
+    return 0;
+  return 1;
+}
+
+/* *********************************************** */
+
 int ndpi_finalize_initialization(struct ndpi_detection_module_struct *ndpi_str) {
   u_int i;
 
@@ -6009,6 +6024,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* DROPBOX */
   init_dropbox_dissector(ndpi_str, &a);
 
+  /* SONOS */
+  init_sonos_dissector(ndpi_str, &a);
+
   /* SPOTIFY */
   init_spotify_dissector(ndpi_str, &a);
 
@@ -6916,6 +6934,9 @@ void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
     if(flow->kerberos_buf.pktbuf)
       ndpi_free(flow->kerberos_buf.pktbuf);
 
+    if(flow->monit)
+      ndpi_free(flow->monit);
+
    if(flow_is_proto(flow, NDPI_PROTOCOL_QUIC) ||
        flow_is_proto(flow, NDPI_PROTOCOL_TLS) ||
        flow_is_proto(flow, NDPI_PROTOCOL_DTLS) ||
@@ -7730,7 +7751,7 @@ static void ndpi_reconcile_msteams_udp(struct ndpi_detection_module_struct *ndpi
 				       struct ndpi_flow_struct *flow,
 				       u_int16_t master) {
   /* This function can NOT access &ndpi_str->packet since it is called also from ndpi_detection_giveup(), via ndpi_reconcile_protocols() */
-
+  
   if(flow->l4_proto == IPPROTO_UDP) {
     u_int16_t sport = ntohs(flow->c_port);
     u_int16_t dport = ntohs(flow->s_port);
@@ -7848,6 +7869,7 @@ static void ndpi_reconcile_protocols(struct ndpi_detection_module_struct *ndpi_s
 
   case NDPI_PROTOCOL_SYSLOG:
   case NDPI_PROTOCOL_MDNS:
+  case NDPI_PROTOCOL_SONOS:
     if(flow->l4_proto == IPPROTO_UDP)
       ndpi_unset_risk(flow, NDPI_UNIDIRECTIONAL_TRAFFIC);
     break;
@@ -7877,7 +7899,7 @@ static void ndpi_reconcile_protocols(struct ndpi_detection_module_struct *ndpi_s
 				 NDPI_CONFIDENCE_DPI_PARTIAL);
       }
     break;
-
+    
   case NDPI_PROTOCOL_SKYPE_TEAMS:
   case NDPI_PROTOCOL_SKYPE_TEAMS_CALL:
     if(flow->l4_proto == IPPROTO_UDP && ndpi_str->msteams_cache) {
@@ -8201,11 +8223,10 @@ void ndpi_process_extra_packet(struct ndpi_detection_module_struct *ndpi_str,
 
   /* call the extra packet function (which may add more data/info to flow) */
   if(flow->extra_packets_func) {
-    if((flow->extra_packets_func(ndpi_str, flow)) == 0)
-      flow->extra_packets_func = NULL; /* Enough packets detected */
-
-    if(++flow->num_extra_packets_checked == flow->max_extra_packets_to_check)
-      flow->extra_packets_func = NULL; /* Enough packets detected */
+    if((flow->extra_packets_func(ndpi_str, flow) == 0) ||
+       (!flow->monitoring && ++flow->num_extra_packets_checked == flow->max_extra_packets_to_check)) {
+      flow->extra_packets_func = NULL; /* Done */
+    }
   }
 }
 
@@ -8831,12 +8852,17 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
   ret.category = flow->category;
 #endif
 
+  if(flow->monit)
+    memset(flow->monit, '\0', sizeof(*flow->monit));
+
   if(flow->fail_with_unknown) {
     // printf("%s(): FAIL_WITH_UNKNOWN\n", __FUNCTION__);
     return(ret);
   }
 
-  if(ndpi_str->cfg.max_packets_to_process > 0 && flow->num_processed_pkts >= ndpi_str->cfg.max_packets_to_process) {
+  if(ndpi_str->cfg.max_packets_to_process > 0 &&
+     flow->num_processed_pkts >= ndpi_str->cfg.max_packets_to_process &&
+     !flow->monitoring) {
     flow->extra_packets_func = NULL; /* To allow ndpi_extra_dissection_possible() to fail */
     flow->fail_with_unknown = 1;
     /* Let's try to update ndpi_str->input_info->in_pkt_dir even in this case.
@@ -9555,6 +9581,13 @@ void ndpi_set_detected_protocol(struct ndpi_detection_module_struct *ndpi_str, s
 				u_int16_t upper_detected_protocol, u_int16_t lower_detected_protocol,
 				ndpi_confidence_t confidence) {
   ndpi_protocol ret;
+
+  if(flow->monitoring) {
+    NDPI_LOG_ERR(ndpi_str, "Impossible to update classification while in monitoring state! %d/%d->%d/%d\n",
+                 flow->detected_protocol_stack[1], flow->detected_protocol_stack[0],
+                 upper_detected_protocol, lower_detected_protocol);
+    return;
+  }
 
   ndpi_int_change_protocol(flow, upper_detected_protocol, lower_detected_protocol, confidence);
   ret.proto.master_protocol = flow->detected_protocol_stack[1], ret.proto.app_protocol = flow->detected_protocol_stack[0];
@@ -11717,14 +11750,9 @@ static const struct cfg_param {
 
   { "rtp",           "search_for_stun",                         "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(rtp_search_for_stun), NULL, 1 },
 
-  { "openvpn",       "dpi.heuristics",                          "0x00", "0", "0x01", CFG_PARAM_INT, __OFF(openvpn_heuristics), NULL, 1 },
-  { "openvpn",       "dpi.heuristics.num_messages",             "10", "0", "255", CFG_PARAM_INT, __OFF(openvpn_heuristics_num_msgs), NULL,1 },
-  { "openvpn",       "subclassification_by_ip",                 "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(openvpn_subclassification_by_ip), NULL, 1 },
-
-  { "wireguard",     "subclassification_by_ip",                 "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(wireguard_subclassification_by_ip), NULL, 1 },
-
   { "$PROTO_NAME_OR_ID", "log",                                 "disable", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(debug_bitmask), NULL, 1 },
   { "$PROTO_NAME_OR_ID", "ip_list.load",                        "1", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(ip_list_bitmask), NULL, 0 },
+  { "$PROTO_NAME_OR_ID", "monitoring",                          "disable", NULL, NULL, CFG_PARAM_PROTOCOL_ENABLE_DISABLE, __OFF(monitoring), NULL, 1 },
 
   /* Global parameters */
 

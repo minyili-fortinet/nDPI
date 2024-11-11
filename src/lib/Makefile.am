@@ -224,6 +224,7 @@ libndpi_a_SOURCES = ndpi_content_match.c.inc \
 		     protocols/soap.c \
 		     protocols/socks45.c \
 		     protocols/softether.c \
+		     protocols/sonos.c \
 		     protocols/source_engine.c \
 		     protocols/spotify.c \
 		     protocols/ssdp.c \

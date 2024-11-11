@@ -311,6 +311,7 @@ struct ndpi_detection_module_config_struct {
 
   NDPI_PROTOCOL_BITMASK debug_bitmask;
   NDPI_PROTOCOL_BITMASK ip_list_bitmask;
+  NDPI_PROTOCOL_BITMASK monitoring;
 
   int flow_risk_lists_enabled;
   int risk_anonymous_subscriber_list_icloudprivaterelay_enabled;
@@ -695,6 +696,8 @@ bool ndpi_cache_address(struct ndpi_detection_module_struct *ndpi_struct,
 			ndpi_ip_addr_t ip_addr, char *hostname,
 			u_int32_t epoch_now, u_int32_t ttl);
 
+int is_monitoring_enabled(struct ndpi_detection_module_struct *ndpi_str, int protoId);
+
   /* TLS */
 int processClientServerHello(struct ndpi_detection_module_struct *ndpi_struct,
                              struct ndpi_flow_struct *flow, uint32_t quic_version);
@@ -847,6 +850,7 @@ void init_smb_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int3
 void init_snmp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_socrates_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_socks_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_sonos_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_spotify_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_ssh_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_tls_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
