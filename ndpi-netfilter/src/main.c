@@ -94,6 +94,7 @@ static char ipdef_name[]="ip_proto";
 static char ip6def_name[]="ip6_proto";
 static char hostdef_name[]="host_proto";
 static char flow_name[]="flows";
+static char magic_ct_name[]="magic_ct";
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
 static char info6_name[]="info6";
 #endif
@@ -201,6 +202,7 @@ MODULE_ALIAS("ipt_NDPI");
 #include "ndpi_proc_flow.h"
 #include "ndpi_proc_hostdef.h"
 #include "ndpi_proc_ipdef.h"
+#include "ndpi_proc_magic_ct.h"
 
 #include "../libre/regexp.h"
 
@@ -2942,6 +2944,7 @@ PROC_OPS(nrisk_proc_fops, nrisk_proc_open,nrisk_proc_read,nrisk_proc_write,noop_
 PROC_OPS(ncfg_proc_fops,  ncfg_proc_open, ncfg_proc_read, ncfg_proc_write, noop_llseek,ncfg_proc_close);
 PROC_OPS(ninfo_proc_fops, ninfo_proc_open,ninfo_proc_read,ninfo_proc_write,noop_llseek,ninfo_proc_close);
 PROC_OPS(nflow_proc_fops, nflow_proc_open,nflow_proc_read,nflow_proc_write,nflow_proc_llseek,nflow_proc_close);
+PROC_OPS(nmagic_ct_proc_fops, nmagic_ct_proc_open,nmagic_ct_proc_read,nmagic_ct_proc_write,noop_llseek,nmagic_ct_proc_close);
 
 #ifdef NDPI_DETECTION_SUPPORT_IPV6
 PROC_OPS(ninfo6_proc_fops, ninfo_proc_open,ninfo6_proc_read,ninfo_proc_write,noop_llseek,ninfo_proc_close);
@@ -3062,6 +3065,8 @@ static void __net_exit ndpi_net_exit(struct net *net)
 			remove_proc_entry(proto_name, n->pde);
 		if(n->pe_flow)
 			remove_proc_entry(flow_name, n->pde);
+		if(n->pe_magic_ct)
+			remove_proc_entry(magic_ct_name, n->pde);
 #ifdef BT_ANNOUNCE
 		if(n->pe_ann)
 			remove_proc_entry(ann_name, n->pde);
@@ -3201,6 +3206,7 @@ static int __net_init ndpi_net_init(struct net *net)
 
 		n->pe_info = NULL;
 		n->pe_flow = NULL;
+		n->pe_magic_ct = NULL;
 		n->pe_proto = NULL;
 #ifdef BT_ANNOUNCE
 		n->pe_ann = NULL;
@@ -3285,6 +3291,13 @@ static int __net_init ndpi_net_init(struct net *net)
 			pr_err("xt_ndpi: cant create net/%s/%s\n",dir_name,hostdef_name);
 			break;
 		}
+
+		n->pe_magic_ct = proc_create_data(magic_ct_name, S_IRUGO | S_IWUSR,
+					 n->pde, &nmagic_ct_proc_fops, n);
+		if(!n->pe_magic_ct) {
+			pr_err("xt_ndpi: cant create net/%s/%s\n",dir_name,magic_ct_name);
+			break;
+		}
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 		init_timer(&n->gc);
 		n->gc.data = (unsigned long)n;
@@ -3348,7 +3361,8 @@ static int __net_init ndpi_net_init(struct net *net)
 		remove_proc_entry(info_name,n->pde);
 	if(n->pe_flow)
 		remove_proc_entry(flow_name,n->pde);
-
+	if(n->pe_magic_ct)
+		remove_proc_entry(magic_ct_name,n->pde);
 	PROC_REMOVE(n->pde,net);
 	if(n->risk_names)
 		kfree(n->risk_names);

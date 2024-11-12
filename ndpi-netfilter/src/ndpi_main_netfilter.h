@@ -61,6 +61,7 @@ struct ndpi_net {
 #ifdef BT_ANNOUNCE
 				*pe_ann,
 #endif
+				*pe_magic_ct,
 				*pe_flow,
 				*pe_info,
 				*pe_proto,
