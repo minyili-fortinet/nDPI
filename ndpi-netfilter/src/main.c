@@ -2390,7 +2390,6 @@ static unsigned int ndpi_nat_do_chain(void *priv,
 	if(ctinfo == IP_CT_UNTRACKED) break;
 #endif
 	n = ndpi_pernet(nf_ct_net(ct));
-	pr_info("ndpi_pernet result: %p", n);
 	if (n == NULL) break;
 	ct_dir = CTINFO2DIR(ctinfo) != IP_CT_DIR_ORIGINAL;
 	ct_ndpi = nf_ct_ext_find_ndpi(ct, n->magic_ct);
