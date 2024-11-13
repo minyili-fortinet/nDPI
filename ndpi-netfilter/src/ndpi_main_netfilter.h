@@ -61,6 +61,7 @@ struct ndpi_net {
 #ifdef BT_ANNOUNCE
 				*pe_ann,
 #endif
+				*pe_magic_ct,
 				*pe_flow,
 				*pe_info,
 				*pe_proto,
@@ -129,6 +130,7 @@ struct ndpi_net {
 	} mark[NDPI_NUM_BITS+1];
 	atomic64_t	protocols_cnt[NDPI_NUM_BITS+1];
 	NDPI_PROTOCOL_BITMASK protocols_bitmask;
+	unsigned short magic_ct;
 	char			ns_name[16];
 	u_int8_t debug_level[NDPI_NUM_BITS+1]; /* if defined NDPI_ENABLE_DEBUG_MESSAGES */
 };
