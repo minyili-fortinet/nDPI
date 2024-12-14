@@ -287,7 +287,7 @@ typedef struct ndpi_protocol_bitmask_struct {
 struct ndpi_detection_module_struct;
 
 /* NDPI_DEBUG_FUNCTION_PTR (cast) */
-typedef void (*ndpi_debug_function_ptr) (u_int32_t protocol, struct ndpi_detection_module_struct *module_struct,
+typedef void (*ndpi_debug_function_ptr) (u_int16_t protocol, struct ndpi_detection_module_struct *module_struct,
 					 ndpi_log_level_t log_level, const char *file,
 					 const char *func, unsigned line,
 					 const char *format, ...);
@@ -1359,7 +1359,7 @@ struct ndpi_flow_struct {
   u_int16_t guessed_protocol_id, guessed_protocol_id_by_ip, guessed_category, guessed_header_category;
   u_int8_t l4_proto, protocol_id_already_guessed:1, fail_with_unknown:1, ip_port_finished:1,
     init_finished:1, client_packet_direction:1, packet_direction:1, is_ipv6:1, first_pkt_fully_encrypted:1, skip_entropy_check: 1;
-  u_int8_t monitoring: 1, _pad:7;
+  u_int8_t monitoring:1, _pad:7;
 
   u_int16_t num_dissector_calls;
   ndpi_confidence_t confidence; /* ndpi_confidence_t */
@@ -1614,7 +1614,20 @@ struct ndpi_flow_struct {
       u_int8_t url_count;
       char url[4][48];
     } slp;
-  } protos;
+
+    struct {
+      char *from;
+      char from_imsi[16]; /* IMSI is 15 digit long, at most; + 1 for NULL terminator */
+      char *to;
+      char to_imsi[16];
+    } sip;
+
+    struct {
+      char mac_addr[6], identity[16], version[48], sw_id[16], board[32], iface_name[32];
+      u_int32_t ipv4_addr, uptime;
+      struct ndpi_in6_addr ipv6_addr;
+    } mikrotik;
+} protos;
 
   /* **Packet** metadata for flows where monitoring is enabled. It is reset after each packet! */
   struct ndpi_metadata_monitoring *monit;

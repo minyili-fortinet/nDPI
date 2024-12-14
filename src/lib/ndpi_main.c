@@ -1719,6 +1719,10 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
 			  "MPEG_TS", NDPI_PROTOCOL_CATEGORY_MEDIA,
 			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_MIKROTIK,
+			  "Mikrotik", NDPI_PROTOCOL_CATEGORY_NETWORK,
+			  ndpi_build_default_ports(ports_a, 0, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   /* http://en.wikipedia.org/wiki/Link-local_Multicast_Name_Resolution */
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_LLMNR,
 			  "LLMNR", NDPI_PROTOCOL_CATEGORY_NETWORK,
@@ -2311,10 +2315,14 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_IEC62056,
 			  "IEC62056", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 4059, 0, 0, 0, 0) /* TCP */,
-			  ndpi_build_default_ports(ports_b, 4059, 0, 0, 0, 0) /* UDP */);
+			  ndpi_build_default_ports(ports_b, 4059, 0, 0, 0, 0) /* UDP */);  
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_HL7,
-			  "HL7", NDPI_PROTOCOL_CATEGORY_RPC,
+			  "HL7", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 2575, 0, 0, 0, 0) /* TCP */,
+			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
+  ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_DICOM,
+			  "DICOM", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
+			  ndpi_build_default_ports(ports_a, 104, 0, 0, 0, 0) /* TCP */,
 			  ndpi_build_default_ports(ports_b, 0, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_CEPH,
 			  "Ceph", NDPI_PROTOCOL_CATEGORY_DATA_TRANSFER,
@@ -3256,7 +3264,7 @@ void set_ndpi_flow_free(void (*__ndpi_flow_free)(void *ptr)) {
 
 #ifndef __KERNEL__
 #ifdef NDPI_ENABLE_DEBUG_MESSAGES
-void ndpi_debug_printf(unsigned int proto, struct ndpi_detection_module_struct *ndpi_str, ndpi_log_level_t log_level,
+void ndpi_debug_printf(u_int16_t proto, struct ndpi_detection_module_struct *ndpi_str, ndpi_log_level_t log_level,
                        const char *file_name, const char *func_name, unsigned int line_number, const char *format, ...) {
   va_list args;
 #define MAX_STR_LEN 250
@@ -6131,6 +6139,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
   /* KAKAOTALK_VOICE */
   init_kakaotalk_voice_dissector(ndpi_str, &a);
 
+  /* MIKROTIK */
+  init_mikrotik_dissector(ndpi_str, &a);
+
   /* MPEGTS */
   init_mpegts_dissector(ndpi_str, &a);
 
@@ -6453,6 +6464,9 @@ static int ndpi_callback_init(struct ndpi_detection_module_struct *ndpi_str) {
 
   /* HL7 */
   init_hl7_dissector(ndpi_str, &a);
+
+  /* DICOM */
+  init_dicom_dissector(ndpi_str, &a);
 
   /* Ceph */
   init_ceph_dissector(ndpi_str, &a);
@@ -6988,6 +7002,13 @@ void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
       if(flow->protos.tls_quic.ja4_client_raw)
 	ndpi_free(flow->protos.tls_quic.ja4_client_raw);
    }
+
+    if(flow_is_proto(flow, NDPI_PROTOCOL_SIP)) {
+      if(flow->protos.sip.from)
+        ndpi_free(flow->protos.sip.from);
+      if(flow->protos.sip.to)
+        ndpi_free(flow->protos.sip.to);
+    }
 
     if(flow->tls_quic.message[0].buffer)
       ndpi_free(flow->tls_quic.message[0].buffer);
@@ -11862,8 +11883,10 @@ static const struct cfg_param {
   { "stun",          "metadata.attribute.relayed_address",      "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_relayed_address_enabled), NULL, 1 },
   { "stun",          "metadata.attribute.peer_address",         "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_peer_address_enabled), NULL, 1 },
 
-  { "dns",           "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), NULL, 1 },
-  { "dns",           "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), NULL, 1 },
+  { "sip",           "metadata.attribute.from",                 "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_from_enabled), NULL, 1 },
+  { "sip",           "metadata.attribute.from_imsi",            "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_from_imsi_enabled), NULL, 1 },
+  { "sip",           "metadata.attribute.to",                   "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_to_enabled), NULL, 1 },
+  { "sip",           "metadata.attribute.to_imsi",              "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_to_imsi_enabled), NULL, 1 },
 
   { "http",          "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), NULL, 1 },
   { "http",          "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_subclassification_enabled), NULL, 1 },

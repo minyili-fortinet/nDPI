@@ -284,6 +284,11 @@ struct ndpi_detection_module_config_struct {
 
   int ftp_opportunistic_tls_enabled;
 
+  int sip_attribute_from_enabled;
+  int sip_attribute_from_imsi_enabled;
+  int sip_attribute_to_enabled;
+  int sip_attribute_to_imsi_enabled;
+
   int stun_opportunistic_tls_enabled;
   int stun_max_packets_extra_dissection;
   int stun_mapped_address_enabled;
@@ -672,7 +677,8 @@ u_int ndpi_search_tcp_or_udp_raw(struct ndpi_detection_module_struct *ndpi_struc
 				 u_int32_t saddr, u_int32_t daddr);
 
 char* ndpi_intoav4(unsigned int addr, char* buf, u_int16_t bufLen);
-
+char* ndpi_intoav6(struct ndpi_in6_addr *addr, char* buf, u_int16_t bufLen);
+  
 int is_flow_addr_informative(const struct ndpi_flow_struct *flow);
 
 u_int16_t icmp4_checksum(u_int8_t const * const buf, size_t len);
@@ -815,6 +821,7 @@ void init_maplestory_dissector(struct ndpi_detection_module_struct *ndpi_struct,
 void init_megaco_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_mgcp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_mining_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+void init_mikrotik_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_mms_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_monero_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_nats_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
@@ -1025,7 +1032,8 @@ void init_trdp_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int
 void init_lustre_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_dingtalk_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
 void init_paltalk_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
-
+void init_dicom_dissector(struct ndpi_detection_module_struct *ndpi_struct, u_int32_t *id);
+  
 #endif
 
 #ifdef __cplusplus

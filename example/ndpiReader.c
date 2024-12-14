@@ -1962,6 +1962,25 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
 	  }
         break;
 
+      case INFO_SIP:
+        if (flow->sip.from[0] != '\0')
+          {
+            fprintf(out, "[SIP From: %s]", flow->sip.from);
+          }
+        if (flow->sip.from_imsi[0] != '\0')
+          {
+            fprintf(out, "[SIP From IMSI: %s]", flow->sip.from_imsi);
+          }
+        if (flow->sip.to[0] != '\0')
+          {
+            fprintf(out, "[SIP To: %s]", flow->sip.to);
+          }
+        if (flow->sip.to_imsi[0] != '\0')
+          {
+            fprintf(out, "[SIP To IMSI: %s]", flow->sip.to_imsi);
+          }
+        break;
+
       case INFO_NATPMP:
         if (flow->natpmp.internal_port != 0 && flow->natpmp.ip[0] != '\0')
 	  {
@@ -2811,7 +2830,6 @@ static void node_idle_scan_walker(const void *node, ndpi_VISIT which, int depth,
         undetected_flows_deleted = 1;
 
       ndpi_flow_info_free_data(flow);
-      ndpi_thread_info[thread_id].workflow->stats.ndpi_flow_count--;
 
       /* adding to a queue (we can't delete it from the tree inline ) */
       ndpi_thread_info[thread_id].idle_flows[ndpi_thread_info[thread_id].num_idle_flows++] = flow;
