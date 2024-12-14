@@ -2315,7 +2315,7 @@ static void ndpi_init_protocol_defaults(struct ndpi_detection_module_struct *ndp
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_IEC62056,
 			  "IEC62056", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 4059, 0, 0, 0, 0) /* TCP */,
-			  ndpi_build_default_ports(ports_b, 4059, 0, 0, 0, 0) /* UDP */);  
+			  ndpi_build_default_ports(ports_b, 4059, 0, 0, 0, 0) /* UDP */);
   ndpi_set_proto_defaults(ndpi_str, 1 /* cleartext */, 0 /* nw proto */, NDPI_PROTOCOL_ACCEPTABLE, NDPI_PROTOCOL_HL7,
 			  "HL7", NDPI_PROTOCOL_CATEGORY_IOT_SCADA,
 			  ndpi_build_default_ports(ports_a, 2575, 0, 0, 0, 0) /* TCP */,
@@ -7227,7 +7227,7 @@ static int ndpi_init_packet(struct ndpi_detection_module_struct *ndpi_str,
 #ifdef DEBUG_TCP_OPTIONS
 	    printf("Raw Options Fingerprint: %s\n", options_fp);
 #endif
-	    
+
 	    ndpi_sha256((const u_char*)options_fp, options_fp_len, sha_hash);
 
 	    snprintf(&fingerprint[fp_idx], sizeof(fingerprint)-fp_idx, "%02x%02x%02x%02x%02x%02x",
@@ -7933,13 +7933,13 @@ static int ndpi_reconcile_msteams_call_udp_port(struct ndpi_flow_struct *flow,
   */
 
   if((dport == 3478) || (dport == 3479) || ((sport >= 50000) && (sport <= 50019)))
-    flow->flow_multimedia_type = ndpi_multimedia_audio_flow;
+    flow->flow_multimedia_types |= ndpi_multimedia_audio_flow;
   else if((dport == 3480) || ((sport >= 50020) && (sport <= 50039)))
-    flow->flow_multimedia_type = ndpi_multimedia_video_flow;
+    flow->flow_multimedia_types |= ndpi_multimedia_video_flow;
   else if((dport == 3481) || ((sport >= 50040) && (sport <= 50059)))
-    flow->flow_multimedia_type = ndpi_multimedia_screen_sharing_flow;
+    flow->flow_multimedia_types |= ndpi_multimedia_screen_sharing_flow;
   else {
-    flow->flow_multimedia_type = ndpi_multimedia_unknown_flow;
+    flow->flow_multimedia_types = ndpi_multimedia_unknown_flow;
     return(0);
   }
 
@@ -8178,19 +8178,21 @@ int search_into_bittorrent_cache(struct ndpi_detection_module_struct *ndpi_struc
  */
 static void ndpi_check_tcp_flags(struct ndpi_flow_struct *flow) {
   // printf("[TOTAL] %u / %u [tot: %u]\n", flow->packet_direction_complete_counter[0], flow->packet_direction_complete_counter[1], flow->all_packets_counter);
+  bool is_probing = false;
 
   if((flow->l4.tcp.cli2srv_tcp_flags & TH_SYN)
      && (flow->l4.tcp.srv2cli_tcp_flags & TH_RST)
-     && (flow->packet_counter == 0 /* Ignore connections terminated by RST but that exchanged data (3WH + RST) */)
-     )
-    ndpi_set_risk(flow, NDPI_TCP_ISSUES, "Connection refused (server)");
+     && (flow->packet_counter == 0 /* Ignore connections terminated by RST but that exchanged data (3WH + RST) */))
+    ndpi_set_risk(flow, NDPI_TCP_ISSUES, "Connection refused (server)"), is_probing = true;
   else if((flow->l4.tcp.cli2srv_tcp_flags & TH_SYN)
 	  && (flow->l4.tcp.cli2srv_tcp_flags & TH_RST)
-	  && (flow->packet_counter == 0 /* Ignore connections terminated by RST but that exchanged data (3WH + RST) */)
-     )
-    ndpi_set_risk(flow, NDPI_TCP_ISSUES, "Connection refused (client)");
+	  && (flow->packet_counter == 0 /* Ignore connections terminated by RST but that exchanged data (3WH + RST) */))
+    ndpi_set_risk(flow, NDPI_TCP_ISSUES, "Connection refused (client)"), is_probing = true;
   else if((flow->l4.tcp.srv2cli_tcp_flags & TH_RST) && (flow->packet_direction_complete_counter[1 /* server -> client */] == 1))
-    ndpi_set_risk(flow, NDPI_TCP_ISSUES, "TCP probing attempt");
+    ndpi_set_risk(flow, NDPI_TCP_ISSUES, "Connection refused"), is_probing = true;
+
+  if(is_probing)
+    ndpi_set_risk(flow, NDPI_PROBING_ATTEMPT, "TCP probing attempt");
 }
 
 /* ******************************************************************** */
@@ -8215,13 +8217,17 @@ static void ndpi_check_probing_attempt(struct ndpi_flow_struct *flow) {
 	  break;
 
 	case NDPI_PROTOCOL_TLS:
-	  /* case NDPI_PROTOCOL_QUIC: */
 	case NDPI_PROTOCOL_MAIL_SMTPS:
 	case NDPI_PROTOCOL_MAIL_POPS:
 	case NDPI_PROTOCOL_MAIL_IMAPS:
 	case NDPI_PROTOCOL_DTLS:
 	  if(flow->host_server_name[0] == '\0')
 	    ndpi_set_risk(flow, NDPI_PROBING_ATTEMPT, "TLS Probing");
+	  break;
+
+	case NDPI_PROTOCOL_QUIC:
+	  if(flow->host_server_name[0] == '\0')
+	    ndpi_set_risk(flow, NDPI_PROBING_ATTEMPT, "QUIC Probing");
 	  break;
 	}
       }
@@ -8966,6 +8972,32 @@ static void fpc_check_eval(struct ndpi_detection_module_struct *ndpi_str,
 }
 /* ********************************************************************************* */
 
+static char* ndpi_expected_ports_str(u_int16_t *default_ports, char *str, u_int str_len) {
+  str[0] = '\0';
+
+  if(default_ports[0] != 0) {
+    u_int8_t i, offset;
+
+    offset = snprintf(str, str_len, "Expected on port ");
+
+    for(i=0; (i<MAX_DEFAULT_PORTS) && (default_ports[i] != 0); i++) {
+      int rc = snprintf(&str[offset], str_len-offset, "%s%u",
+			(i > 0) ? "," : "", default_ports[i]);
+
+      if(rc > 0)
+	offset += rc;
+      else
+	break;
+    }
+
+    str[offset] = '\0';
+  }
+
+  return(str);
+}
+
+/* ********************************************************************************* */
+
 static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detection_module_struct *ndpi_str,
 							    struct ndpi_flow_struct *flow,
 							    const unsigned char *packet_data,
@@ -9184,24 +9216,11 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 
 	  if((r == NULL)
 	     || ((r->proto->protoId != ret.proto.app_protocol) && (r->proto->protoId != ret.proto.master_protocol))) {
-	    if(default_ports[0] != 0) {
-		char str[64];
-		u_int8_t i, offset;
+	    if(default_ports && (default_ports[0] != 0)) {
+	      char str[64];
 
-		offset = snprintf(str, sizeof(str), "Expected on port ");
-
-		for(i=0; (i<MAX_DEFAULT_PORTS) && (default_ports[i] != 0); i++) {
-		  int rc = snprintf(&str[offset], sizeof(str)-offset, "%s%u",
-				    (i > 0) ? "," : "", default_ports[i]);
-
-		  if(rc > 0)
-		    offset += rc;
-		  else
-		    break;
-		}
-
-		str[offset] = '\0';
-		ndpi_set_risk(flow, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT, str);
+	      ndpi_set_risk(flow, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT,
+			    ndpi_expected_ports_str(default_ports, str, sizeof(str)));
 	    }
 	  }
 	}
@@ -9232,9 +9251,25 @@ static ndpi_protocol ndpi_internal_detection_process_packet(struct ndpi_detectio
 								    ntohs(flow->c_port), ntohs(flow->s_port));
 
 	if((r == NULL)
-	   || ((r->proto->protoId != ret.proto.app_protocol) && (r->proto->protoId != ret.proto.master_protocol))) {
-	  if(ret.proto.app_protocol != NDPI_PROTOCOL_FTP_DATA)
-	    ndpi_set_risk(flow, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT,NULL);
+	   || ((r->proto->protoId != ret.proto.app_protocol)
+	       && (r->proto->protoId != ret.proto.master_protocol))) {
+	  if(ret.proto.app_protocol != NDPI_PROTOCOL_FTP_DATA) {
+	    u_int16_t *default_ports;
+
+	    if(packet->udp)
+	      default_ports = ndpi_str->proto_defaults[ret.proto.master_protocol ? ret.proto.master_protocol : ret.proto.app_protocol].udp_default_ports;
+	    else if(packet->tcp)
+	      default_ports = ndpi_str->proto_defaults[ret.proto.master_protocol ? ret.proto.master_protocol : ret.proto.app_protocol].tcp_default_ports;
+	    else
+	      default_ports = NULL;
+	    
+	    if(default_ports && (default_ports[0] != 0)) {
+	      char str[64];
+	      
+	      ndpi_set_risk(flow, NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT,
+			    ndpi_expected_ports_str(default_ports, str, sizeof(str)));
+	    }
+	  }
 	}
       }
     }
@@ -9607,7 +9642,7 @@ void ndpi_parse_packet_line_info(struct ndpi_detection_module_struct *ndpi_str, 
       /* If end of line char sequence CR+NL "\r\n", process line */
 
       flow->http.request_header_observed = 1;
-      
+
       if(((a + 3) < packet->payload_packet_len)
 	 && (packet->payload[a+2] == 0x0d)
 	 && (packet->payload[a+3] == 0x0a)) {

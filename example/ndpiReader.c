@@ -101,7 +101,7 @@ FILE *fingerprint_fp         = NULL; /**< for flow fingerprint export */
 
 /** User preferences **/
 char *addr_dump_path = NULL;
-u_int8_t enable_realtime_output = 0, enable_protocol_guess = NDPI_GIVEUP_GUESS_BY_PORT | NDPI_GIVEUP_GUESS_BY_IP, enable_payload_analyzer = 0, num_bin_clusters = 0, extcap_exit = 0;
+u_int8_t enable_realtime_output = 0, enable_payload_analyzer = 0, num_bin_clusters = 0, extcap_exit = 0;
 u_int8_t verbose = 0, enable_flow_stats = 0;
 bool do_load_lists = false;
 
@@ -1131,7 +1131,6 @@ static void parseOptions(int argc, char **argv) {
       break;
 
     case 'd':
-      enable_protocol_guess = 0;
       if(reader_add_cfg(NULL, "dpi.guess_on_giveup", "0", 1) == 1) {
         printf("Invalid parameter [%s] [num:%d/%d]\n", optarg, num_cfgs, MAX_NUM_CFGS);
         exit(1);
@@ -1812,28 +1811,10 @@ static void printFlow(u_int32_t id, struct ndpi_flow_info *flow, u_int16_t threa
 	    ndpi_get_proto_name(ndpi_thread_info[thread_id].workflow->ndpi_struct,
 				flow->detected_protocol.protocol_by_ip));
 
-    if(flow->multimedia_flow_type != ndpi_multimedia_unknown_flow) {
-      const char *content;
+    if(flow->multimedia_flow_types != ndpi_multimedia_unknown_flow) {
+      char content[64] = {0};
 
-      switch(flow->multimedia_flow_type) {
-      case ndpi_multimedia_audio_flow:
-	content = "Audio";
-	break;
-
-      case ndpi_multimedia_video_flow:
-	content = "Video";
-	break;
-
-      case ndpi_multimedia_screen_sharing_flow:
-	content = "Screen Sharing";
-	break;
-
-      default:
-	content = "???";
-	break;
-      }
-
-      fprintf(out, "[Stream Content: %s]", content);
+      fprintf(out, "[Stream Content: %s]", ndpi_multimedia_flowtype2str(content, sizeof(content), flow->multimedia_flow_types));
     }
 
     fprintf(out, "[%s]",

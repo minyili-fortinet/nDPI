@@ -841,6 +841,38 @@ const char* ndpi_get_flow_info(struct ndpi_flow_struct const * const flow,
 
 /* ********************************** */
 
+char *ndpi_multimedia_flowtype2str(char *buf, int buf_len, u_int8_t m_types)
+{
+  int rc, len = 0;
+
+  if(buf == NULL || buf_len <= 1)
+    return NULL;
+
+  buf[0] = '\0';
+
+  if(m_types == ndpi_multimedia_unknown_flow) {
+    rc = ndpi_snprintf(buf + len, buf_len - len, "Unknown", len > 0 ? ", " : "");
+    if(rc > 0 && len + rc < buf_len) len += rc; else return NULL;
+  }
+
+  if(m_types & ndpi_multimedia_audio_flow) {
+    rc = ndpi_snprintf(buf + len, buf_len - len, "%sAudio", len > 0 ? ", " : "");
+    if(rc > 0 && len + rc < buf_len) len += rc; else return NULL;
+  }
+  if(m_types & ndpi_multimedia_video_flow) {
+    rc = ndpi_snprintf(buf + len, buf_len - len, "%sVideo", len > 0 ? ", " : "");
+    if(rc > 0 && len + rc < buf_len) len += rc; else return NULL;
+  }
+  if(m_types & ndpi_multimedia_screen_sharing_flow) {
+    rc = ndpi_snprintf(buf + len, buf_len - len, "%sScreen Sharing", len > 0 ? ", " : "");
+    if(rc > 0 && len + rc < buf_len) len += rc; else return NULL;
+  }
+
+  return buf;
+}
+
+/* ********************************** */
+
 char* ndpi_ssl_version2str(char *buf, int buf_len,
                            u_int16_t version, u_int8_t *unknown_tls_version) {
   if(unknown_tls_version)
@@ -1274,6 +1306,7 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
   char buf[64];
   char const *host_server_name;
   char quic_version[16];
+  char content[64] = {0};
   u_int i;
 
   if(flow == NULL) return(-1);
@@ -1286,6 +1319,10 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
   if (host_server_name != NULL) {
     ndpi_serialize_string_string(serializer, "hostname", host_server_name);
     ndpi_serialize_string_string(serializer, "domainame", ndpi_get_host_domain(ndpi_struct, host_server_name));
+  }
+
+  if(flow->flow_multimedia_types != ndpi_multimedia_unknown_flow) {
+    ndpi_serialize_string_string(serializer, "stream_content", ndpi_multimedia_flowtype2str(content, sizeof(content), flow->flow_multimedia_types));
   }
 
   switch(l7_protocol.proto.master_protocol ? l7_protocol.proto.master_protocol : l7_protocol.proto.app_protocol) {
@@ -1606,6 +1643,19 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
     if(flow->stun.other_address.port)
       ndpi_serialize_string_string(serializer,  "other_address", print_ndpi_address_port(&flow->stun.other_address, buf, sizeof(buf)));
 
+    ndpi_serialize_end_of_block(serializer);
+    break;
+
+  case NDPI_PROTOCOL_SIP:
+    ndpi_serialize_start_of_block(serializer, "sip");
+    if(flow->protos.sip.from)
+      ndpi_serialize_string_string(serializer, "from", flow->protos.sip.from);
+    if(flow->protos.sip.from_imsi[0] != '\0')
+      ndpi_serialize_string_string(serializer, "from_imsi", flow->protos.sip.from_imsi);
+    if(flow->protos.sip.to)
+      ndpi_serialize_string_string(serializer, "to", flow->protos.sip.to);
+    if(flow->protos.sip.to_imsi[0] != '\0')
+      ndpi_serialize_string_string(serializer, "to_imsi", flow->protos.sip.to_imsi);
     ndpi_serialize_end_of_block(serializer);
     break;
 
