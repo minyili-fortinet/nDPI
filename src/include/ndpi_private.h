@@ -387,7 +387,7 @@ struct ndpi_detection_module_struct {
   /* *** If you add a new Patricia tree, please update ptree_type above! *** */
 
   struct {
-#ifdef USE_LEGACY_AHO_CORASICK
+#if defined(USE_LEGACY_AHO_CORASICK) || defined(__KERNEL__)
     ndpi_automa hostnames, hostnames_shadow;
 #else
     ndpi_domain_classify *sc_hostnames, *sc_hostnames_shadow;

@@ -54,8 +54,6 @@
 #include "ndpi_patricia_typedefs.h"
 
 #ifndef __KERNEL__
-// #define USE_LEGACY_AHO_CORASICK
-
 #ifndef NDPI_CFFI_PREPROCESSING
 #ifndef u_char
 typedef unsigned char u_char;
