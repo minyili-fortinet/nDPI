@@ -57,7 +57,7 @@ AS_IF([test "${with_sanitizer+set}" = set -o "${with_thread_sanitizer+set}" = se
   NDPI_CFLAGS="${NDPI_CFLAGS} -O0 -g3"
 ],[
   dnl>  Oss-fuzz doesn't really like any optimizaton flags don't set by itself
-  AS_IF([test "x$enable_fuzztargets" != "xyes"], [NDPI_CFLAGS="${NDPI_CFLAGS} -O2"])
+  AS_IF([test "x$enable_fuzztargets" != "xyes"], [NDPI_CFLAGS="${NDPI_CFLAGS}"])
 ])
 AS_IF([test "${with_sanitizer+set}" = set -o "${with_thread_sanitizer+set}" = set -o "${with_memory_sanitizer+set}" = set],[
   AS_IF([test "x$enable_gprof" = "xyes"], [
