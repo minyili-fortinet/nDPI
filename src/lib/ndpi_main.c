@@ -11888,7 +11888,6 @@ static const struct cfg_param {
 } cfg_params[] = {
   /* Per-protocol parameters */
 
-  { "tls",           "mem_buf_size_limit",                      "16384", "0", "32768", CFG_PARAM_INT, __OFF(tls_buf_size_limit), NULL, 1 },
   { "tls",           "certificate_expiration_threshold",        "30", "0", "365", CFG_PARAM_INT, __OFF(tls_certificate_expire_in_x_days), NULL, 1 },
   { "tls",           "application_blocks_tracking",             "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_app_blocks_tracking_enabled), NULL, 0 },
   { "tls",           "dpi.heuristics",                          "0x00", "0", "0x07", CFG_PARAM_INT, __OFF(tls_heuristics), NULL , 1},
@@ -11897,18 +11896,24 @@ static const struct cfg_param {
   { "tls",           "metadata.ja3c_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3c_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja3s_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3s_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja4c_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja4c_fingerprint_enabled), NULL, 1 },
-  { "tls",           "metadata.ja4r_fingerprint",               "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja4r_fingerprint_enabled), NULL, 1},
+  { "tls",           "metadata.ja4r_fingerprint",               "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja4r_fingerprint_enabled), NULL, 1 },
   { "tls",           "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_subclassification_enabled), NULL, 1 },
+  { "tls",           "mem_buf_size_limit",                      "16384", "0", "32768", CFG_PARAM_INT, __OFF(tls_buf_size_limit), NULL, 1 },
 
   { "quic",          "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(quic_subclassification_enabled), NULL, 1 },
 
-  { "smtp",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled), NULL,1 },
+  { "smtp",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(smtp_opportunistic_tls_enabled), NULL, 1 },
 
   { "imap",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(imap_opportunistic_tls_enabled), NULL, 1 },
 
   { "pop",           "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(pop_opportunistic_tls_enabled), NULL, 1 },
 
-  { "ftp",           "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), NULL, 1 },
+  { "ftp",           "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(ftp_opportunistic_tls_enabled), NULL },
+
+  { "sip",           "metadata.attribute.from",                 "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_from_enabled), NULL, 1 },
+  { "sip",           "metadata.attribute.from_imsi",            "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_from_imsi_enabled), NULL, 1 },
+  { "sip",           "metadata.attribute.to",                   "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_to_enabled), NULL, 1 },
+  { "sip",           "metadata.attribute.to_imsi",              "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_to_imsi_enabled), NULL, 1 },
 
   { "stun",          "tls_dissection",                          "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_opportunistic_tls_enabled), NULL, 1 },
   { "stun",          "max_packets_extra_dissection",            "6", "0", "255", CFG_PARAM_INT, __OFF(stun_max_packets_extra_dissection), NULL, 1 },
@@ -11918,10 +11923,9 @@ static const struct cfg_param {
   { "stun",          "metadata.attribute.relayed_address",      "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_relayed_address_enabled), NULL, 1 },
   { "stun",          "metadata.attribute.peer_address",         "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(stun_peer_address_enabled), NULL, 1 },
 
-  { "sip",           "metadata.attribute.from",                 "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_from_enabled), NULL, 1 },
-  { "sip",           "metadata.attribute.from_imsi",            "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_from_imsi_enabled), NULL, 1 },
-  { "sip",           "metadata.attribute.to",                   "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_to_enabled), NULL, 1 },
-  { "sip",           "metadata.attribute.to_imsi",              "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(sip_attribute_to_imsi_enabled), NULL, 1 },
+  { "dns",           "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_subclassification_enabled), NULL, 1 },
+  { "dns",           "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(dns_parse_response_enabled), NULL, 1 },
+
 
   { "http",          "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), NULL, 1 },
   { "http",          "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_subclassification_enabled), NULL, 1 },
