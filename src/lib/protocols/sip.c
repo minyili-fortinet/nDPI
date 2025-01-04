@@ -42,7 +42,7 @@ static void ndpi_int_sip_add_connection(struct ndpi_detection_module_struct *ndp
 
 static int search_cmd(struct ndpi_detection_module_struct *ndpi_struct)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   const u_int8_t *packet_payload = packet->payload;
   u_int32_t payload_len = packet->payload_packet_len;
   const char **cs;
@@ -171,7 +171,7 @@ static int metadata_enabled(struct ndpi_detection_module_struct *ndpi_struct)
 
 static void search_metadata(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow)
 {
-  struct ndpi_packet_struct *packet = &ndpi_struct->packet;
+  struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
   u_int16_t a;
   int str_len, imsi_len;
   char *str, *imsi;

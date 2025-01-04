@@ -162,7 +162,7 @@ static int zoom_search_again(struct ndpi_detection_module_struct *ndpi_struct,
 {
   struct ndpi_packet_struct *packet = ndpi_get_packet_struct(ndpi_struct);
 
-  if(ndpi_struct->packet.payload_packet_len == 0)
+  if(packet->payload_packet_len == 0)
     return keep_extra_dissection(flow);
 
   if(!flow->l4.udp.zoom_p2p &&
