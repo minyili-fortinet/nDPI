@@ -498,7 +498,7 @@ struct ndpi_flow_input_info input_info = {
 };
 
 /* debug functions */
-static void debug_printf(u_int32_t protocol, struct ndpi_detection_module_struct *id_struct,
+static void debug_printf(u_int16_t protocol, struct ndpi_detection_module_struct *id_struct,
 		ndpi_log_level_t log_level, const char *file_name,
 		const char *func_name, unsigned line_number,
 		const char * format, ...)
