@@ -268,7 +268,7 @@ static inline int flow_have_info( struct nf_ct_ext_ndpi *c) {
 
 static ndpi_protocol_nf proto_null = {NDPI_PROTOCOL_UNKNOWN , NDPI_PROTOCOL_UNKNOWN};
 
-static unsigned short MAGIC_CT = 0xa55a;
+static unsigned short MAGIC_CT = 0x00;
 
 unsigned long int ndpi_flow_limit=10000000; // 4.3Gb
 unsigned long int ndpi_enable_flow=0;
