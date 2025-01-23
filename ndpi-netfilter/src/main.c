@@ -909,7 +909,7 @@ static int ndpi_init_host_ac(struct ndpi_net *n) {
 	if(automa->automata_open)
 		ac_automata_finalize(automa);
 
-	n->host_ac = ndpi_init_automa();
+	n->host_ac = ndpi_init_automa_domain();
 	if(!n->host_ac) {
 		pr_err("xt_ndpi: cant alloc host_ac\n");
 		return 0;
