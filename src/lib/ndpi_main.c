@@ -11846,8 +11846,9 @@ static const struct cfg_param {
   { "tls",           "metadata.ja3c_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3c_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja3s_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja3s_fingerprint_enabled), NULL, 1 },
   { "tls",           "metadata.ja4c_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja4c_fingerprint_enabled), NULL, 1 },
-  { "tls",           "metadata.ja4r_fingerprint",               "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja4r_fingerprint_enabled), NULL, 1 },
+  { "tls",           "metadata.ja4r_fingerprint",               "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_ja4r_fingerprint_enabled), NULL, 1 },
   { "tls",           "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_subclassification_enabled), NULL, 1 },
+  { "tls",           "subclassification_cert",                  "disable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(tls_subclassification_cert_enabled), NULL, 1 },
   { "tls",           "mem_buf_size_limit",                      "16384", "0", "32768", CFG_PARAM_INT, __OFF(tls_buf_size_limit), NULL, 1 },
 
   { "quic",          "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(quic_subclassification_enabled), NULL, 1 },
